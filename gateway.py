@@ -13,6 +13,7 @@ from pathlib import Path
 from collections import defaultdict
 import httpx
 from typing import List, Dict, Any, Optional
+
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Body, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel, ValidationError
@@ -28,12 +29,101 @@ except ImportError:
 from elasticsearch import Elasticsearch, NotFoundError
 import polars as pl
 from fastapi.staticfiles import StaticFiles
+from urllib.parse import quote
+
+# ## START: GOOGLE IMAGE SEARCH INTEGRATION (HELPERS & MODELS) ##
+google_search_session = requests.Session()
+google_search_session.headers.update({
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+})
+
+def get_google_images(keyword: str, k: int = 15):
+    """
+    Tìm kiếm ảnh trên Google Images và trả về list k link ảnh.
+    """
+    try:
+        url = f"https://www.google.com/search?q={quote(keyword)}&tbm=isch"
+        html = google_search_session.get(url, timeout=15).text
+        start = html.find('["https://')
+        if start == -1:
+            return []
+        html = html[start:]
+        # This regex is more robust for finding image URLs from Google's data structure
+        image_links = re.findall(r'\["(https?://[^"]+)",\d+,\d+]', html)
+        seen = set()
+        results = []
+        for link in image_links:
+            # Filter out low-quality or non-direct image links
+            if not link.startswith("https://encrypted-tbn0.gstatic.com") and link not in seen:
+                seen.add(link)
+                results.append(link)
+                if len(results) >= k:
+                    break
+        return results
+    except Exception as e:
+        print(f"Error during Google Image Search: {e}")
+        return []
+
+class GoogleImageSearchRequest(BaseModel):
+    query: str
+
+class DownloadImageRequest(BaseModel):
+    url: str
+# ## END: GOOGLE IMAGE SEARCH INTEGRATION (HELPERS & MODELS) ##
+
 
 # --- Thiết lập & Cấu hình ---
 app = FastAPI()
+
+# ## START: GOOGLE IMAGE SEARCH API ENDPOINTS ##
+@app.post("/google_image_search")
+async def google_image_search(request_data: GoogleImageSearchRequest):
+    if not request_data.query:
+        raise HTTPException(status_code=400, detail="Query cannot be empty.")
+    try:
+        image_urls = await asyncio.to_thread(get_google_images, request_data.query)
+        return {"image_urls": image_urls}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to search Google Images: {e}")
+
+@app.post("/download_external_image")
+async def download_external_image(request_data: DownloadImageRequest):
+    try:
+        response = requests.get(request_data.url, stream=True, timeout=20, headers=google_search_session.headers)
+        response.raise_for_status()
+        
+        content_type = response.headers.get('content-type', 'image/jpeg')
+        if 'image' not in content_type:
+            raise HTTPException(status_code=400, detail="URL does not point to a valid image.")
+            
+        extension = ".jpg"
+        if 'png' in content_type: extension = '.png'
+        elif 'webp' in content_type: extension = '.webp'
+        elif 'gif' in content_type: extension = '.gif'
+
+        temp_filename = f"g-search-{uuid.uuid4()}{extension}"
+        temp_filepath = TEMP_UPLOAD_DIR / temp_filename
+
+        with temp_filepath.open("wb") as buffer:
+            for chunk in response.iter_content(chunk_size=8192):
+                buffer.write(chunk)
+
+        full_path_str = str(temp_filepath.resolve())
+        
+        return {
+            "temp_image_name": temp_filename,
+            "filepath": full_path_str,
+            "url": f"/images/{base64.urlsafe_b64encode(full_path_str.encode('utf-8')).decode('utf-8')}"
+        }
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"Failed to download image from URL: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred during image download: {e}")
+# ## END: GOOGLE IMAGE SEARCH API ENDPOINTS ##
+
 BASE_DIR = os.path.dirname(__file__)
 app.mount("/static", StaticFiles(directory="."), name="static")
-
 
 TEMP_UPLOAD_DIR = Path("/app/temp_uploads")
 TEMP_UPLOAD_DIR.mkdir(exist_ok=True)
@@ -56,7 +146,7 @@ except ImportError:
 # --- Cấu hình DRES và hệ thống ---
 DRES_BASE_URL = "http://192.168.28.151:5000"
 VIDEO_FPS = 25
-VIDEO_BASE_DIR = "/app/HCMAIC2025/dataset/videos/batch1" #<-- ADD THIS
+VIDEO_BASE_DIR = "/app/HCMAIC2025/dataset/videos/batch1"
 
 BEIT3_WORKER_URL = "http://model-workers:8001/embed"
 BGE_WORKER_URL = "http://model-workers:8002/embed"
@@ -130,7 +220,7 @@ class StageData(BaseModel):
     asr_query: Optional[str] = None
     query_image_name: Optional[str] = None
     generated_image_name: Optional[str] = None
-# MODIFIED TemporalSearchRequest
+
 class TemporalSearchRequest(BaseModel):
     stages: list[StageData]
     models: List[str] = ["beit3", "bge", "unite"]
@@ -144,7 +234,7 @@ class ProcessQueryRequest(BaseModel):
     query: str
     enhance: bool = False
     expand: bool = False
-# MODIFIED UnifiedSearchRequest
+
 class UnifiedSearchRequest(BaseModel):
     query_text: Optional[str] = None
     query_image_name: Optional[str] = None
@@ -253,10 +343,12 @@ def process_and_cluster_results_optimized(results: List[Dict[str, Any]]) -> List
             "best_shot": best_shot
         })
     return sorted(processed_clusters, key=lambda x: x['cluster_score'], reverse=True)
+
 def get_filename_stem(filepath: str) -> Optional[str]:
     if not filepath: return None
     try: return os.path.splitext(os.path.basename(filepath))[0]
     except Exception: return None
+
 def is_temporal_sequence_valid(sequence: Dict, filters: ObjectFilters) -> bool:
     checklist = set()
     if filters.counting and filters.counting.conditions:
@@ -298,6 +390,7 @@ def is_temporal_sequence_valid(sequence: Dict, filters: ObjectFilters) -> bool:
                         match_df = frame_positions.filter(pl.col("object") == p_box.label).with_columns(overlap_ratio=(intersect_area / pl.col("bbox_area")).fill_null(0)).filter(pl.col("overlap_ratio") >= 0.75)
                         if not match_df.is_empty(): checklist.remove(key)
     return not checklist
+
 def parse_condition(condition_str: str) -> tuple[Any, int]:
     try: return operator.ge, int(condition_str)
     except ValueError:
@@ -307,6 +400,7 @@ def parse_condition(condition_str: str) -> tuple[Any, int]:
                 try: return op_map[op_str], int(condition_str[len(op_str):])
                 except (ValueError, TypeError): return None, None
     return None, None
+
 def get_valid_filepaths_for_strict_search(all_filepaths: set, filters: ObjectFilters) -> set:
     candidate_stems = {get_filename_stem(p) for p in all_filepaths}
     if not candidate_stems: return set()
@@ -332,6 +426,7 @@ def get_valid_filepaths_for_strict_search(all_filepaths: set, filters: ObjectFil
             stems_satisfying_all_boxes = stems_satisfying_all_boxes.intersection(set(condition_df['name_stem'].unique()))
         valid_stems = stems_satisfying_all_boxes
     return {fp for fp in all_filepaths if get_filename_stem(fp) in valid_stems}
+
 def search_milvus_sync(collection: Collection, collection_name: str, query_vectors: list, limit: int, expr: str = None):
     try:
         if not collection or not query_vectors:
@@ -382,6 +477,7 @@ def search_milvus_sync(collection: Collection, collection_name: str, query_vecto
         print(f"ERROR during Milvus search on '{collection_name}': {e}")
         traceback.print_exc()
         return []
+
 def search_ocr_on_elasticsearch_sync(keyword: str, limit: int = 500):
     if not es: return []
     query = {"query": {"multi_match": {"query": keyword, "fields": ["ocr_text"]}}}
@@ -390,6 +486,7 @@ def search_ocr_on_elasticsearch_sync(keyword: str, limit: int = 500):
         return [{"filepath": hit['_source']['file_path'], "score": hit['_score'], "video_id": hit['_source']['video_id'], "shot_id": str(hit['_source']['shot_id']), "frame_id": hit['_source']['frame_id']} for hit in response["hits"]["hits"] if all(k in hit['_source'] for k in ['file_path', 'video_id', 'shot_id', 'frame_id'])]
     except NotFoundError: return []
     except Exception as e: print(f"Lỗi Elasticsearch OCR: {e}"); return []
+
 def search_asr_on_elasticsearch_sync(keyword: str, limit: int = 500):
     if not es: return []
     query = {"query": {"multi_match": {"query": keyword, "fields": ["asr_text^3", "text^1"], "type": "best_fields", "fuzziness": "AUTO"}}}
@@ -404,15 +501,20 @@ def search_asr_on_elasticsearch_sync(keyword: str, limit: int = 500):
         return results
     except NotFoundError: return []
     except Exception as e: print(f"Lỗi Elasticsearch ASR: {e}"); return []
+
 async def search_milvus_async(collection: Collection, collection_name: str, query_vectors: list, limit: int, expr: str = None):
     return await asyncio.to_thread(search_milvus_sync, collection, collection_name, query_vectors, limit, expr)
+
 async def search_ocr_on_elasticsearch_async(keyword: str, limit: int = 500):
     return await asyncio.to_thread(search_ocr_on_elasticsearch_sync, keyword, limit)
+
 async def search_asr_on_elasticsearch_async(keyword: str, limit: int = 500):
     return await asyncio.to_thread(search_asr_on_elasticsearch_sync, keyword, limit)
+
 def convert_distance_to_similarity(results):
     for result in results: result['score'] = max(0, 1.0 - result.get('score', 1.0))
     return results
+
 def reciprocal_rank_fusion(results_lists: dict, weights: dict, k_rrf: int = 60):
     master_data = defaultdict(lambda: {"raw_scores": {}})
     for model_name, results in results_lists.items():
@@ -434,6 +536,7 @@ def reciprocal_rank_fusion(results_lists: dict, weights: dict, k_rrf: int = 60):
         final_item.pop('score', None)
         final_results.append(final_item)
     return sorted(final_results, key=lambda x: x['rrf_score'], reverse=True)
+
 def process_and_cluster_results(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     if not results: return []
     shots_by_video = defaultdict(list)
@@ -466,6 +569,7 @@ def process_and_cluster_results(results: List[Dict[str, Any]]) -> List[Dict[str,
         max_score = best_shot.get('rrf_score', best_shot.get('score', 0))
         processed_clusters.append({"cluster_score": max_score, "shots": sorted_cluster_shots, "best_shot": best_shot})
     return sorted(processed_clusters, key=lambda x: x['cluster_score'], reverse=True)
+
 def package_response_with_urls(data: List[Dict[str, Any]], base_url: str):
     response_content = {"results": []}
     if not isinstance(data, list):
@@ -493,6 +597,7 @@ def package_response_with_urls(data: List[Dict[str, Any]], base_url: str):
                     if 'best_shot' in cluster: process_shot(cluster['best_shot'])
     response_content["results"] = data
     return JSONResponse(content=response_content)
+
 async def get_embeddings_for_query(
     client: httpx.AsyncClient,
     text_queries: List[str],
@@ -540,22 +645,18 @@ async def get_embeddings_for_query(
 # --- API Endpoints ---
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
-    # ## TEAMWORK: Use new UI file ##
     ui_path = os.path.join(BASE_DIR, "ui.html")
     if not os.path.exists(ui_path):
         raise HTTPException(status_code=500, detail="UI file not found")
     with open(ui_path, "r", encoding="utf-8") as f:
         return HTMLResponse(content=f.read())
 
-# ## TEAMWORK: WebSocket endpoint for real-time communication ##
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
         while True:
-            # The client will send a JSON string with the frame data
             data = await websocket.receive_text()
-            # The server simply broadcasts this data to all other connected clients
             await manager.broadcast(data)
     except WebSocketDisconnect:
         manager.disconnect(websocket)
@@ -634,16 +735,12 @@ async def dres_submit(submit_data: DRESSubmitRequest):
                 json=submission_body
             )
             response.raise_for_status()
-            
-            # ## TEAMWORK: On successful DRES submission, broadcast a clear panel message ##
             try:
                 submission_result = response.json()
                 if submission_result.get("submission") == "CORRECT":
                     await manager.broadcast(json.dumps({"type": "clear_panel", "status": "success"}))
             except Exception as e:
                 print(f"Error broadcasting clear panel message: {e}")
-            # ## END TEAMWORK ##
-
             return response.json()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -711,7 +808,6 @@ async def search_unified(request: Request, search_data: str = Form(...), query_i
             response_data = package_response_with_urls([], str(request.base_url))
             response_content = json.loads(response_data.body)
             response_content["processed_query"] = ""
-            # ADDED total_results
             response_content["total_results"] = 0
             timings["total_request_s"] = time.time() - start_total_time
             response_content["timing_info"] = timings
@@ -795,10 +891,6 @@ async def search_unified(request: Request, search_data: str = Form(...), query_i
                 beit3_res, bge_res, unite_res = await asyncio.gather(*milvus_tasks)
                 timings["vector_search_s"] = time.time() - start_milvus
                 start_post_proc = time.time()
-                milvus_results_dict = {}
-                if beit3_res: milvus_results_dict["beit3"] = beit3_res
-                if bge_res: milvus_results_dict["bge"] = bge_res
-                if unite_res: milvus_results_dict["unite"] = unite_res
                 milvus_weights = {m: w for m, w in MODEL_WEIGHTS.items() if m in models_to_use}
                 final_fused_results = reciprocal_rank_fusion({"beit3": beit3_res, "bge": bge_res, "unite": unite_res}, milvus_weights)
                 timings["post_processing_s"] = time.time() - start_post_proc
@@ -809,7 +901,6 @@ async def search_unified(request: Request, search_data: str = Form(...), query_i
         final_fused_results = sorted(es_results_for_standalone_search, key=lambda x: x.get('rrf_score', 0), reverse=True)
         timings["post_processing_s"] = time.time() - start_post_proc
     
-    # MODIFICATION START: Pagination Logic
     if final_fused_results:
         start_post_proc_2 = time.time()
         clustered_results = process_and_cluster_results_optimized(final_fused_results)
@@ -836,11 +927,9 @@ async def search_unified(request: Request, search_data: str = Form(...), query_i
     paginated_results = final_results_all[start_index:end_index]
 
     response_data = package_response_with_urls(paginated_results, str(request.base_url))
-    # MODIFICATION END
 
     response_content = json.loads(response_data.body)
     response_content["processed_query"] = processed_query_for_ui
-    # ADDED total_results to response
     response_content["total_results"] = total_results
     timings["total_request_s"] = time.time() - start_total_time
     response_content["timing_info"] = timings
@@ -947,7 +1036,6 @@ async def temporal_search(request_data: TemporalSearchRequest, request: Request)
         response = package_response_with_urls([], str(request.base_url))
         content = json.loads(response.body)
         content["processed_queries"] = processed_queries_for_ui
-        # ADDED total_results
         content["total_results"] = 0
         timings["total_request_s"] = time.time() - start_total_time
         content["timing_info"] = timings
@@ -1042,7 +1130,6 @@ async def temporal_search(request_data: TemporalSearchRequest, request: Request)
     else:
         final_sequences_all = sequences_to_filter
     
-    # MODIFICATION START: Pagination logic
     total_sequences = len(final_sequences_all)
     start_index = (request_data.page - 1) * request_data.page_size
     end_index = start_index + request_data.page_size
@@ -1051,13 +1138,11 @@ async def temporal_search(request_data: TemporalSearchRequest, request: Request)
     timings["final_processing_s"] = time.time() - start_final_proc
     
     response = package_response_with_urls(paginated_sequences, str(request.base_url))
-    # MODIFICATION END
 
     content = json.loads(response.body)
     content["processed_queries"] = processed_queries_for_ui
     content["is_temporal_search"] = not ambiguous
     content["is_ambiguous_search"] = ambiguous
-    # ADDED total_results to response
     content["total_results"] = total_sequences
     timings["total_request_s"] = time.time() - start_total_time
     content["timing_info"] = timings
@@ -1095,18 +1180,12 @@ async def check_temporal_frames(request_data: CheckFramesRequest) -> List[str]:
 
 @app.get("/videos/{video_id}")
 async def get_video(video_id: str):
-    """
-    Serves a video file based on its ID.
-    Handles byte range requests for video streaming and seeking.
-    """
-    # Security: Prevent path traversal attacks
     if "/" in video_id or ".." in video_id:
         raise HTTPException(status_code=400, detail="Invalid video ID format.")
     
     video_path = os.path.join(VIDEO_BASE_DIR, video_id)
     
     if not os.path.isfile(video_path):
-        # Attempt with .mp4 extension if not present, as video_id from DRES might lack it
         if not video_id.endswith('.mp4'):
             video_path = os.path.join(VIDEO_BASE_DIR, f"{video_id}.mp4")
 
@@ -1114,7 +1193,6 @@ async def get_video(video_id: str):
              raise HTTPException(status_code=404, detail=f"Video not found at path: {video_path}")
 
     return FileResponse(video_path, media_type="video/mp4")
-
 
 @app.get("/images/{encoded_path}")
 async def get_image(encoded_path: str):

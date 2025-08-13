@@ -251,6 +251,104 @@
             transform: scale(1.1);
         }
         /* ## END: Teamwork Panel CSS Changes ## */
+
+        #google-image-search-container {
+            padding-bottom: 24px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+        .google-search-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+        .google-search-header .fa-google {
+            color: var(--accent-blue);
+        }
+        .google-search-input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        #googleSearchInput {
+            flex-grow: 1;
+        }
+        #googleSearchBtn {
+            width: auto;
+            height: 48px;
+            padding: 0 16px;
+        }
+        #google-image-results-wrapper {
+            margin-top: 16px;
+        }
+        #google-image-results {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 10px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            min-height: 120px;
+            align-items: center;
+        }
+        .google-image-item {
+            flex: 0 0 160px;
+            height: 90px;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: border-color 0.3s ease;
+        }
+        .google-image-item:hover {
+            border-color: var(--accent-blue);
+        }
+        .google-image-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .google-image-item .overlay-actions {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .google-image-item:hover .overlay-actions {
+            opacity: 1;
+        }
+        .google-image-item .overlay-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+        }
+        .google-image-item .overlay-btn:hover {
+            background: var(--accent-blue);
+            transform: scale(1.1);
+        }
+
     </style>
 </head>
 <body>
@@ -280,13 +378,26 @@
     </div>
     <div class="main-content-wrapper">
         <div id="left-search-panel">
+            <div id="google-image-search-container">
+                <div class="google-search-header">
+                </div> <!-- <<<<<<<<<<<<<<<<<<<< THÊM LẠI DÒNG NÀY -->
+                <div class="google-search-input-wrapper">
+                    <input type="text" id="googleSearchInput" class="stage-input" placeholder="Tìm ảnh trên Google...">
+                    <button id="googleSearchBtn" class="control-btn" title="Search"><i class="fas fa-search"></i></button>
+                </div>
+                <div id="google-image-results-wrapper" style="display: none;">
+                    <div id="google-image-results">
+                        <!-- Fetched images will appear here -->
+                    </div>
+                </div>
+            </div>
             <div class="stages-container" id="stagesContainer"></div>
             <div class="panel-controls">
                 <div class="stage-controls">
                     <button class="control-btn" id="addStageBtn" title="Add Stage to End (Ctrl+])"><i class="fas fa-plus"></i></button>
                     <button class="control-btn" id="removeStageBtn" title="Remove Last Stage (Ctrl+Shift+])"><i class="fas fa-minus"></i></button>
                 </div>
-                <button class="search-btn" id="searchBtn" title="Search (Ctrl+Enter)"><i class="fas fa-search"></i> Search</button>
+                <button class="search-btn" id="searchBtn" title="Search (Enter)"><i class="fas fa-search"></i> Search</button>
             </div>
         </div>
         <div id="right-results-panel">
@@ -297,7 +408,7 @@
             <div id="timingInfoDisplay" class="timing-info-container"></div>
             <div id="loadingIndicator" style="display: none; text-align: center;"><i class="fas fa-spinner fa-spin"></i> Performing Search...</div>
             <div id="resultsContainer">
-                <p style="text-align: center; color: var(--text-secondary); padding-top: 50px; font-size: 1.2rem;">Sử dụng bảng điều khiển bên trái để bắt đầu tìm kiếm.</p>
+                <p style="text-align: center; color: var(--text-secondary); padding-top: 100px; font-size: 1.2rem;">Sử dụng bảng điều khiển bên trái để bắt đầu tìm kiếm.</p>
             </div>
         </div>
     </div>
@@ -348,6 +459,144 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             const stagesContainer = document.getElementById('stagesContainer'); const addStageBtn = document.getElementById('addStageBtn'); const removeStageBtn = document.getElementById('removeStageBtn'); const searchBtn = document.getElementById('searchBtn'); const resultsContainer = document.getElementById('resultsContainer'); const loadingIndicator = document.getElementById('loadingIndicator'); const modelSelectBtn = document.getElementById('modelSelectBtn'); const modelDropdown = document.getElementById('modelDropdown'); const clusterBtn = document.getElementById('clusterBtn'); const ambiguousBtn = document.getElementById('ambiguousBtn'); const objectFilterBtn = document.getElementById('objectFilterBtn'); const objectFilterModal = document.getElementById('objectFilterModal'); const modalCloseBtn = document.getElementById('modalCloseBtn'); const imageModal = document.getElementById('imageModal'); const zoomedImage = document.getElementById('zoomedImage'); const closeImageModalBtn = document.querySelector('#imageModal .image-modal-close'); const temporalContextModal = document.getElementById('temporalContextModal'); const temporalGrid = document.getElementById('temporalGrid'); const temporalModalTitle = document.getElementById('temporalModalTitle'); const closeTemporalModalBtn = document.getElementById('closeTemporalModalBtn'); const enableCountFilter = document.getElementById('enableCountFilter'); const enablePositionFilter = document.getElementById('enablePositionFilter'); const countFilterControls = document.getElementById('countFilterControls'); const addCustomCountBtn = document.getElementById('addCustomCountBtn'); const posCanvas = document.getElementById('positioningCanvas'); const drawnBoxesList = document.getElementById('drawnBoxesList'); const posCtx = posCanvas.getContext('2d'); const dresBtn = document.getElementById('dresBtn'); const dresModal = document.getElementById('dresModal'); const dresModalCloseBtn = document.getElementById('dresModalCloseBtn'); const dresLoginBtn = document.getElementById('dresLoginBtn'); const dresStatus = document.getElementById('dresStatus'); const dresEvaluationSelect = document.getElementById('dresEvaluationSelect');
+            const googleSearchInput = document.getElementById('googleSearchInput');
+            const googleSearchBtn = document.getElementById('googleSearchBtn');
+            const googleResultsWrapper = document.getElementById('google-image-results-wrapper');
+            const googleResultsContainer = document.getElementById('google-image-results');
+
+            async function handleGoogleImageAction(url, action, buttonEl) {
+                if (!url || !action) return;
+                const originalIcon = buttonEl.innerHTML;
+                buttonEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                buttonEl.disabled = true;
+
+                try {
+                    // Step 1: Download the external image to our server
+                    const downloadResponse = await fetch('/download_external_image', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ url })
+                    });
+                    if (!downloadResponse.ok) {
+                        const err = await downloadResponse.json();
+                        throw new Error(err.detail || 'Failed to download image');
+                    }
+                    const imageData = await downloadResponse.json();
+                    
+                    // Step 2: Perform the requested action with the downloaded image data
+                    if (action === 'search') {
+                        addStageToStart(); // Add a new stage at the top
+                        const newStage = stagesContainer.querySelector('.stage-card');
+                        if (newStage) {
+                            newStage.querySelector('.type-btn[data-type="image"]')?.click();
+                            const previewImage = newStage.querySelector('.image-preview');
+                            const uploadInstructions = newStage.querySelector('.upload-instructions');
+                            const removeImageBtn = newStage.querySelector('.remove-image-btn');
+                            
+                            newStage.tempImageName = imageData.temp_image_name;
+                            previewImage.src = imageData.url;
+                            previewImage.style.display = 'block';
+                            uploadInstructions.style.display = 'none';
+                            removeImageBtn.style.display = 'flex';
+
+                            // Automatically trigger a search
+                            handleSearch();
+                        }
+                    } else if (action === 'push') {
+                        const shotData = {
+                            filepath: imageData.filepath,
+                            url: imageData.url,
+                            video_id: 'N/A',
+                            shot_id: 'N/A',
+                            frame_id: 'N/A'
+                        };
+                        pushToTeamworkPanel(shotData);
+                    }
+
+                } catch (error) {
+                    console.error(`Google Image Action [${action}] failed:`, error);
+                    alert(`Error: ${error.message}`);
+                } finally {
+                    buttonEl.innerHTML = originalIcon;
+                    buttonEl.disabled = false;
+                }
+            }
+
+            function displayGoogleImages(urls) {
+                googleResultsContainer.innerHTML = '';
+                if (urls.length === 0) {
+                    googleResultsContainer.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.9rem;">No images found.</p>';
+                    return;
+                }
+                urls.forEach(url => {
+                    const item = document.createElement('div');
+                    item.className = 'google-image-item';
+                    item.innerHTML = `<img src="${url}" loading="lazy" onerror="this.parentElement.style.display='none'">`;
+                    item.title = "Click: Zoom\nCtrl+Shift+Click: Similarity Search";
+
+                    // Add interaction listeners
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        if (e.ctrlKey && e.shiftKey) {
+                            // CORRECT BEHAVIOR: Call the "background" similarity search function
+                            const fakeShotData = {
+                                url: url,
+                                filepath: `google-image-${Date.now()}.jpg` // A dummy filename is sufficient
+                            };
+                            performImageSearchFromClick(fakeShotData);
+                        } else {
+                            // REGULAR CLICK: Zoom the image
+                            handleGoogleImageAction(url, 'zoom', item);
+                        }
+                    });
+
+                    // Add hover listeners for keyboard shortcuts (Ctrl+Space to push/submit)
+                    item.addEventListener("mouseenter", () => {
+                        currentlyHoveredItemData = { external_url: url }; // Create a temporary object
+                        currentlyHoveredItemElement = item;
+                    });
+                    item.addEventListener("mouseleave", () => {
+                        currentlyHoveredItemData = null;
+                        currentlyHoveredItemElement = null;
+                    });
+
+                    googleResultsContainer.appendChild(item);
+                });
+            }
+
+            async function fetchGoogleImages() {
+                const query = googleSearchInput.value.trim();
+                if (!query) return;
+
+                googleResultsWrapper.style.display = 'block';
+                googleResultsContainer.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size: 1.5rem; margin: auto;"></i>';
+                
+                try {
+                    const response = await fetch('/google_image_search', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ query })
+                    });
+                    if (!response.ok) {
+                        const err = await response.json();
+                        throw new Error(err.detail || 'Search failed');
+                    }
+                    const data = await response.json();
+                    displayGoogleImages(data.image_urls || []);
+                } catch (error) {
+                    googleResultsContainer.innerHTML = `<p style="color: #ef4444;">Error: ${error.message}</p>`;
+                }
+            }
+
+            googleSearchBtn.addEventListener('click', fetchGoogleImages);
+            googleSearchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopPropagation(); // <-- THÊM DÒNG NÀY
+                    fetchGoogleImages();
+                }
+            });
+            
             const videoPreviewModal = document.getElementById('videoPreviewModal');
             const videoPlayer = document.getElementById('videoPlayer');
             const closeVideoModalBtn = document.getElementById('closeVideoModalBtn');
@@ -375,17 +624,14 @@
                 if (isTeamworkItem) {
                     item.classList.add('teamwork-item');
                     item.style.setProperty('--user-color', user.color);
-                    title = `Pushed by: ${user.name}\n\nCtrl+Click: Submit to DRES\nCtrl+Shift+Click: Submit directly`;
-                    const dresButtonHTML = `<button class="submit-btn"><i class="fas fa-paper-plane"></i></button>`;
+                    title = `Pushed by: ${user.name}\n\nClick: Submit to DRES\nCtrl+Click: Submit directly`;
+                    const dresButtonHTML = `<button class="submit-btn" title="Click: Submit with confirmation | Ctrl+Click: Submit Direct"><i class="fas fa-paper-plane"></i></button>`;
                     itemHTML = `<img src="${shot.url}" alt="Teamwork Frame" title="${title}" loading="lazy" onerror="this.parentElement.style.display='none'">${dresButtonHTML}<div class="teamwork-item-user-label">${user.name}</div>`;
                 } else {
-                    // This is for regular search results
-                    title = `Click: Zoom\nRight-Click: Preview Video\nCtrl+Click: View context\nCtrl+Shift+Click: Image Search`;
+                    title = `Click: Zoom\nCtrl+Shift+Click: Similarity Search\nRight-Click: Video Preview\nCtrl+Click: View Context`;
                     const score = shot.rrf_score || shot.cluster_score || shot.score || shot.average_rrf_score;
                     if (score) title += `\nScore: ${score.toFixed(4)}`;
-                    
-                    // *** THIS WAS THE MISSING CODE THAT IS NOW RESTORED ***
-                    const dresButtonHTML = `<button class="submit-btn" title="Ctrl+Click: Push to Team | Ctrl+Shift+Click: Submit Direct"><i class="fas fa-paper-plane"></i></button>`;
+                    const dresButtonHTML = `<button class.="submit-btn" title="This button is for Teamwork Panel items. Use keyboard shortcuts for this item."></button>`; // Button is just for hover effect
                     itemHTML = `<img src="${shot.url}" alt="Result Frame" title="${title}" loading="lazy" onerror="this.parentElement.style.display='none'">${dresButtonHTML}`;
                 }
 
@@ -403,6 +649,7 @@
 
                 return item;
             }
+
             function initWebSocket() {
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
@@ -449,41 +696,125 @@
                 console.log("Pushed to teamwork panel:", shotData.filepath);
             }
             async function handleSubmitToDRES(shot, bypassConfirmation = false) {
-                if (!dresSessionId || !dresEvaluationId) { alert("Please log in to DRES and select an evaluation first."); dresModal.style.display = 'flex'; return; }
-                if (!shot.video_id || !shot.filepath) { alert("Submission failed: Missing video or filepath."); return; }
-                lastSuccessfulSubmission = shot;
-                const confirmation = bypassConfirmation ? true : confirm(`Submit this result to DRES?\n\nVideo: ${shot.video_id}\nFilepath: ${shot.filepath}`);
-                if (!confirmation) { lastSuccessfulSubmission = null; return; }
+                if (!dresSessionId || !dresEvaluationId) {
+                    alert("Please log in to DRES and select an evaluation first.");
+                    dresModal.style.display = 'flex';
+                    return;
+                }
+                // Handle regular video frames
+                if (shot.video_id && shot.video_id !== 'N/A' && shot.filepath) {
+                    lastSuccessfulSubmission = shot;
+                    const confirmation = bypassConfirmation ? true : confirm(`Submit this result to DRES?\n\nVideo: ${shot.video_id}\nFilepath: ${shot.filepath}`);
+                    if (!confirmation) {
+                        lastSuccessfulSubmission = null;
+                        return;
+                    }
+                    try {
+                        const response = await fetch('/dres/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: dresSessionId, evaluationId: dresEvaluationId, video_id: shot.video_id, filepath: shot.filepath }) });
+                        if (!response.ok) { const err = await response.json(); throw new Error(err.detail || 'Submission failed'); }
+                        const result = await response.json();
+                        alert(`Submission successful!\nStatus: ${result.submission}\nDescription: ${result.description}`);
+                    } catch (error) {
+                        alert(`Submission Error: ${error.message}`);
+                        lastSuccessfulSubmission = null;
+                    }
+                } 
+                // Handle external Google images
+                else if (shot.external_url) {
+                    alert("Direct DRES submission is not supported for external Google Images yet.");
+                    // Placeholder for future implementation if DRES supports external URL submissions
+                }
+                else {
+                    alert("Submission failed: Missing required data (video_id, filepath, or external_url).");
+                }
+            }
+
+            // Find and replace the entire handleGoogleImageAction function
+            async function handleGoogleImageAction(url, action, element) {
+                if (!url || !action) return;
+
+                if (action === 'zoom') {
+                    imageModal.style.display = "flex";
+                    zoomedImage.src = url;
+                    return;
+                }
+                
+                element.style.cursor = 'wait';
                 try {
-                    const response = await fetch('/dres/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: dresSessionId, evaluationId: dresEvaluationId, video_id: shot.video_id, filepath: shot.filepath }) });
-                    if (!response.ok) { const err = await response.json(); throw new Error(err.detail || 'Submission failed'); }
-                    const result = await response.json();
-                    alert(`Submission successful!\nStatus: ${result.submission}\nDescription: ${result.description}`);
+                    const downloadResponse = await fetch('/download_external_image', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ url })
+                    });
+                    if (!downloadResponse.ok) {
+                        const err = await downloadResponse.json();
+                        throw new Error(err.detail || 'Failed to prepare image');
+                    }
+                    const imageData = await downloadResponse.json();
+                    
+                    const shotData = {
+                        filepath: imageData.filepath,
+                        url: imageData.url,
+                        video_id: 'N/A',
+                        shot_id: 'N/A',
+                        frame_id: 'N/A',
+                        external_url: url
+                    };
+
+                    if (action === 'search') {
+                        addStageToStart();
+                        const newStage = stagesContainer.querySelector('.stage-card');
+                        if (newStage) {
+                            newStage.querySelector('.type-btn[data-type="image"]')?.click();
+                            const previewImage = newStage.querySelector('.image-preview');
+                            const uploadInstructions = newStage.querySelector('.upload-instructions');
+                            const removeImageBtn = newStage.querySelector('.remove-image-btn');
+                            newStage.tempImageName = imageData.temp_image_name;
+                            previewImage.src = imageData.url;
+                            previewImage.style.display = 'block';
+                            uploadInstructions.style.display = 'none';
+                            removeImageBtn.style.display = 'flex';
+                            handleSearch();
+                        }
+                    } else if (action === 'push') {
+                        pushToTeamworkPanel(shotData);
+                    } else if (action === 'submit') {
+                        handleSubmitToDRES(shotData, true);
+                    }
+
                 } catch (error) {
-                    alert(`Submission Error: ${error.message}`);
-                    lastSuccessfulSubmission = null;
+                    console.error(`Google Image Action [${action}] failed:`, error);
+                    alert(`Error: ${error.message}`);
+                } finally {
+                    element.style.cursor = 'pointer';
                 }
             }
             function handleFrameInteraction(event, shotData, source) {
                 event.preventDefault();
                 event.stopPropagation();
-                const isCtrl = event.ctrlKey || event.metaKey;
-                const isShift = event.shiftKey;
+                // This function is now ONLY for clicks on buttons in the Teamwork panel
                 if (source === 'teamwork') {
-                    if (isCtrl && isShift) { handleSubmitToDRES(shotData, true); }
-                    else if (isCtrl) { handleSubmitToDRES(shotData, false); }
-                } else {
-                    if (isCtrl && isShift) { handleSubmitToDRES(shotData, true); }
-                    else if (isCtrl) { pushToTeamworkPanel(shotData); }
+                    const isCtrl = event.ctrlKey || event.metaKey;
+                    handleSubmitToDRES(shotData, isCtrl); // bypass confirmation if Ctrl is pressed
                 }
             }
             function handleBaseItemClick(event, shotData, source) {
                 event.preventDefault();
                 event.stopPropagation();
-                if (event.type === 'contextmenu') { openVideoPreview(shotData); }
-                else if (event.ctrlKey && event.shiftKey) { performImageSearchFromClick(shotData); }
-                else if (event.ctrlKey || event.metaKey) { openTemporalContextView(shotData); }
-                else { imageModal.style.display = "flex"; zoomedImage.src = shotData.url; }
+                
+                if (event.ctrlKey && event.shiftKey) {
+                    performImageSearchFromClick(shotData); // SIMILARITY SEARCH
+                } 
+                else if (event.type === 'contextmenu') {
+                    openVideoPreview(shotData); 
+                } 
+                else if (event.ctrlKey || event.metaKey) {
+                    openTemporalContextView(shotData);
+                }
+                else {
+                    imageModal.style.display = "flex"; // ZOOM
+                    zoomedImage.src = shotData.url;
+                }
             }
             async function openVideoPreview(shotData) {
                 if (!shotData || !shotData.video_id || !shotData.filepath) { alert("Error: Invalid data for video preview (missing video_id or filepath)."); return; }
@@ -627,7 +958,60 @@
                     }
                 }
             }
-            async function performImageSearchFromClick(shot) { if (!shot || !shot.url || !shot.filepath) { alert("Dữ liệu không hợp lệ để tìm kiếm bằng hình ảnh."); return; } if (temporalContextModal.style.display === "flex") { temporalContextModal.style.display = "none"; } if (imageModal.style.display === "flex") { imageModal.style.display = "none"; } try { loadingIndicator.style.display = 'block'; resultsContainer.innerHTML = ''; const response = await fetch(shot.url); if (!response.ok) { throw new Error(`Không thể tải ảnh: ${response.statusText}`); } const imageBlob = await response.blob(); const filename = shot.filepath.split("/").pop() || "clicked-image.jpg"; const imageFile = new File([imageBlob], filename, { type: imageBlob.type }); await handleSearch(imageFile); } catch (error) { console.error("Lỗi khi tìm kiếm bằng ảnh từ click:", error); alert(`Đã xảy ra lỗi: ${error.message}`); loadingIndicator.style.display = 'none'; } }
+        async function performImageSearchFromClick(shot) {
+            if (!shot || !shot.url || !shot.filepath) {
+                alert("Dữ liệu không hợp lệ để tìm kiếm bằng hình ảnh.");
+                return;
+            }
+            if (temporalContextModal.style.display === "flex") { temporalContextModal.style.display = "none"; }
+            if (imageModal.style.display === "flex") { imageModal.style.display = "none"; }
+
+            loadingIndicator.style.display = 'block';
+            resultsContainer.innerHTML = '';
+            
+            try {
+                let imageBlob;
+                
+                // Check if it's an external URL (from Google Search)
+                if (shot.url.startsWith('http')) {
+                    // Use our backend as a proxy to bypass CORS
+                    const downloadResponse = await fetch('/download_external_image', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ url: shot.url })
+                    });
+                    if (!downloadResponse.ok) {
+                        const err = await downloadResponse.json();
+                        throw new Error(err.detail || 'Failed to prepare external image');
+                    }
+                    const imageData = await downloadResponse.json();
+                    
+                    // Now fetch the locally proxied image
+                    const localImageResponse = await fetch(imageData.url);
+                    if (!localImageResponse.ok) {
+                        throw new Error(`Không thể tải ảnh đã xử lý: ${localImageResponse.statusText}`);
+                    }
+                    imageBlob = await localImageResponse.blob();
+
+                } else {
+                    // It's a regular, local result image
+                    const response = await fetch(shot.url);
+                    if (!response.ok) {
+                        throw new Error(`Không thể tải ảnh: ${response.statusText}`);
+                    }
+                    imageBlob = await response.blob();
+                }
+
+                const filename = shot.filepath.split("/").pop() || "clicked-image.jpg";
+                const imageFile = new File([imageBlob], filename, { type: imageBlob.type });
+                await handleSearch(imageFile);
+
+            } catch (error) {
+                console.error("Lỗi khi tìm kiếm bằng ảnh từ click:", error);
+                alert(`Đã xảy ra lỗi: ${error.message}`);
+                loadingIndicator.style.display = 'none';
+            }
+        }
             function clearModelFocus() { modelDropdown.querySelectorAll('.model-dropdown-item').forEach(item => item.classList.remove('focused')); focusedModelIndex = -1; }
             function updateModelFocus() { const items = modelDropdown.querySelectorAll('.model-dropdown-item'); items.forEach((item, index) => { item.classList.toggle('focused', index === focusedModelIndex); }); }
             function focusOnStageInput(stageElement) { if (!stageElement) return; const input = stageElement.querySelector('.main-query-input'); if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); } }
@@ -1000,15 +1384,33 @@
             addStageBtn.addEventListener('click', addStageToEnd);
             removeStageBtn.addEventListener('click', removeStageFromEnd);
             searchBtn.addEventListener('click', () => handleSearch(null));
-            document.getElementById('resetBtn').addEventListener('click', () => { if (confirm('Are you sure you want to reset the search panel?')) { stagesContainer.innerHTML = ''; addStageToStart(); currentResponse = {}; resultsContainer.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Use the left panel to start a search.</p>'; document.getElementById('timingInfoDisplay').style.display = 'none'; teamworkGrid.innerHTML = ''; pushedFrames.clear(); } });
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                if (confirm('Are you sure you want to reset the search panel?')) {
+                    // Logic cũ để reset các stage và kết quả chính
+                    stagesContainer.innerHTML = '';
+                    addStageToStart();
+                    currentResponse = {};
+                    resultsContainer.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding-top: 100px; font-size: 1.5rem;">Sử dụng bảng điều khiển bên trái để bắt đầu tìm kiếm.</p>';
+                    document.getElementById('timingInfoDisplay').style.display = 'none';
+                    teamworkGrid.innerHTML = '';
+                    pushedFrames.clear();
+
+                    // ## START: LOGIC MỚI ĐƯỢC THÊM VÀO ##
+                    // Dọn dẹp ô tìm kiếm và kết quả của Google
+                    googleSearchInput.value = '';
+                    googleResultsContainer.innerHTML = '';
+                    googleResultsWrapper.style.display = 'none';
+                    // ## END: LOGIC MỚI ĐƯỢC THÊM VÀO ##
+                }
+            });            
             clusterBtn.addEventListener('click', () => {
                 clusterBtn.classList.toggle('active');
                 if (currentResponse.results && !isLoadingMore) {
-                     // Reset and redisplay all loaded results with the new cluster setting
-                     currentPage = 1; // Reset pagination to ensure we start from the beginning
-                     const allResults = Array.from(resultsContainer.querySelectorAll('.result-item, .sequence-result-container'));
-                     const allData = currentResponse.results;
-                     displayResults(allData, false);
+                    // Reset and redisplay all loaded results with the new cluster setting
+                    currentPage = 1; // Reset pagination to ensure we start from the beginning
+                    const allResults = Array.from(resultsContainer.querySelectorAll('.result-item, .sequence-result-container'));
+                    const allData = currentResponse.results;
+                    displayResults(allData, false);
                 }
             });
             ambiguousBtn.addEventListener('click', () => { ambiguousBtn.classList.toggle('active'); });
@@ -1050,19 +1452,27 @@
 
                 const isModalVisible = Array.from(document.querySelectorAll('.modal-overlay')).some(m => m.style.display === 'flex' || m.style.display === 'block');
 
-                // ## START: RESTORED CTRL+SPACE LOGIC ##
-                // PRIORITY 2: Handle Ctrl+Space for submitting hovered items. Must not be in a modal.
+                // PRIORITY 2: Handle Ctrl+Space for submitting/pushing hovered items. Must not be in a modal.
                 if (event.code === 'Space' && (event.ctrlKey || event.metaKey)) {
-                    if (!isModalVisible && currentlyHoveredItemData && currentlyHoveredItemElement) {
+                    if (!isModalVisible && currentlyHoveredItemData) {
                         event.preventDefault();
-                        const source = currentlyHoveredItemElement.closest('#teamworkGrid') ? 'teamwork' : (currentlyHoveredItemElement.closest('#temporalGrid') ? 'context' : 'main');
-                        // Create a fake event object to pass the shiftKey status
-                        const fakeEvent = { ctrlKey: event.ctrlKey, metaKey: event.metaKey, shiftKey: event.shiftKey, preventDefault: () => {}, stopPropagation: () => {} };
-                        handleFrameInteraction(fakeEvent, currentlyHoveredItemData, source);
+                        const itemData = currentlyHoveredItemData; // Capture the data
+
+                        // If it's a Google image, we must prepare it first
+                        if (itemData.external_url) {
+                            const action = event.shiftKey ? 'submit' : 'push';
+                            handleGoogleImageAction(itemData.external_url, action, currentlyHoveredItemElement);
+                        } else {
+                        // If it's a regular result, act directly
+                            if (event.shiftKey) {
+                                handleSubmitToDRES(itemData, true); // SUBMIT DIRECT
+                            } else {
+                                pushToTeamworkPanel(itemData); // PUSH TO TEAM
+                            }
+                        }
                         return;
                     }
                 }
-                // ## END: RESTORED CTRL+SPACE LOGIC ##
 
                 // PRIORITY 3: Handle all interactions within the open model dropdown.
                 if (modelDropdown.style.display === 'block') {
@@ -1089,11 +1499,11 @@
                     searchBtn.click();
                     return;
                 }
-
+                
                 // PRIORITY 5: Handle other global shortcuts, but only if no modal is open.
                 if (isModalVisible) {
-                     const isObjectFilterModalVisible = objectFilterModal.style.display === 'flex';
-                     if (isObjectFilterModalVisible && !isTyping) {
+                    const isObjectFilterModalVisible = objectFilterModal.style.display === 'flex';
+                    if (isObjectFilterModalVisible && !isTyping) {
                         if (event.key in LABEL_SHORTCUTS && drawnBoxes.length > 0) { event.preventDefault(); drawnBoxes[drawnBoxes.length - 1].label = LABEL_SHORTCUTS[event.key]; }
                         else if (event.key === '7' && drawnBoxes.length > 0) { event.preventDefault(); const customLabel = prompt("Enter custom object label:", "person"); if (customLabel) drawnBoxes[drawnBoxes.length - 1].label = customLabel.toLowerCase(); }
                         else if (event.key === 'Backspace' && drawnBoxes.length > 0) { event.preventDefault(); drawnBoxes.pop(); }
@@ -1154,18 +1564,18 @@
                     }
                     if (handled) event.preventDefault();
                 }
-                 else if (isTyping && ['ArrowUp', 'ArrowDown'].includes(event.key)) {
-                     const allStages = Array.from(stagesContainer.querySelectorAll('.stage-card'));
-                     if (allStages.length > 1) {
-                         const currentStage = activeElement.closest('.stage-card');
-                         let currentIndex = currentStage ? allStages.indexOf(currentStage) : -1;
-                         if (currentIndex !== -1) {
-                             event.preventDefault();
-                             if (event.key === 'ArrowUp') { currentIndex = (currentIndex - 1 + allStages.length) % allStages.length; }
-                             else if (event.key === 'ArrowDown') { currentIndex = (currentIndex + 1) % allStages.length; }
-                             focusOnStageInput(allStages[currentIndex]);
-                         }
-                     }
+                else if (isTyping && ['ArrowUp', 'ArrowDown'].includes(event.key)) {
+                    const allStages = Array.from(stagesContainer.querySelectorAll('.stage-card'));
+                    if (allStages.length > 1) {
+                        const currentStage = activeElement.closest('.stage-card');
+                        let currentIndex = currentStage ? allStages.indexOf(currentStage) : -1;
+                        if (currentIndex !== -1) {
+                            event.preventDefault();
+                            if (event.key === 'ArrowUp') { currentIndex = (currentIndex - 1 + allStages.length) % allStages.length; }
+                            else if (event.key === 'ArrowDown') { currentIndex = (currentIndex + 1) % allStages.length; }
+                            focusOnStageInput(allStages[currentIndex]);
+                        }
+                    }
                 }
             });
         });
