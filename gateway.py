@@ -904,16 +904,35 @@ async def search_unified(request: Request, search_data: str = Form(...), query_i
     if final_fused_results:
         start_post_proc_2 = time.time()
         clustered_results = process_and_cluster_results_optimized(final_fused_results)
-        final_results_all = clustered_results
+        
+        # --- FIX: THIS IS THE CORRECTED LOGIC FOR STRICT FILTERING ---
         if search_data_model.filters and clustered_results:
+            # 1. Get all unique filepaths from all shots in all clusters
             all_filepaths = {s['filepath'] for c in clustered_results for s in c.get('shots', []) if 'filepath' in s}
+            
+            # 2. Get the set of filepaths that strictly meet ALL filter conditions
             valid_filepaths = await asyncio.to_thread(
                 get_valid_filepaths_for_strict_search, all_filepaths, search_data_model.filters
             )
-            final_results_all = [
-                c for c in clustered_results
-                if any(s['filepath'] in valid_filepaths for s in c.get('shots',[]))
-            ]
+            
+            # 3. Rebuild the cluster list
+            final_results_all = []
+            for cluster in clustered_results:
+                # Filter the shots WITHIN this cluster to only include valid ones
+                valid_shots_in_cluster = [s for s in cluster.get('shots', []) if s.get('filepath') in valid_filepaths]
+                
+                # Only keep the cluster if it STILL has shots after filtering
+                if valid_shots_in_cluster:
+                    new_cluster = cluster.copy()
+                    new_cluster['shots'] = valid_shots_in_cluster
+                    # If the original best_shot was filtered out, find the new best one
+                    if new_cluster.get('best_shot') and new_cluster['best_shot'].get('filepath') not in valid_filepaths:
+                        new_cluster['best_shot'] = max(valid_shots_in_cluster, key=lambda x: x.get('rrf_score', 0))
+                    final_results_all.append(new_cluster)
+        else:
+            final_results_all = clustered_results
+        # --- END OF FIX ---
+        
         if "post_processing_s" in timings:
             timings["post_processing_s"] += time.time() - start_post_proc_2
         else:

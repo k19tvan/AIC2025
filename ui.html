@@ -619,6 +619,14 @@
 
                 const item = document.createElement('div');
                 item.className = 'result-item';
+                // --- ADD THIS LINE ---
+                // Store the raw filepath directly on the element for easy inspection.
+                item.dataset.filepath = shot.filepath; 
+                
+                // You can also store other useful info for debugging
+                item.dataset.videoId = shot.video_id;
+                item.dataset.shotId = shot.shot_id;
+
                 let title = '';
                 let itemHTML = '';
 
