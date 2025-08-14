@@ -15,7 +15,7 @@ import httpx
 from typing import List, Dict, Any, Optional
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Body, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, ORJSONResponse 
 from pydantic import BaseModel, ValidationError
 from pymilvus import Collection, connections, utility
 import requests
@@ -74,7 +74,7 @@ class DownloadImageRequest(BaseModel):
 
 
 # --- Thiết lập & Cấu hình ---
-app = FastAPI()
+app = FastAPI(default_response_class=ORJSONResponse)
 
 # ## START: GOOGLE IMAGE SEARCH API ENDPOINTS ##
 @app.post("/google_image_search")
@@ -171,7 +171,7 @@ IMAGE_WIDTH, IMAGE_HEIGHT = 1280, 720
 
 SEARCH_PARAMS = {
     "HNSW": {"metric_type": "COSINE", "params": {"nprobe": 128}},
-    "IVF_FLAT": {"metric_type": "COSINE", "params": {"nprobe": 16}},
+    "IVF_FLAT": {"metric_type": "COSINE", "params": {"nprobe": 24}},
     "SCANN": {"metric_type": "COSINE", "params": {"nprobe": 128}},
     "DEFAULT": {"metric_type": "COSINE", "params": {}}
 }
@@ -573,7 +573,7 @@ def process_and_cluster_results(results: List[Dict[str, Any]]) -> List[Dict[str,
 def package_response_with_urls(data: List[Dict[str, Any]], base_url: str):
     response_content = {"results": []}
     if not isinstance(data, list):
-        return JSONResponse(content={"results": data})
+        return ORJSONResponse(content={"results": data})
     for item in data:
         if not isinstance(item, dict): continue
         def process_shot(shot_dict):
@@ -596,7 +596,7 @@ def package_response_with_urls(data: List[Dict[str, Any]], base_url: str):
                         for shot in cluster['shots']: process_shot(shot)
                     if 'best_shot' in cluster: process_shot(cluster['best_shot'])
     response_content["results"] = data
-    return JSONResponse(content=response_content)
+    return ORJSONResponse(content=response_content)
 
 async def get_embeddings_for_query(
     client: httpx.AsyncClient,
@@ -811,7 +811,7 @@ async def search_unified(request: Request, search_data: str = Form(...), query_i
             response_content["total_results"] = 0
             timings["total_request_s"] = time.time() - start_total_time
             response_content["timing_info"] = timings
-            return JSONResponse(content=response_content)
+            return ORJSONResponse(content=response_content)
         candidate_filepaths = []
         base_path = "/workspace/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/dataset_test/retrieval/webp_type"
         for res in es_results_for_standalone_search:
@@ -933,9 +933,9 @@ async def search_unified(request: Request, search_data: str = Form(...), query_i
     response_content["total_results"] = total_results
     timings["total_request_s"] = time.time() - start_total_time
     response_content["timing_info"] = timings
-    return JSONResponse(content=response_content)
+    return ORJSONResponse(content=response_content)
 
-@app.post("/temporal_search", response_class=JSONResponse)
+@app.post("/temporal_search", response_class=ORJSONResponse)
 async def temporal_search(request_data: TemporalSearchRequest, request: Request):
     start_total_time = time.time()
     timings = {}
@@ -1039,7 +1039,7 @@ async def temporal_search(request_data: TemporalSearchRequest, request: Request)
         content["total_results"] = 0
         timings["total_request_s"] = time.time() - start_total_time
         content["timing_info"] = timings
-        return JSONResponse(content=content)
+        return ORJSONResponse(content=content)
     if len(clustered_results_by_stage) < len(stages):
         return create_empty_response()
     start_assembly = time.time()
@@ -1146,7 +1146,7 @@ async def temporal_search(request_data: TemporalSearchRequest, request: Request)
     content["total_results"] = total_sequences
     timings["total_request_s"] = time.time() - start_total_time
     content["timing_info"] = timings
-    return JSONResponse(content=content)
+    return ORJSONResponse(content=content)
 
 @app.post("/check_temporal_frames")
 async def check_temporal_frames(request_data: CheckFramesRequest) -> List[str]:

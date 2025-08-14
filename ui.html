@@ -541,7 +541,8 @@
                             // CORRECT BEHAVIOR: Call the "background" similarity search function
                             const fakeShotData = {
                                 url: url,
-                                filepath: `google-image-${Date.now()}.jpg` // A dummy filename is sufficient
+                                filepath: `google-image-${Date.now()}.jpg`, // A dummy filename is sufficient
+                                is_external: true
                             };
                             performImageSearchFromClick(fakeShotData);
                         } else {
@@ -973,7 +974,7 @@
                 let imageBlob;
                 
                 // Check if it's an external URL (from Google Search)
-                if (shot.url.startsWith('http')) {
+                if (shot.is_external) {
                     // Use our backend as a proxy to bypass CORS
                     const downloadResponse = await fetch('/download_external_image', {
                         method: 'POST',
