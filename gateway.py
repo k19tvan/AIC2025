@@ -161,6 +161,7 @@ MILVUS_PORT = "19530"
 BEIT3_COLLECTION_NAME = "beit3_image_embeddings_filtered"
 BGE_COLLECTION_NAME = "bge_vl_large_image_embeddings_filtered"
 UNITE_COLLECTION_NAME = "unite_qwen2_vl_sequential_embeddings_filtered"
+UNITE_FUSION_COLLECTION_NAME = "unite_qwen2_vl_fusion_embeddings_filtered_fix"
 
 MODEL_WEIGHTS = {"beit3": 0.4, "bge": 0.2, "unite": 0.4}
 SEARCH_DEPTH = 1000
@@ -187,6 +188,7 @@ OBJECT_POSITIONS_DF: Optional[pl.DataFrame] = None
 beit3_collection: Optional[Collection] = None
 bge_collection: Optional[Collection] = None
 unite_collection: Optional[Collection] = None
+unite_collection_fusion: Optional[Collection] = None
 
 # ## TEAMWORK: Connection Manager for WebSockets ##
 class ConnectionManager:
@@ -216,6 +218,7 @@ class StageData(BaseModel):
     query: str
     enhance: bool
     expand: bool
+    use_unite_fusion: bool = False
     ocr_query: Optional[str] = None
     asr_query: Optional[str] = None
     query_image_name: Optional[str] = None
@@ -245,6 +248,7 @@ class UnifiedSearchRequest(BaseModel):
     filters: Optional[ObjectFilters] = None
     enhance: bool = False
     expand: bool = False
+    use_unite_fusion: bool = False
     generated_image_name: Optional[str] = None
     page: int = 1
     page_size: int = 30
@@ -258,27 +262,56 @@ class DRESSubmitRequest(BaseModel):
 
 @app.on_event("startup")
 def startup_event():
-    global es, OBJECT_COUNTS_DF, OBJECT_POSITIONS_DF, beit3_collection, bge_collection, unite_collection
+    global es, OBJECT_COUNTS_DF, OBJECT_POSITIONS_DF, beit3_collection, bge_collection, unite_collection, unite_collection_fusion
     try:
         connections.connect(alias="default", host=MILVUS_HOST, port=MILVUS_PORT)
         print("--- Milvus connection successful. ---")
         print("--- Loading Milvus collections into memory... ---")
-        collections_to_load = {"BEiT3": BEIT3_COLLECTION_NAME, "BGE": BGE_COLLECTION_NAME, "Unite": UNITE_COLLECTION_NAME}
-        for name, col_name in collections_to_load.items():
+        
+        # Danh sách các collection cần tải
+        collections_to_load = {
+            "BEiT3": (BEIT3_COLLECTION_NAME, "beit3"),
+            "BGE": (BGE_COLLECTION_NAME, "bge"),
+            "Unite": (UNITE_COLLECTION_NAME, "unite"),
+            "UniteFusion": (UNITE_FUSION_COLLECTION_NAME, "unite_fusion")
+        }
+
+        # Vòng lặp for ĐÃ SỬA LỖI
+        for name, (col_name, var_name) in collections_to_load.items():
             if utility.has_collection(col_name):
                 collection = Collection(col_name)
                 collection.load()
-                if name == "BEiT3": beit3_collection = collection
-                elif name == "BGE": bge_collection = collection
-                elif name == "Unite": unite_collection = collection
-                print(f"--- Collection '{col_name}' loaded successfully. ---")
-            else: print(f"!!! WARNING: Collection '{col_name}' not found. !!!")
-    except Exception as e: print(f"FATAL: Could not connect to or load from Milvus. Error: {e}")
+                
+                # Gán vào biến global chính xác
+                if var_name == "beit3":
+                    beit3_collection = collection
+                elif var_name == "bge":
+                    bge_collection = collection
+                elif var_name == "unite":
+                    unite_collection = collection
+                elif var_name == "unite_fusion":
+                    unite_collection_fusion = collection
+                    
+                print(f"--- Collection '{col_name}' (for {name}) loaded successfully. ---")
+            else:
+                print(f"!!! WARNING: Collection '{col_name}' (for {name}) not found. !!!")
+
+    except Exception as e:
+        print(f"FATAL: Could not connect to or load from Milvus. Error: {e}")
+        traceback.print_exc() # In ra traceback để dễ debug hơn
+        
+    # Phần còn lại của hàm giữ nguyên
     try:
         es = Elasticsearch(ELASTICSEARCH_HOST)
-        if es.ping(): print("--- Elasticsearch connection successful. ---")
-        else: print("FATAL: Could not connect to Elasticsearch."); es = None
-    except Exception as e: print(f"FATAL: Could not connect to Elasticsearch. Error: {e}"); es = None
+        if es.ping():
+            print("--- Elasticsearch connection successful. ---")
+        else:
+            print("FATAL: Could not connect to Elasticsearch.")
+            es = None
+    except Exception as e:
+        print(f"FATAL: Could not connect to Elasticsearch. Error: {e}")
+        es = None
+        
     try:
         print("--- Loading object detection data... ---")
         counts_path = "/app/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/Repo/HoangNguyen/support_script/inference_results_rfdetr_json/object_counts.parquet"
@@ -289,7 +322,9 @@ def startup_event():
         OBJECT_POSITIONS_DF = positions_df.with_columns([((pl.col("x_max") - pl.col("x_min")) * (pl.col("y_max") - pl.col("y_min"))).alias("bbox_area"), pl.col("image_name").str.split(".").list.first().alias("name_stem")])
         print(f"--- Object data loaded. ---")
     except Exception as e:
-        print(f"!!! WARNING: Could not load object parquet files. Filtering disabled. Error: {e} !!!"); OBJECT_COUNTS_DF = None; OBJECT_POSITIONS_DF = None
+        print(f"!!! WARNING: Could not load object parquet files. Filtering disabled. Error: {e} !!!")
+        OBJECT_COUNTS_DF = None
+        OBJECT_POSITIONS_DF = None
 
 # --- Helper Functions ---
 def process_and_cluster_results_optimized(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -885,7 +920,12 @@ async def search_unified(request: Request, search_data: str = Form(...), query_i
                 else:
                     milvus_tasks.append(asyncio.sleep(0, result=[]))
                 if "unite" in models_to_use and results_by_model.get("unite"):
-                    milvus_tasks.append(search_milvus_async(unite_collection, UNITE_COLLECTION_NAME, results_by_model.get("unite", []), SEARCH_DEPTH, expr=milvus_expr))
+                    # Chọn collection dựa trên cờ `use_unite_fusion`
+                    is_fusion = search_data_model.use_unite_fusion
+                    unite_col = unite_collection_fusion if is_fusion else unite_collection
+                    unite_name = UNITE_FUSION_COLLECTION_NAME if is_fusion else UNITE_COLLECTION_NAME
+                    
+                    milvus_tasks.append(search_milvus_async(unite_col, unite_name, results_by_model.get("unite", []), SEARCH_DEPTH, expr=milvus_expr))
                 else:
                     milvus_tasks.append(asyncio.sleep(0, result=[]))
                 beit3_res, bge_res, unite_res = await asyncio.gather(*milvus_tasks)
@@ -904,16 +944,35 @@ async def search_unified(request: Request, search_data: str = Form(...), query_i
     if final_fused_results:
         start_post_proc_2 = time.time()
         clustered_results = process_and_cluster_results_optimized(final_fused_results)
-        final_results_all = clustered_results
+        
+        # --- FIX: THIS IS THE CORRECTED LOGIC FOR STRICT FILTERING ---
         if search_data_model.filters and clustered_results:
+            # 1. Get all unique filepaths from all shots in all clusters
             all_filepaths = {s['filepath'] for c in clustered_results for s in c.get('shots', []) if 'filepath' in s}
+            
+            # 2. Get the set of filepaths that strictly meet ALL filter conditions
             valid_filepaths = await asyncio.to_thread(
                 get_valid_filepaths_for_strict_search, all_filepaths, search_data_model.filters
             )
-            final_results_all = [
-                c for c in clustered_results
-                if any(s['filepath'] in valid_filepaths for s in c.get('shots',[]))
-            ]
+            
+            # 3. Rebuild the cluster list
+            final_results_all = []
+            for cluster in clustered_results:
+                # Filter the shots WITHIN this cluster to only include valid ones
+                valid_shots_in_cluster = [s for s in cluster.get('shots', []) if s.get('filepath') in valid_filepaths]
+                
+                # Only keep the cluster if it STILL has shots after filtering
+                if valid_shots_in_cluster:
+                    new_cluster = cluster.copy()
+                    new_cluster['shots'] = valid_shots_in_cluster
+                    # If the original best_shot was filtered out, find the new best one
+                    if new_cluster.get('best_shot') and new_cluster['best_shot'].get('filepath') not in valid_filepaths:
+                        new_cluster['best_shot'] = max(valid_shots_in_cluster, key=lambda x: x.get('rrf_score', 0))
+                    final_results_all.append(new_cluster)
+        else:
+            final_results_all = clustered_results
+        # --- END OF FIX ---
+        
         if "post_processing_s" in timings:
             timings["post_processing_s"] += time.time() - start_post_proc_2
         else:
@@ -1012,9 +1071,14 @@ async def temporal_search(request_data: TemporalSearchRequest, request: Request)
             if not any(results_by_model.values()): return []
             milvus_tasks = [
                 search_milvus_async(beit3_collection, BEIT3_COLLECTION_NAME, results_by_model.get("beit3", []), SEARCH_DEPTH_PER_STAGE, expr=milvus_expr),
-                search_milvus_async(bge_collection, BGE_COLLECTION_NAME, results_by_model.get("bge", []), SEARCH_DEPTH_PER_STAGE, expr=milvus_expr),
-                search_milvus_async(unite_collection, UNITE_COLLECTION_NAME, results_by_model.get("unite", []), SEARCH_DEPTH_PER_STAGE, expr=milvus_expr)
+                search_milvus_async(bge_collection, BGE_COLLECTION_NAME, results_by_model.get("bge", []), SEARCH_DEPTH_PER_STAGE, expr=milvus_expr)
             ]
+            is_fusion = stage.use_unite_fusion
+            unite_col = unite_collection_fusion if is_fusion else unite_collection
+            unite_name = UNITE_FUSION_COLLECTION_NAME if is_fusion else UNITE_COLLECTION_NAME
+            milvus_tasks.append(
+                search_milvus_async(unite_col, unite_name, results_by_model.get("unite", []), SEARCH_DEPTH_PER_STAGE, expr=milvus_expr)
+            )
             beit3_res, bge_res, unite_res = await asyncio.gather(*milvus_tasks)
             return reciprocal_rank_fusion({"beit3": beit3_res, "bge": bge_res, "unite": unite_res}, MODEL_WEIGHTS)
         elif has_ocr_asr_filter:

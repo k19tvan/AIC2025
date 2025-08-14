@@ -619,6 +619,14 @@
 
                 const item = document.createElement('div');
                 item.className = 'result-item';
+                // --- ADD THIS LINE ---
+                // Store the raw filepath directly on the element for easy inspection.
+                item.dataset.source = source;
+
+                item.dataset.filepath = shot.filepath;             
+                item.dataset.videoId = shot.video_id;
+                item.dataset.shotId = shot.shot_id;
+
                 let title = '';
                 let itemHTML = '';
 
@@ -655,11 +663,31 @@
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
                 ws.onopen = () => { console.log('WebSocket connection established.'); teamworkPanelContainer.style.display = 'block'; };
+                
                 ws.onmessage = (event) => {
                     const message = JSON.parse(event.data);
+                    
                     if (message.type === 'new_frame') {
                         const newItem = createResultItem(message.data, 'teamwork');
                         if (newItem) teamworkGrid.prepend(newItem);
+                    
+                    // === THÊM KHỐI ELSE IF NÀY VÀO ===
+                    } else if (message.type === 'remove_frame') {
+                        const filepathToRemove = message.data.filepath;
+                        if (filepathToRemove) {
+                            // 1. Tìm đúng item trong teamworkGrid bằng thuộc tính data-filepath
+                            const itemToRemove = teamworkGrid.querySelector(`.result-item[data-filepath="${filepathToRemove}"]`);
+                            
+                            if (itemToRemove) {
+                                console.log(`Removing frame ${filepathToRemove} requested by ${message.data.user.name}.`);
+                                itemToRemove.remove(); // 2. Xóa element khỏi giao diện
+                            }
+                            
+                            // 3. Xóa khỏi Set để có thể push lại nếu muốn
+                            pushedFrames.delete(filepathToRemove);
+                        }
+                    // === KẾT THÚC KHỐI THÊM MỚI ===
+
                     } else if (message.type === 'clear_panel') {
                         teamworkGrid.innerHTML = '';
                         pushedFrames.clear();
@@ -669,9 +697,11 @@
                         }
                     }
                 };
+                
                 ws.onclose = () => { console.log('WebSocket connection closed. Retrying in 3 seconds...'); setTimeout(initWebSocket, 3000); };
                 ws.onerror = (error) => { console.error('WebSocket error:', error); };
             }
+            
             function setupUser() {
                 username = sessionStorage.getItem('username');
                 userColor = sessionStorage.getItem('userColor');
@@ -1061,6 +1091,7 @@
                     <div class="stage-options">
                         <button class="option-btn" data-option="enhance" title="Enhance Query (Ctrl+Q)">Enhance</button>
                         <button class="option-btn" data-option="expand" title="Expand Query (Ctrl+E)">Expand</button>
+                        <button class="option-btn" data-option="unite_fusion" title="Use Unite Fusion Search (Ctrl+U)">Fusion</button>
                     </div>`;
 
                 const mainTextInput = stageCard.querySelector('.main-query-input');
@@ -1252,7 +1283,8 @@
                     } else if (allStages.length === 1) {
                         searchEndpoint = '/search';
                         const firstStage = allStages[0];
-                        const searchData = { filters: objectFilters, page: 1, page_size: PAGE_SIZE };
+                        const useUniteFusion = firstStage.querySelector('.option-btn[data-option="unite_fusion"]').classList.contains('active');
+                        const searchData = { filters: objectFilters, page: 1, page_size: PAGE_SIZE, use_unite_fusion: useUniteFusion };
                         let hasPrimaryQuery = false;
 
                         if (firstStage.querySelector('.type-btn[data-type="gen_image"]')?.classList.contains('active')) {
@@ -1297,6 +1329,7 @@
                                 generated_image_name: stage.generatedImageName || null,
                                 enhance: stage.querySelector('.option-btn[data-option="enhance"]').classList.contains('active'),
                                 expand: stage.querySelector('.option-btn[data-option="expand"]').classList.contains('active'),
+                                use_unite_fusion: stage.querySelector('.option-btn[data-option="unite_fusion"]').classList.contains('active'),
                                 ocr_query: stage.querySelector('.type-btn[data-type="ocr"].active') ? stage.querySelector('.ocr-filter-input').value.trim() : null,
                                 asr_query: stage.querySelector('.type-btn[data-type="asr"].active') ? stage.querySelector('.asr-filter-input').value.trim() : null,
                             };
@@ -1455,22 +1488,54 @@
 
                 // PRIORITY 2: Handle Ctrl+Space for submitting/pushing hovered items. Must not be in a modal.
                 if (event.code === 'Space' && (event.ctrlKey || event.metaKey)) {
-                    if (!isModalVisible && currentlyHoveredItemData) {
+                    if (!isModalVisible && currentlyHoveredItemData && currentlyHoveredItemElement) {
                         event.preventDefault();
-                        const itemData = currentlyHoveredItemData; // Capture the data
+                        const itemData = currentlyHoveredItemData;
+                        const itemElement = currentlyHoveredItemElement;
+                        const source = itemElement.dataset.source;
 
-                        // If it's a Google image, we must prepare it first
-                        if (itemData.external_url) {
-                            const action = event.shiftKey ? 'submit' : 'push';
-                            handleGoogleImageAction(itemData.external_url, action, currentlyHoveredItemElement);
-                        } else {
-                        // If it's a regular result, act directly
-                            if (event.shiftKey) {
-                                handleSubmitToDRES(itemData, true); // SUBMIT DIRECT
+                        // ---- LOGIC ĐÃ ĐƯỢC CẤU TRÚC LẠI ----
+
+                        // Ưu tiên 1: Kiểm tra hành động SUBMIT (có phím Shift) trước tiên.
+                        // Hành động này áp dụng cho TẤT CẢ các item, bất kể nguồn gốc.
+                        if (event.shiftKey) {
+                            console.log(`Direct Submit action on item from source: ${source}`);
+                            if (itemData.external_url) {
+                                handleGoogleImageAction(itemData.external_url, 'submit', itemElement);
                             } else {
-                                pushToTeamworkPanel(itemData); // PUSH TO TEAM
+                                handleSubmitToDRES(itemData, true); // true = bypass confirmation
                             }
                         }
+                        // Ưu tiên 2: Nếu không có phím Shift, mới xét đến hành động PUSH hoặc DELETE.
+                        else {
+                            // Nếu item từ Teamwork Panel, hành động là DELETE.
+                            if (source === 'teamwork') {
+                                if (!ws || ws.readyState !== WebSocket.OPEN) {
+                                    alert("Teamwork connection is not available.");
+                                    return;
+                                }
+                                console.log(`Requesting to remove frame: ${itemData.filepath}`);
+                                const payload = {
+                                    type: 'remove_frame',
+                                    data: {
+                                        filepath: itemData.filepath,
+                                        user: { name: username }
+                                    }
+                                };
+                                ws.send(JSON.stringify(payload));
+                            }
+                            // Nếu item từ nguồn khác (main, context, google...), hành động là PUSH.
+                            else {
+                                console.log(`Push action on item from source: ${source}`);
+                                if (itemData.external_url) {
+                                    handleGoogleImageAction(itemData.external_url, 'push', itemElement);
+                                } else {
+                                    pushToTeamworkPanel(itemData);
+                                }
+                            }
+                        }
+                        // ---- KẾT THÚC LOGIC MỚI ----
+                        
                         return;
                     }
                 }
@@ -1560,6 +1625,7 @@
                                 case 'g': clusterBtn.click(); break;
                                 case 'q': stageToModify?.querySelector('.option-btn[data-option="enhance"]')?.click(); break;
                                 case 'e': stageToModify?.querySelector('.option-btn[data-option="expand"]')?.click(); break;
+                                case 'u': stageToModify?.querySelector('.option-btn[data-option="unite_fusion"]')?.click(); break;
                                 default: handled = false;
                             }
                     }
