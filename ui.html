@@ -619,6 +619,14 @@
 
                 const item = document.createElement('div');
                 item.className = 'result-item';
+                // --- ADD THIS LINE ---
+                // Store the raw filepath directly on the element for easy inspection.
+                item.dataset.filepath = shot.filepath; 
+                
+                // You can also store other useful info for debugging
+                item.dataset.videoId = shot.video_id;
+                item.dataset.shotId = shot.shot_id;
+
                 let title = '';
                 let itemHTML = '';
 
@@ -1021,7 +1029,7 @@
                 const stageCard = document.createElement('div');
                 stageCard.className = 'stage-card';
                 stageCard.dataset.stageNumber = number;
-                const queryTypes = [{ id: 'text', icon: 'fas fa-font', label: 'Text (Alt+T)', type: 'primary' }, { id: 'image', icon: 'fas fa-image', label: 'Image (Alt+I)', type: 'primary' }, { id: 'ocr', icon: 'fas fa-text-height', label: 'OCR Filter (Alt+O)', type: 'filter' }, { id: 'asr', icon: 'fas fa-microphone', label: 'ASR Filter (Alt+P)', type: 'filter' }, { id: 'gen_image', icon: 'fas fa-lightbulb', label: 'Generate Image (Alt+G)', type: 'filter' }];
+                const queryTypes = [{ id: 'text', icon: 'fas fa-font', label: 'Text (Ctrl+Shift+A)', type: 'primary' }, { id: 'image', icon: 'fas fa-image', label: 'Image (Ctrl+Shift+S)', type: 'primary' }, { id: 'ocr', icon: 'fas fa-text-height', label: 'OCR Filter (Ctrl+Shift+Z)', type: 'filter' }, { id: 'asr', icon: 'fas fa-microphone', label: 'ASR Filter (Ctrl+Shift+X)', type: 'filter' }, { id: 'gen_image', icon: 'fas fa-lightbulb', label: 'Generate Image (Ctrl+Shift+G)', type: 'filter' }];
                 let typesHTML = queryTypes.map(type => `<button class="type-btn ${type.id === 'text' ? 'active' : ''}" data-type="${type.id}" data-basetype="${type.type}" title="${type.label}"><i class="${type.icon}"></i></button>`).join('');
                 
                 stageCard.innerHTML = `
@@ -1452,7 +1460,35 @@
                 }
 
                 const isModalVisible = Array.from(document.querySelectorAll('.modal-overlay')).some(m => m.style.display === 'flex' || m.style.display === 'block');
-
+                if ((event.ctrlKey || event.metaKey)) {
+                    // --- Xử lý Ctrl + F (Bật/tắt modal filter) ---
+                    if (event.key.toLowerCase() === 'f' && !event.shiftKey && !event.altKey) {
+                        event.preventDefault();
+                        // Đây là code bạn đã cắt ở bước 2.2
+                        if (objectFilterModal.style.display === 'flex') {
+                            objectFilterModal.style.display = 'none';
+                        } else {
+                            objectFilterModal.style.display = 'flex';
+                        }
+                        return; // Đã xử lý, thoát ra
+                    }
+                    if (event.key.toLowerCase() === 'f' && event.shiftKey && !event.altKey) {
+                        event.preventDefault();
+                        // Đây là code bạn đã cắt ở bước 2.1
+                        const countFilterCheckbox = document.getElementById('enableCountFilter');
+                        const positionFilterCheckbox = document.getElementById('enablePositionFilter');
+                        countFilterCheckbox.click();
+                        positionFilterCheckbox.click();
+                        const objectFiltersEnabled = countFilterCheckbox.checked || positionFilterCheckbox.checked;
+                        objectFilterBtn.classList.toggle('active', objectFiltersEnabled);
+                        return; // Đã xử lý, thoát ra
+                    }
+                    if (event.key.toLowerCase() === 'm' && !event.shiftKey && !event.altKey) {
+                        event.preventDefault();
+                        modelSelectBtn.click(); // .click() đã có sẵn hành vi toggle
+                        return; // Đã xử lý, thoát ra
+                    }
+                }
                 // PRIORITY 2: Handle Ctrl+Space for submitting/pushing hovered items. Must not be in a modal.
                 if (event.code === 'Space' && (event.ctrlKey || event.metaKey)) {
                     if (!isModalVisible && currentlyHoveredItemData) {
@@ -1505,40 +1541,71 @@
                 if (isModalVisible) {
                     const isObjectFilterModalVisible = objectFilterModal.style.display === 'flex';
                     if (isObjectFilterModalVisible && !isTyping) {
+                        // Xử lý các phím tắt vẽ vời 1-7, backspace, c
                         if (event.key in LABEL_SHORTCUTS && drawnBoxes.length > 0) { event.preventDefault(); drawnBoxes[drawnBoxes.length - 1].label = LABEL_SHORTCUTS[event.key]; }
                         else if (event.key === '7' && drawnBoxes.length > 0) { event.preventDefault(); const customLabel = prompt("Enter custom object label:", "person"); if (customLabel) drawnBoxes[drawnBoxes.length - 1].label = customLabel.toLowerCase(); }
                         else if (event.key === 'Backspace' && drawnBoxes.length > 0) { event.preventDefault(); drawnBoxes.pop(); }
                         else if (event.key.toLowerCase() === 'c') { event.preventDefault(); if (confirm("Clear all drawn boxes?")) drawnBoxes = []; }
                         redrawCanvas(); updateDrawnBoxesList();
                     }
-                    return;
+                    // Dòng này rất quan trọng: nó dừng việc thực thi các phím tắt nền (như Ctrl+R, Ctrl+G...)
+                    // nhưng nó được đặt SAU khi các phím tắt modal (Ctrl+F) đã được xử lý ở trên.
+                    return; 
                 }
 
                 const stageToModify = isTyping ? activeElement.closest('.stage-card') : stagesContainer.querySelector('.stage-card:last-child');
 
-                if ((event.ctrlKey || event.metaKey) && event.altKey && !event.shiftKey) {
-                    let handled = true;
-                    if (stageToModify) {
-                        switch(event.key.toLowerCase()) {
-                            case 't': stageToModify.querySelector('.type-btn[data-type="text"]')?.click(); break;
-                            case 'i': stageToModify.querySelector('.type-btn[data-type="image"]')?.click(); break;
-                            case 'o': stageToModify.querySelector('.type-btn[data-type="ocr"]')?.click(); break;
-                            case 'p': stageToModify.querySelector('.type-btn[data-type="asr"]')?.click(); break;
-                            case 'g': stageToModify.querySelector('.type-btn[data-type="gen_image"]')?.click(); break;
-                            default: handled = false;
+                if ((event.ctrlKey || event.metaKey) && event.shiftKey) {
+                    let handled = true; // Giả sử là đã xử lý
+                    const firstGroupKeys = ['a', 's', 'z', 'x', 'g'];
+                    
+                    // Nhóm 1: Các phím tắt KHÔNG yêu cầu Alt
+                    if (!event.altKey && firstGroupKeys.includes(event.key.toLowerCase())) {
+                        if (stageToModify) {
+                            switch(event.key.toLowerCase()) {
+                                case 'a': stageToModify.querySelector('.type-btn[data-type="text"]')?.click(); break;
+                                case 's': stageToModify.querySelector('.type-btn[data-type="image"]')?.click(); break;
+                                case 'z': stageToModify.querySelector('.type-btn[data-type="ocr"]')?.click(); break;
+                                case 'x': stageToModify.querySelector('.type-btn[data-type="asr"]')?.click(); break;
+                                case 'g': stageToModify.querySelector('.type-btn[data-type="gen_image"]')?.click(); break;
+                            }
                         }
-                    } else { handled = false; }
-                    if(handled) { event.preventDefault(); return; }
-                }
-                else if ((event.ctrlKey || event.metaKey) && event.shiftKey) {
-                    let handled = true;
-                    switch (event.code) {
-                        case 'KeyR': document.getElementById('resetBtn')?.click(); break;
-                        case 'BracketRight': removeStageFromEnd(); break;
-                        case 'BracketLeft': removeStageFromStart(); break;
-                        default: handled = false;
                     }
-                    if (handled) event.preventDefault();
+                    // Nhóm 2: Các phím tắt của bạn (Reset, Add/Remove Stage)
+                    else {
+                        switch (event.code) {
+                            case 'KeyR':
+                                document.getElementById('resetBtn')?.click();
+                                break;
+                            case 'BracketRight':
+                                removeStageFromEnd();
+                                break;
+                            case 'BracketLeft':
+                                removeStageFromStart();
+                                break;
+                            default:
+                                handled = false; // Nếu không khớp phím nào trong cả hai nhóm, thì coi như chưa xử lý
+                                break;
+                        }
+                    }
+
+                    if (handled) {
+                        event.preventDefault();
+                    }
+                }
+                 else if ((event.ctrlKey || event.metaKey) && event.altKey) {
+                    let handled = true;
+                    switch (event.key.toLowerCase()) {
+                        case 'g':
+                            // Nhấn vào nút Ambiguous
+                            ambiguousBtn.click(); 
+                            break;
+                        default:
+                            handled = false;
+                    }
+                    if (handled) {
+                        event.preventDefault();
+                    }
                 }
                 else if ((event.ctrlKey || event.metaKey) && !event.altKey) {
                     const targetStageNum = parseInt(event.key);
@@ -1555,8 +1622,13 @@
                         case 'BracketLeft': addStageToStart(); break;
                         default:
                             switch (event.key.toLowerCase()) {
-                                case 'f': objectFilterBtn.click(); break;
-                                case 'm': modelSelectBtn.click(); break;
+                                case 'f':
+                                    if (objectFilterModal.style.display === 'flex') {
+                                        objectFilterModal.style.display = 'none'; // Nếu đang mở thì đóng lại
+                                    } else {
+                                        objectFilterModal.style.display = 'flex'; // Nếu đang đóng thì mở ra
+                                    }
+                                    break;
                                 case 'g': clusterBtn.click(); break;
                                 case 'q': stageToModify?.querySelector('.option-btn[data-option="enhance"]')?.click(); break;
                                 case 'e': stageToModify?.querySelector('.option-btn[data-option="expand"]')?.click(); break;
