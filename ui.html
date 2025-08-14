@@ -372,7 +372,7 @@
             </div>
             <button class="toolbar-btn" id="objectFilterBtn" title="Object Filters (Ctrl+F)"><div class="btn-hover-bg"></div><span><i class="fas fa-shapes"></i> Filters</span></button>
             <button class="toolbar-btn" id="clusterBtn" title="Toggle Clustering (Ctrl+G)"><div class="btn-hover-bg"></div><span><i class="fas fa-object-group"></i> Cluster</span></button>
-            <button class="toolbar-btn" id="ambiguousBtn" title="Toggle Ambiguous Temporal Search (Ctrl+Alt+G)"><div class="btn-hover-bg"></div><span><i class="fas fa-random"></i> Ambiguous</span></button>
+            <button class="toolbar-btn" id="ambiguousBtn" title="Toggle Ambiguous Temporal Search (Ctrl+Shift+G)"><div class="btn-hover-bg"></div><span><i class="fas fa-random"></i> Ambiguous</span></button>
             <button class="toolbar-btn" id="resetBtn" title="Reset Search (Ctrl+Shift+R)"><div class="btn-hover-bg"></div><span><i class="fas fa-redo"></i> Reset Search</span></button>
         </div>
     </div>
@@ -1051,7 +1051,7 @@
                 const stageCard = document.createElement('div');
                 stageCard.className = 'stage-card';
                 stageCard.dataset.stageNumber = number;
-                const queryTypes = [{ id: 'text', icon: 'fas fa-font', label: 'Text (Alt+T)', type: 'primary' }, { id: 'image', icon: 'fas fa-image', label: 'Image (Alt+I)', type: 'primary' }, { id: 'ocr', icon: 'fas fa-text-height', label: 'OCR Filter (Alt+O)', type: 'filter' }, { id: 'asr', icon: 'fas fa-microphone', label: 'ASR Filter (Alt+P)', type: 'filter' }, { id: 'gen_image', icon: 'fas fa-lightbulb', label: 'Generate Image (Alt+G)', type: 'filter' }];
+                const queryTypes = [{ id: 'text', icon: 'fas fa-font', label: 'Text (Ctrl+Alt+U)', type: 'primary' }, { id: 'image', icon: 'fas fa-image', label: 'Image (Ctrl+Alt+I)', type: 'primary' }, { id: 'ocr', icon: 'fas fa-text-height', label: 'OCR Filter (Ctrl+Alt+O)', type: 'filter' }, { id: 'asr', icon: 'fas fa-microphone', label: 'ASR Filter (Ctrl+Alt+P)', type: 'filter' }, { id: 'gen_image', icon: 'fas fa-lightbulb', label: 'Generate Image (Ctrl+Alt+G)', type: 'filter' }];
                 let typesHTML = queryTypes.map(type => `<button class="type-btn ${type.id === 'text' ? 'active' : ''}" data-type="${type.id}" data-basetype="${type.type}" title="${type.label}"><i class="${type.icon}"></i></button>`).join('');
                 
                 stageCard.innerHTML = `
@@ -1483,6 +1483,37 @@
                     if (dresModal.style.display === 'flex') { dresModal.style.display = 'none'; return; }
                     if (modelDropdown.style.display === 'block') { modelDropdown.style.display = 'none'; clearModelFocus(); return; }
                 }
+                if ((event.ctrlKey || event.metaKey)) {
+                    // --- Xử lý Ctrl + F (Bật/tắt modal filter) ---
+                    if (event.key.toLowerCase() === 'f' && !event.shiftKey && !event.altKey) {
+                        event.preventDefault();
+                        if (objectFilterModal.style.display === 'flex') {
+                            objectFilterModal.style.display = 'none';
+                        } else {
+                            objectFilterModal.style.display = 'flex';
+                        }
+                        return; // Đã xử lý, thoát ra
+                    }
+                    
+                    // --- Xử lý Ctrl + Shift + F (Bật/tắt các filter bên trong) ---
+                    if (event.key.toLowerCase() === 'f' && event.shiftKey && !event.altKey) {
+                        event.preventDefault();
+                        const countFilterCheckbox = document.getElementById('enableCountFilter');
+                        const positionFilterCheckbox = document.getElementById('enablePositionFilter');
+                        countFilterCheckbox.click();
+                        positionFilterCheckbox.click();
+                        const objectFiltersEnabled = countFilterCheckbox.checked || positionFilterCheckbox.checked;
+                        objectFilterBtn.classList.toggle('active', objectFiltersEnabled);
+                        return; // Đã xử lý, thoát ra
+                    }
+
+                    // --- Xử lý Ctrl + M (Bật/tắt Model Dropdown) ---
+                    if (event.key.toLowerCase() === 'm' && !event.shiftKey && !event.altKey) {
+                        event.preventDefault();
+                        modelSelectBtn.click(); // .click() đã có sẵn hành vi toggle
+                        return; // Đã xử lý, thoát ra
+                    }
+                }
 
                 const isModalVisible = Array.from(document.querySelectorAll('.modal-overlay')).some(m => m.style.display === 'flex' || m.style.display === 'block');
 
@@ -1585,7 +1616,7 @@
                     let handled = true;
                     if (stageToModify) {
                         switch(event.key.toLowerCase()) {
-                            case 't': stageToModify.querySelector('.type-btn[data-type="text"]')?.click(); break;
+                            case 'u': stageToModify.querySelector('.type-btn[data-type="text"]')?.click(); break;
                             case 'i': stageToModify.querySelector('.type-btn[data-type="image"]')?.click(); break;
                             case 'o': stageToModify.querySelector('.type-btn[data-type="ocr"]')?.click(); break;
                             case 'p': stageToModify.querySelector('.type-btn[data-type="asr"]')?.click(); break;
@@ -1599,6 +1630,7 @@
                     let handled = true;
                     switch (event.code) {
                         case 'KeyR': document.getElementById('resetBtn')?.click(); break;
+                        case 'KeyG': ambiguousBtn.click(); break;
                         case 'BracketRight': removeStageFromEnd(); break;
                         case 'BracketLeft': removeStageFromStart(); break;
                         default: handled = false;
@@ -1620,8 +1652,6 @@
                         case 'BracketLeft': addStageToStart(); break;
                         default:
                             switch (event.key.toLowerCase()) {
-                                case 'f': objectFilterBtn.click(); break;
-                                case 'm': modelSelectBtn.click(); break;
                                 case 'g': clusterBtn.click(); break;
                                 case 'q': stageToModify?.querySelector('.option-btn[data-option="enhance"]')?.click(); break;
                                 case 'e': stageToModify?.querySelector('.option-btn[data-option="expand"]')?.click(); break;
