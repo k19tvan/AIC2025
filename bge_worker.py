@@ -33,9 +33,9 @@ def load_model():
     # The set_processor call is crucial for this model
     model.set_processor(MODEL_NAME)
 
-    if hasattr(torch, 'compile'):
-        print("--- BGE Worker: Compiling model with torch.compile()... ---")
-        model = torch.compile(model)
+    # if hasattr(torch, 'compile'):
+    #     print("--- BGE Worker: Compiling model with torch.compile()... ---")
+    #     model = torch.compile(model)
 
     model_data['model'] = model
     model_data['device'] = device
