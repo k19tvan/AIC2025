@@ -455,6 +455,8 @@
         let totalResults = 0;
         let isLoadingMore = false;
         let lastSearchPayload = null;
+        let currentVideoPreviewData = null; // <<< ADD THIS LINE
+
         const PAGE_SIZE = 30;
 
         // ## LAZY LOADING ##
@@ -872,42 +874,60 @@
 
                 const frameId = shotData.frame_id;
                 if (frameId === null || frameId === undefined) {
-                     alert(`Error: Frame ID is missing for this result.`);
-                     return;
+                    alert(`Error: Frame ID is missing for this result.`);
+                    return;
                 }
+                
+                videoPreviewModal.style.display = "flex";
+                videoPlayer.pause();
+                videoPlayer.src = "";
+                currentVideoPreviewData = null; // Reset context on open
 
                 try {
+                    console.log(`[Player] Opening preview for video: ${shotData.video_id}, frame: ${frameId}`);
+                    
+                    // Fetch video info (for FPS) from the server
                     const infoResponse = await fetch(`/video_info/${shotData.video_id}`);
                     if (!infoResponse.ok) {
-                        console.warn(`Could not fetch video info for ${shotData.video_id}. Falling back to default FPS.`);
-                        throw new Error('Fallback to default FPS');
+                        throw new Error(`Could not fetch video info (status: ${infoResponse.status})`);
                     }
                     const videoInfo = await infoResponse.json();
                     const actualFps = videoInfo.fps;
+                    
+                    // Store the essential data for the submission shortcut
+                    currentVideoPreviewData = {
+                        videoId: shotData.video_id,
+                        fps: actualFps
+                    };
+                    console.log(`[Player] Video context set: ID=${currentVideoPreviewData.videoId}, FPS=${currentVideoPreviewData.fps}`);
+
                     const startTime = frameId / actualFps;
                     const videoUrl = `/videos/${shotData.video_id}`;
                     
-                    videoPlayer.pause();
+                    console.log(`[Player] Setting video source to: ${videoUrl} and seeking to ${startTime.toFixed(2)}s`);
                     videoPlayer.src = videoUrl;
-                    videoPreviewModal.style.display = "flex";
-                    videoPlayer.load();
-                    videoPlayer.addEventListener('canplay', () => {
-                        if (isFinite(startTime) && startTime > 0) {
+                    
+                    videoPlayer.addEventListener('loadedmetadata', () => {
+                        console.log(`[Player] Video metadata loaded. Duration: ${videoPlayer.duration}s`);
+                        if (isFinite(startTime) && startTime < videoPlayer.duration) {
                             videoPlayer.currentTime = startTime;
                         }
                     }, { once: true });
 
+                    videoPlayer.load();
+
                 } catch (error) {
                     console.error("Error setting up video preview:", error);
-                    alert("Could not load video metadata. The preview might start at the beginning.");
-                    const startTime = frameId / 25; // Fallback FPS
+                    alert("Error loading video preview: " + error.message);
+                    currentVideoPreviewData = null; // Clear context on error
+                    // Fallback to original simple behavior if anything fails
+                    const startTime = frameId / 30; // Fallback FPS
                     const videoUrl = `/videos/${shotData.video_id}`;
                     videoPlayer.src = videoUrl;
                     videoPlayer.currentTime = startTime > 0 ? startTime : 0;
-                    videoPreviewModal.style.display = "flex";
-                    videoPlayer.load();
                 }
             }
+            // ## END: REPLACEMENT FOR openVideoPreview FUNCTION ##
 
             async function openTemporalContextView(e){
                 if(!e||!e.filepath)return void alert("Error: Invalid data for context view.");
@@ -1525,8 +1545,22 @@
             imageModal.addEventListener('click', (e) => { if (e.target === imageModal) { imageModal.style.display = "none"; } });
             closeTemporalModalBtn.addEventListener('click', () => { temporalContextModal.style.display = "none"; });
             temporalContextModal.addEventListener('click', (e) => { if (e.target === temporalContextModal) { temporalContextModal.style.display = "none"; } });
-            closeVideoModalBtn.addEventListener('click', () => { videoPreviewModal.style.display = "none"; videoPlayer.pause(); videoPlayer.src = ""; });
-            videoPreviewModal.addEventListener('click', (e) => { if (e.target === videoPreviewModal) { videoPreviewModal.style.display = "none"; videoPlayer.pause(); videoPlayer.src = ""; } });
+            
+            // ## START: DEFINING AND USING closeVideoModal FUNCTION ##
+            function closeVideoModal() {
+                videoPreviewModal.style.display = "none";
+                videoPlayer.pause();
+                videoPlayer.src = "";
+                currentVideoPreviewData = null; // IMPORTANT: Clear context on close
+            }
+
+            closeVideoModalBtn.addEventListener('click', closeVideoModal);
+            videoPreviewModal.addEventListener('click', (e) => { 
+                if (e.target === videoPreviewModal) { 
+                    closeVideoModal(); 
+                } 
+            });
+            // ## END: DEFINING AND USING closeVideoModal FUNCTION ##
             modalCloseBtn.addEventListener('click', () => objectFilterModal.style.display = 'none');
             dresBtn.addEventListener('click', () => dresModal.style.display = 'flex');
             dresModalCloseBtn.addEventListener('click', () => dresModal.style.display = 'none');
@@ -1545,13 +1579,70 @@
                 if (event.key === 'Escape') {
                     event.preventDefault();
                     if (isTyping) { activeElement.blur(); return; }
-                    if (videoPreviewModal.style.display === 'flex') { videoPreviewModal.style.display = 'none'; videoPlayer.pause(); videoPlayer.src = ''; return; }
+                    if (videoPreviewModal.style.display === 'flex') { closeVideoModal(); return; } // <-- Uses our new function
                     if (imageModal.style.display === 'flex') { imageModal.style.display = 'none'; return; }
                     if (temporalContextModal.style.display === 'flex') { temporalContextModal.style.display = 'none'; return; }
                     if (objectFilterModal.style.display === 'flex') { objectFilterModal.style.display = 'none'; return; }
                     if (dresModal.style.display === 'flex') { dresModal.style.display = 'none'; return; }
                     if (modelDropdown.style.display === 'block') { modelDropdown.style.display = 'none'; clearModelFocus(); return; }
                 }
+                
+                const isModalVisible = Array.from(document.querySelectorAll('.modal-overlay')).some(m => m.style.display === 'flex' || m.style.display === 'block');
+                
+                // --- NEW LOGIC START ---
+                // This block handles both Push and Direct Submit shortcuts with clear priority
+                if (event.code === 'Space' && (event.ctrlKey || event.metaKey)) {
+                    event.preventDefault();
+
+                    if (event.shiftKey) { // This is for Ctrl + Shift + Space: Direct Submit
+                        // PRIORITY 1: Submit from the active video player if it is open
+                        if (videoPreviewModal.style.display === 'flex' && currentVideoPreviewData) {
+                            const currentTime = videoPlayer.currentTime;
+                            const frameId = Math.round(currentTime * currentVideoPreviewData.fps);
+                            const submissionData = {
+                                video_id: currentVideoPreviewData.videoId,
+                                frame_id: frameId,
+                                filepath: `player_submission_at_${currentTime.toFixed(2)}s`
+                            };
+                            console.log("Submitting from video player:", submissionData);
+                            handleSubmitToDRES(submissionData, true); // Bypass confirmation
+                            return; // Action is handled, so we stop here.
+                        }
+                        
+                        // PRIORITY 2: If the video player is not open, fall back to submitting the hovered item
+                        if (currentlyHoveredItemData && currentlyHoveredItemElement) {
+                             const itemData = currentlyHoveredItemData;
+                             const itemElement = currentlyHoveredItemElement;
+                             console.log(`Direct Submit action on hovered item.`);
+                             if (itemData.external_url) {
+                                handleGoogleImageAction(itemData.external_url, 'submit', itemElement);
+                             } else {
+                                handleSubmitToDRES(itemData, true);
+                             }
+                             return; // Action handled
+                        }
+
+                    } else { // This is for Ctrl + Space: Push to Teamwork (Unchanged from original logic)
+                        if (currentlyHoveredItemData && currentlyHoveredItemElement) {
+                            const itemData = currentlyHoveredItemData;
+                            const itemElement = currentlyHoveredItemElement;
+                            const source = itemElement.dataset.source;
+
+                            if (source === 'teamwork') { // Remove from teamwork panel
+                                if (!ws || ws.readyState !== WebSocket.OPEN) { alert("Teamwork connection is not available."); return; }
+                                ws.send(JSON.stringify({ type: 'remove_frame', data: { filepath: itemData.filepath, user: { name: username } } }));
+                            } else { // Push to teamwork panel
+                                if (itemData.external_url) {
+                                    handleGoogleImageAction(itemData.external_url, 'push', itemElement);
+                                } else {
+                                    pushToTeamworkPanel(itemData);
+                                }
+                            }
+                            return; // Action handled
+                        }
+                    }
+                }
+                // --- NEW LOGIC END ---
                 if ((event.ctrlKey || event.metaKey)) {
                     if (event.key.toLowerCase() === 'f' && !event.shiftKey && !event.altKey) {
                         event.preventDefault();
@@ -1576,7 +1667,6 @@
                     }
                 }
 
-                const isModalVisible = Array.from(document.querySelectorAll('.modal-overlay')).some(m => m.style.display === 'flex' || m.style.display === 'block');
 
                 if (event.code === 'Space' && (event.ctrlKey || event.metaKey)) {
                     if (!isModalVisible && currentlyHoveredItemData && currentlyHoveredItemElement) {

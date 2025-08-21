@@ -158,7 +158,7 @@ UNITE_WORKER_URL = "http://model-workers:8003/embed"
 IMAGE_GEN_WORKER_URL = "http://localhost:8004/generate"
 
 ELASTICSEARCH_HOST = "http://elasticsearch2:9200"
-OCR_ASR_INDEX_NAME = "opencubee_2"
+OCR_ASR_INDEX_NAME = "vongsotuyen_batch1"
 MILVUS_HOST = "milvus-standalone"
 MILVUS_PORT = "19530"
 
@@ -408,47 +408,77 @@ def get_filename_stem(filepath: str) -> Optional[str]:
     try: return os.path.splitext(os.path.basename(filepath))[0]
     except Exception: return None
 
+# --- FUNCTION 2 TO REPLACE ---
+# This global variable will cache the results of our expensive vectorized checks
+temporal_filter_cache = {}
+
 def is_temporal_sequence_valid(sequence: Dict, filters: ObjectFilters) -> bool:
+    print("\n--- [DEBUG] Checking Temporal Sequence (Corrected Logic) ---")
+    
+    # Create a checklist of all conditions that this sequence must satisfy.
     checklist = set()
     if filters.counting and filters.counting.conditions:
         for obj, cond in filters.counting.conditions.items(): checklist.add(f"count_{obj}_{cond}")
     if filters.positioning and filters.positioning.boxes:
         for i, pbox in enumerate(filters.positioning.boxes): checklist.add(f"pos_{i}_{pbox.label}")
-    if not checklist: return True
+    if not checklist: return True # If there are no filters, the sequence is always valid.
+
+    # Get all the unique frame stems that belong ONLY to this sequence.
     sequence_filepaths = {s['filepath'] for s in sequence.get('shots', []) if 'filepath' in s}
     for cluster in sequence.get('clusters', []):
         for shot in cluster.get('shots', []):
             if 'filepath' in shot: sequence_filepaths.add(shot['filepath'])
     if not sequence_filepaths: return False
-    sequence_stems = {get_filename_stem(p) for p in sequence_filepaths}
-    counts_subset = OBJECT_COUNTS_DF.filter(pl.col("name_stem").is_in(list(sequence_stems))) if filters.counting and OBJECT_COUNTS_DF is not None else None
-    positions_subset = OBJECT_POSITIONS_DF.filter(pl.col("name_stem").is_in(list(sequence_stems))) if filters.positioning and OBJECT_POSITIONS_DF is not None else None
+    
+    sequence_stems = {get_filename_stem(p) for p in sequence_filepaths if p}
+    print(f"Sequence stems to check: {sequence_stems}")
+
+    # Check each frame in this sequence to see if it can satisfy any of the remaining conditions.
     for stem in sequence_stems:
-        if not checklist: break
-        if counts_subset is not None:
-            frame_counts = counts_subset.filter(pl.col("name_stem") == stem)
+        if not checklist: break # Optimization: If the checklist is empty, we are done.
+        
+        # Check counting conditions for this one frame
+        if filters.counting and OBJECT_COUNTS_DF is not None:
+            frame_counts = OBJECT_COUNTS_DF.filter(pl.col("name_stem") == stem)
             if not frame_counts.is_empty():
                 for obj, cond_str in filters.counting.conditions.items():
                     key = f"count_{obj}_{cond_str}"
                     if key in checklist:
                         op, val = parse_condition(cond_str)
-                        if op and val is not None and obj in frame_counts.columns and op(frame_counts[0, obj], val):
+                        actual_value = frame_counts.row(0, named=True)[obj]
+                        print(f"  - Checking count for '{stem}': Is {obj} ({actual_value}) {cond_str}? ", end="")
+                        if op and val is not None and obj in frame_counts.columns and op(actual_value, val):
+                            print("YES. Condition met.")
                             checklist.remove(key)
-        if positions_subset is not None:
-            frame_positions = positions_subset.filter(pl.col("name_stem") == stem)
+                        else:
+                            print("NO.")
+
+        # Check positioning conditions for this one frame
+        if filters.positioning and OBJECT_POSITIONS_DF is not None:
+            frame_positions = OBJECT_POSITIONS_DF.filter(pl.col("name_stem") == stem)
             if not frame_positions.is_empty():
                 for i, p_box in enumerate(filters.positioning.boxes):
                     key = f"pos_{i}_{p_box.label}"
                     if key in checklist and p_box.label in frame_positions['object']:
-                        user_x_min_lit, user_y_min_lit, user_x_max_lit, user_y_max_lit = [pl.lit(v) for v in [p_box.box[0] * IMAGE_WIDTH, p_box.box[1] * IMAGE_HEIGHT, p_box.box[2] * IMAGE_WIDTH, p_box.box[3] * IMAGE_HEIGHT]]
-                        intersect_x_min = pl.when(pl.col("x_min") > user_x_min_lit).then(pl.col("x_min")).otherwise(user_x_min_lit)
-                        intersect_y_min = pl.when(pl.col("y_min") > user_y_min_lit).then(pl.col("y_min")).otherwise(user_y_min_lit)
-                        intersect_x_max = pl.when(pl.col("x_max") < user_x_max_lit).then(pl.col("x_max")).otherwise(user_x_max_lit)
-                        intersect_y_max = pl.when(pl.col("y_max") < user_y_max_lit).then(pl.col("y_max")).otherwise(user_y_max_lit)
-                        intersect_area = (intersect_x_max - intersect_x_min).clip(lower_bound=0) * (intersect_y_max - intersect_y_min).clip(lower_bound=0)
-                        match_df = frame_positions.filter(pl.col("object") == p_box.label).with_columns(overlap_ratio=(intersect_area / pl.col("bbox_area")).fill_null(0)).filter(pl.col("overlap_ratio") >= 0.75)
-                        if not match_df.is_empty(): checklist.remove(key)
-    return not checklist
+                        # --- FIX: Reverted to older, more compatible Polars syntax for min/max ---
+                        intersect_area = (pl.min([pl.col("x_max"), pl.lit(p_box.box[2] * IMAGE_WIDTH)]) - pl.max([pl.col("x_min"), pl.lit(p_box.box[0] * IMAGE_WIDTH)])).clip_min(0) * \
+                                       (pl.min([pl.col("y_max"), pl.lit(p_box.box[3] * IMAGE_HEIGHT)]) - pl.max([pl.col("y_min"), pl.lit(p_box.box[1] * IMAGE_HEIGHT)])).clip_min(0)
+                        
+                        match_df = frame_positions.filter(pl.col("object") == p_box.label).with_columns(
+                            overlap_ratio=(intersect_area / pl.col("bbox_area")).fill_null(0)
+                        ).filter(pl.col("overlap_ratio") >= 0.75)
+                        
+                        print(f"  - Checking position for '{stem}': Does label '{p_box.label}' match? ", end="")
+                        if not match_df.is_empty():
+                            print("YES. Condition met.")
+                            checklist.remove(key)
+                        else:
+                            print("NO.")
+
+    is_valid = not checklist
+    print(f"Final Sequence Result: {'VALID' if is_valid else 'INVALID'}. Remaining checklist: {checklist if not is_valid else 'None'}")
+    return is_valid
+
 
 def parse_condition(condition_str: str) -> tuple[Any, int]:
     try: return operator.ge, int(condition_str)
@@ -461,30 +491,75 @@ def parse_condition(condition_str: str) -> tuple[Any, int]:
     return None, None
 
 def get_valid_filepaths_for_strict_search(all_filepaths: set, filters: ObjectFilters) -> set:
-    candidate_stems = {get_filename_stem(p) for p in all_filepaths}
+    print("\n--- [DEBUG] Applying OPTIMIZED STRICT Object Filters ---")
+    print(f"Filter Conditions: {filters.dict()}")
+    
+    candidate_stems = {get_filename_stem(p) for p in all_filepaths if p}
     if not candidate_stems: return set()
-    valid_stems = candidate_stems
+
+    print(f"Initial candidates: {len(all_filepaths)} (Unique stems: {len(candidate_stems)})")
+
+    # Start with a DataFrame of all possible valid stems
+    valid_stems_df = pl.DataFrame({"name_stem": list(candidate_stems)})
+
+    # --- OPTIMIZED COUNTING FILTER ---
     if filters.counting and OBJECT_COUNTS_DF is not None and filters.counting.conditions:
-        df_subset = OBJECT_COUNTS_DF.filter(pl.col("name_stem").is_in(list(valid_stems)))
         expressions = []
         for obj, cond_str in filters.counting.conditions.items():
             op, val = parse_condition(cond_str)
-            if op and val is not None and obj in df_subset.columns: expressions.append(op(pl.col(obj), val))
-        if expressions: valid_stems = set(df_subset.filter(pl.all_horizontal(expressions))['name_stem'])
+            if op and val is not None and obj in OBJECT_COUNTS_DF.columns:
+                expressions.append(op(pl.col(obj), val))
+        
+        if expressions:
+            # OPTIMIZATION: Join once, filter once. This is highly vectorized.
+            count_matches_df = OBJECT_COUNTS_DF.lazy().join(
+                valid_stems_df.lazy(), on="name_stem", how="inner"
+            ).filter(
+                pl.all_horizontal(expressions)
+            ).select("name_stem").collect()
+            
+            valid_stems_df = count_matches_df
+            print(f"After COUNTING filter: {len(valid_stems_df)} candidates remain.")
+
+    # --- OPTIMIZED POSITIONING FILTER ---
     if filters.positioning and OBJECT_POSITIONS_DF is not None and filters.positioning.boxes:
-        positions_subset_df = OBJECT_POSITIONS_DF.filter(pl.col("name_stem").is_in(list(valid_stems)))
-        stems_satisfying_all_boxes = valid_stems
+        # If there are no more valid stems, we can stop early.
+        if valid_stems_df.is_empty():
+            print("--- [DEBUG] Strict Filtering Complete (no candidates left for positioning) ---")
+            return set()
+
+        # OPTIMIZATION: Filter the huge positions table only ONCE.
+        positions_subset_df = OBJECT_POSITIONS_DF.lazy().join(
+            valid_stems_df.lazy(), on="name_stem", how="inner"
+        ).collect()
+
+        stems_satisfying_all_boxes = set(valid_stems_df["name_stem"])
+
         for p_box in filters.positioning.boxes:
+            # This logic is now vectorized across the entire positions_subset_df
             user_x_min_lit, user_y_min_lit, user_x_max_lit, user_y_max_lit = [pl.lit(v) for v in [p_box.box[0] * IMAGE_WIDTH, p_box.box[1] * IMAGE_HEIGHT, p_box.box[2] * IMAGE_WIDTH, p_box.box[3] * IMAGE_HEIGHT]]
-            intersect_x_min = pl.when(pl.col("x_min") > user_x_min_lit).then(pl.col("x_min")).otherwise(user_x_min_lit)
-            intersect_y_min = pl.when(pl.col("y_min") > user_y_min_lit).then(pl.col("y_min")).otherwise(user_y_min_lit)
-            intersect_x_max = pl.when(pl.col("x_max") < user_x_max_lit).then(pl.col("x_max")).otherwise(user_x_max_lit)
-            intersect_y_max = pl.when(pl.col("y_max") < user_y_max_lit).then(pl.col("y_max")).otherwise(user_y_max_lit)
-            intersect_area = (intersect_x_max - intersect_x_min).clip(lower_bound=0) * (intersect_y_max - intersect_y_min).clip(lower_bound=0)
-            condition_df = positions_subset_df.filter(pl.col("object") == p_box.label).with_columns(overlap_ratio=(intersect_area / pl.col("bbox_area")).fill_null(0)).filter(pl.col("overlap_ratio") >= 0.75)
-            stems_satisfying_all_boxes = stems_satisfying_all_boxes.intersection(set(condition_df['name_stem'].unique()))
-        valid_stems = stems_satisfying_all_boxes
-    return {fp for fp in all_filepaths if get_filename_stem(fp) in valid_stems}
+            
+            # FIX: Use pl.min/max for compatibility with older Polars versions
+            intersect_area = (pl.min([pl.col("x_max"), user_x_max_lit]) - pl.max([pl.col("x_min"), user_x_min_lit])).clip_min(0) * \
+                           (pl.min([pl.col("y_max"), user_y_max_lit]) - pl.max([pl.col("y_min"), user_y_min_lit])).clip_min(0)
+            
+            stems_with_match_for_this_box = positions_subset_df.filter(
+                pl.col("object") == p_box.label
+            ).with_columns(
+                overlap_ratio=(intersect_area / pl.col("bbox_area")).fill_null(0)
+            ).filter(
+                pl.col("overlap_ratio") >= 0.75
+            ).select("name_stem").unique()["name_stem"].to_list()
+            
+            stems_satisfying_all_boxes.intersection_update(stems_with_match_for_this_box)
+
+        valid_stems_df = pl.DataFrame({"name_stem": list(stems_satisfying_all_boxes)})
+        print(f"After POSITIONING filter: {len(valid_stems_df)} candidates remain.")
+
+    final_valid_stems = set(valid_stems_df["name_stem"])
+    print(f"--- [DEBUG] Strict Filtering Complete. Returning {len(final_valid_stems)} valid filepaths. ---")
+    return {fp for fp in all_filepaths if get_filename_stem(fp) in final_valid_stems}
+
 
 def search_milvus_sync(collection: Collection, collection_name: str, query_vectors: list, limit: int, expr: str = None):
     try:
@@ -744,48 +819,35 @@ async def websocket_endpoint(websocket: WebSocket):
 # ## PERFORMANCE OPTIMIZATION: Asynchronous Query Processing with Cache ##
 @app.post("/process_query")
 async def process_query(request_data: ProcessQueryRequest):
-    """
-    Xử lý một truy vấn văn bản gốc dựa trên các tùy chọn enhance và expand.
-    - enhance=True: Dùng AI để dịch và tối ưu hóa (chất lượng cao).
-    - expand=True: Dùng googletrans dịch rồi expand.
-    - Mặc định: Dùng googletrans chỉ để dịch.
-    """
-    query = request_data.query
-    if not query:
+    if not request_data.query: 
         return {"processed_query": ""}
-
-    # Cache key vẫn giữ nguyên để tận dụng cache
-    cache_key = f"{query}|{request_data.enhance}|{request_data.expand}"
+    
+    global processed_query_cache
+    if len(processed_query_cache) > CACHE_MAX_SIZE:
+        processed_query_cache.clear()
+        
+    cache_key = f"{request_data.query}|{request_data.enhance}|{request_data.expand}"
     if cache_key in processed_query_cache:
-        print(f"--- QUERY CACHE HIT for: {query[:50]}... ---")
+        print(f"--- QUERY CACHE HIT for: {request_data.query[:50]}... ---")
         return {"processed_query": processed_query_cache[cache_key]}
-    print(f"--- QUERY CACHE MISS for: {query[:50]}... ---")
+    
+    print(f"--- QUERY CACHE MISS for: {request_data.query[:50]}... ---")
 
-    processed_query = ""
+    base_query = await translate_query(request_data.query)
     
-    # TRƯỜNG HỢP 1: YÊU CẦU "ENHANCE"
-    if request_data.enhance:
-        print(f"--- Action: Enhancing '{query[:50]}...' using AI (high quality translate + optimize)")
-        # enhance_query sẽ tự dịch và tối ưu hóa với chất lượng cao
-        processed_query = await asyncio.to_thread(enhance_query, query)
-    
-    # TRƯỜNG HỢP 2: YÊU CẦU "EXPAND" (NHƯNG KHÔNG ENHANCE)
-    elif request_data.expand:
-        print(f"--- Action: Expanding '{query[:50]}...' using fast translate")
-        # Dùng googletrans để dịch nhanh, sau đó expand
-        translated_query = await translate_query(query)
-        processed_query = await asyncio.to_thread(expand_query_parallel, translated_query)
-    
-    # TRƯỜNG HỢP 3: MẶC ĐỊNH (KHÔNG CÓ YÊU CẦU ĐẶC BIỆT)
+    if request_data.expand:
+        queries_to_process = await asyncio.to_thread(expand_query_parallel, base_query)
     else:
-        print(f"--- Action: Translating '{query[:50]}...' using fast translate")
-        # Chỉ dịch bằng googletrans
-        processed_query = await translate_query(query)
+        queries_to_process = [base_query]
 
-    # Đảm bảo kết quả cuối cùng là một chuỗi string
-    if isinstance(processed_query, list):
-        processed_query = "\n".join(processed_query)
-
+    if request_data.enhance:
+        # Use asyncio.gather to run multiple enhancements in parallel if expand created multiple queries
+        enhance_tasks = [asyncio.to_thread(enhance_query, q) for q in queries_to_process]
+        final_queries = await asyncio.gather(*enhance_tasks)
+    else:
+        final_queries = queries_to_process
+    
+    processed_query = " ".join(final_queries)
     processed_query_cache[cache_key] = processed_query
     return {"processed_query": processed_query}
 
@@ -1225,12 +1287,18 @@ async def temporal_search(request_data: TemporalSearchRequest, request: Request)
 
     sequences_to_filter = sorted(processed_sequences, key=lambda x: x['combined_score'], reverse=True)
 
+        # --- THIS IS THE KEY CHANGE for using the new corrected logic ---
     if filters and (filters.counting or filters.positioning):
-        filter_tasks = [asyncio.to_thread(is_temporal_sequence_valid, seq, filters) for seq in sequences_to_filter]
-        filter_results = await asyncio.gather(*filter_tasks)
-        final_sequences_all = [seq for seq, is_valid in zip(sequences_to_filter, filter_results) if is_valid]
+        print(f"\n--- [DEBUG] Starting Temporal Sequence Validation for {len(sequences_to_filter)} sequences ---")
+        # Use a simple list comprehension to call our new, correct validation function on each sequence.
+        # This is now logically sound.
+        final_sequences_all = [
+            seq for seq in sequences_to_filter 
+            if is_temporal_sequence_valid(seq, filters)
+        ]
     else:
         final_sequences_all = sequences_to_filter
+    # --- END OF CHANGE ---
     
     total_sequences = len(final_sequences_all)
     start_index = (request_data.page - 1) * request_data.page_size
