@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -355,6 +356,76 @@
             transform: scale(1.1);
         }
 
+        /* ## START: NEW CSS FOR VIDEO PREVIEW ENHANCEMENTS ## */
+        .video-player-container {
+            position: relative;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #shotMarkersContainer {
+            position: absolute;
+            bottom: 40px; /* Adjust this to align with your video player's controls */
+            left: 15px; /* Adjust to align with typical control padding */
+            right: 15px; /* Adjust to align with typical control padding */
+            height: 25px;
+            pointer-events: none; /* Allows clicking through to the progress bar */
+            z-index: 2102;
+        }
+
+        .shot-marker {
+            position: absolute;
+            bottom: 10px;
+            width: 3px;
+            height: 10px;
+            background-color: var(--accent-purple);
+            transform: translateX(-50%);
+            border-radius: 2px;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.8);
+        }
+        
+        .shot-marker.end-marker {
+            background-color: var(--accent-pink);
+            box-shadow: 0 0 5px rgba(240, 147, 251, 0.8);
+        }
+
+        .shot-label {
+            position: absolute;
+            bottom: -15px;
+            transform: translateX(-50%);
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 1px 4px;
+            border-radius: 3px;
+            white-space: nowrap;
+        }
+
+        #shotJumpControls {
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-secondary);
+        }
+
+        #shotJumpInput {
+            background: rgba(10, 14, 26, 0.8);
+            border: 1px solid var(--border-color);
+            color: white;
+            border-radius: 6px;
+            padding: 6px 8px;
+            font-size: 0.9rem;
+            width: 100px;
+        }
+        #shotJumpInput:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+        /* ## END: NEW CSS FOR VIDEO PREVIEW ENHANCEMENTS ## */
+
     </style>
 </head>
 <body>
@@ -403,7 +474,7 @@
                     <button class="control-btn" id="addStageBtn" title="Add Stage to End (Ctrl+])"><i class="fas fa-plus"></i></button>
                     <button class="control-btn" id="removeStageBtn" title="Remove Last Stage (Ctrl+Shift+])"><i class="fas fa-minus"></i></button>
                 </div>
-                <button class="search-btn" id="searchBtn" title="Search (Enter)"><i class="fas fa-search"></i> Search</button>
+                <button class="search-btn" id="searchBtn" title="Search (Enter / Ctrl+Enter)"><i class="fas fa-search"></i> Search</button>
             </div>
         </div>
         <div id="right-results-panel">
@@ -437,10 +508,20 @@
     <div id="temporalContextModal" class="image-modal-overlay"><div class="temporal-modal-content"><div class="temporal-modal-header"><h2 id="temporalModalTitle"></h2><span class="image-modal-close" id="closeTemporalModalBtn" title="Close (Esc)">&times;</span></div><div class="temporal-modal-body"><div class="temporal-grid" id="temporalGrid"></div></div><div class="temporal-modal-footer">Shortcuts: Click to zoom. Ctrl+Click/Space on button to Push. Ctrl+Shift+Click/Space on button to Submit Direct.</div></div></div>
     <div id="dresModal" class="modal-overlay"><div class="modal-content" style="max-width: 500px;"><div class="modal-header"><h2 class="modal-title"><i class="fas fa-trophy"></i> DRES Submission</h2><span class="modal-close" id="dresModalCloseBtn">&times;</span></div><div class="modal-body" style="flex-direction: column; gap: 20px;"><div><label for="dresUsername">Username</label><input type="text" id="dresUsername" class="filter-input" placeholder="Enter your username..."></div><div><label for="dresPassword">Password</label><input type="password" id="dresPassword" class="filter-input" placeholder="Enter your password..."></div><button id="dresLoginBtn" class="search-btn" style="width: 100%;">Login & Get Evaluations</button><div id="dresStatus" class="dres-status">Status: Not logged in.</div><div><label for="dresEvaluationSelect">Select Evaluation</label><select id="dresEvaluationSelect" class="filter-input" disabled></select></div></div></div></div>
 
+    <!-- ## START: CORRECTED VIDEO PREVIEW MODAL ## -->
     <div id="videoPreviewModal" class="image-modal-overlay">
         <span class="image-modal-close" id="closeVideoModalBtn" title="Close (Esc)">&times;</span>
-        <video id="videoPlayer" class="image-modal-content" controls autoplay style="background-color: #000;"></video>
+        <div class="video-player-container">
+            <video id="videoPlayer" class="image-modal-content" controls autoplay style="background-color: #000;"></video>
+            <!-- This container will be populated by JavaScript -->
+            <div id="shotMarkersContainer"></div> 
+            <div id="shotJumpControls">
+                <label for="shotJumpInput">Jump to Shot:</label>
+                <input type="number" id="shotJumpInput" placeholder="Shot #" min="1">
+            </div>
+        </div>
     </div>
+    <!-- ## END: CORRECTED VIDEO PREVIEW MODAL ## -->
 
     <script>
         // ## MERGED & CORRECTED SCRIPT ##
@@ -864,6 +945,8 @@
                     zoomedImage.src = shotData.url;
                 }
             }
+            
+            // ## START: ROBUST AND DEBUGGABLE openVideoPreview FUNCTION ##
             async function openVideoPreview(shotData) {
                 if (!shotData || !shotData.video_id || !shotData.filepath) {
                     alert("Error: Invalid data for video preview (missing video_id or filepath).");
@@ -872,42 +955,145 @@
 
                 const frameId = shotData.frame_id;
                 if (frameId === null || frameId === undefined) {
-                     alert(`Error: Frame ID is missing for this result.`);
-                     return;
+                    alert(`Error: Frame ID is missing for this result.`);
+                    return;
                 }
+                
+                videoPreviewModal.style.display = "flex";
+                videoPlayer.pause();
+                videoPlayer.src = "";
 
                 try {
-                    const infoResponse = await fetch(`/video_info/${shotData.video_id}`);
+                    console.log(`[DEBUG] Opening preview for video: ${shotData.video_id}, frame: ${frameId}`);
+                    
+                    // Fetch FPS and Shot data in parallel for speed
+                    const [infoResponse, shotsResponse] = await Promise.all([
+                        fetch(`/video_info/${shotData.video_id}`),
+                        fetch(`/video_shots/${shotData.video_id}`)
+                    ]);
+                    
+                    console.log("[DEBUG] Fetched info and shots data.");
+
                     if (!infoResponse.ok) {
-                        console.warn(`Could not fetch video info for ${shotData.video_id}. Falling back to default FPS.`);
-                        throw new Error('Fallback to default FPS');
+                        throw new Error(`Could not fetch video info (status: ${infoResponse.status})`);
                     }
                     const videoInfo = await infoResponse.json();
                     const actualFps = videoInfo.fps;
+                    console.log(`[DEBUG] Video FPS: ${actualFps}`);
+                    
+                    let allShots = [];
+                    if (shotsResponse.ok) {
+                        const shotsData = await shotsResponse.json();
+                        allShots = shotsData.shots || [];
+                        console.log(`[DEBUG] Fetched ${allShots.length} shots for this video.`);
+                    } else {
+                        console.warn(`[WARN] Could not fetch shot metadata for ${shotData.video_id}. Markers will not be shown.`);
+                    }
+
                     const startTime = frameId / actualFps;
                     const videoUrl = `/videos/${shotData.video_id}`;
                     
-                    videoPlayer.pause();
+                    console.log(`[DEBUG] Setting video source to: ${videoUrl} and seeking to ${startTime.toFixed(2)}s`);
                     videoPlayer.src = videoUrl;
-                    videoPreviewModal.style.display = "flex";
-                    videoPlayer.load();
-                    videoPlayer.addEventListener('canplay', () => {
-                        if (isFinite(startTime) && startTime > 0) {
+                    
+                    // This is the crucial part: we wait for 'loadedmetadata' to ensure 'videoPlayer.duration' is available
+                    videoPlayer.addEventListener('loadedmetadata', () => {
+                        console.log(`[DEBUG] Video metadata loaded. Duration: ${videoPlayer.duration}s`);
+                        if (isFinite(startTime) && startTime < videoPlayer.duration) {
                             videoPlayer.currentTime = startTime;
                         }
+                        // Now that duration is known, we can safely render markers
+                        renderShotMarkersAndSetupJump(allShots, actualFps, videoPlayer.duration);
                     }, { once: true });
+
+                    videoPlayer.load();
 
                 } catch (error) {
                     console.error("Error setting up video preview:", error);
-                    alert("Could not load video metadata. The preview might start at the beginning.");
+                    alert("Error loading video preview: " + error.message);
+                    // Fallback to original simple behavior if anything fails
                     const startTime = frameId / 25; // Fallback FPS
                     const videoUrl = `/videos/${shotData.video_id}`;
                     videoPlayer.src = videoUrl;
                     videoPlayer.currentTime = startTime > 0 ? startTime : 0;
-                    videoPreviewModal.style.display = "flex";
-                    videoPlayer.load();
                 }
             }
+            // ## END: ROBUST AND DEBUGGABLE openVideoPreview FUNCTION ##
+
+            // ## START: ROBUST AND DEBUGGABLE RENDER/JUMP FUNCTION ##
+            function renderShotMarkersAndSetupJump(shots, fps, duration) {
+                const markersContainer = document.getElementById('shotMarkersContainer');
+                const jumpInput = document.getElementById('shotJumpInput');
+                markersContainer.innerHTML = ''; // Clear previous markers
+
+                console.log(`[DEBUG] Rendering markers with ${shots.length} shots, fps: ${fps}, duration: ${duration}`);
+
+                if (!shots || shots.length === 0 || !isFinite(duration) || duration <= 0) {
+                    console.warn("[WARN] Aborting marker render: No shots or invalid duration.");
+                    return;
+                }
+
+                shots.forEach(shot => {
+                    const startTime = shot.start_frame / fps;
+                    const positionPercent = (startTime / duration) * 100;
+                    
+                    if (positionPercent >= 0 && positionPercent <= 100) {
+                        const startMarker = document.createElement('div');
+                        startMarker.className = 'shot-marker';
+                        startMarker.style.left = `${positionPercent}%`;
+                        
+                        const label = document.createElement('div');
+                        label.className = 'shot-label';
+                        label.textContent = `${shot.shot_id}`;
+                        label.style.left = `${positionPercent}%`;
+
+                        markersContainer.appendChild(startMarker);
+                        markersContainer.appendChild(label);
+                        
+                        // Also add an end marker for clarity
+                        const endTime = shot.end_frame / fps;
+                        const endPositionPercent = (endTime / duration) * 100;
+                         if (endPositionPercent > positionPercent && endPositionPercent <= 100) {
+                             const endMarker = document.createElement('div');
+                             endMarker.className = 'shot-marker end-marker';
+                             endMarker.style.left = `${endPositionPercent}%`;
+                             markersContainer.appendChild(endMarker);
+                         }
+                    } else {
+                         console.warn(`[WARN] Skipping shot ${shot.shot_id} - calculated position ${positionPercent}% is out of bounds.`);
+                    }
+                });
+                console.log("[DEBUG] Marker rendering complete.");
+
+                // Setup jump functionality using a closure to capture the necessary data
+                const jumpHandler = (event) => {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        const targetShotId = parseInt(jumpInput.value, 10);
+                        console.log(`[DEBUG] Jump event: User wants to jump to shot #${targetShotId}`);
+
+                        if (!isNaN(targetShotId)) {
+                            const targetShot = shots.find(s => s.shot_id === targetShotId);
+                            if (targetShot) {
+                                const jumpTime = targetShot.start_frame / fps;
+                                console.log(`[DEBUG] Found shot ${targetShotId}. Jumping to ${jumpTime.toFixed(2)}s.`);
+                                videoPlayer.currentTime = jumpTime;
+                            } else {
+                                console.warn(`[WARN] Shot ${targetShotId} not found in this video.`);
+                                alert(`Shot ${targetShotId} not found in this video.`);
+                            }
+                        }
+                    }
+                };
+                
+                // A robust way to ensure we don't have duplicate listeners.
+                // Cloning and replacing is a common trick for this.
+                const newJumpInput = jumpInput.cloneNode(true);
+                jumpInput.parentNode.replaceChild(newJumpInput, jumpInput);
+                newJumpInput.addEventListener('keydown', jumpHandler);
+                console.log("[DEBUG] Jump input event listener has been set up.");
+            }
+            // ## END: ROBUST AND DEBUGGABLE RENDER/JUMP FUNCTION ##
 
             async function openTemporalContextView(e){
                 if(!e||!e.filepath)return void alert("Error: Invalid data for context view.");
@@ -1232,6 +1418,32 @@
                 return stageCard;
             }
 
+            async function processTextQuery(inputElement, displayWrapper, enhance, expand) {
+                if (!inputElement || !displayWrapper) return;
+                const userQuery = inputElement.value.trim();
+                
+                if (!userQuery) {
+                    inputElement.processedQuery = "";
+                    displayWrapper.style.display = 'none';
+                    return;
+                }
+
+                const payload = { query: userQuery, enhance, expand };
+                try {
+                    displayWrapper.querySelector('.processed-query-display').textContent = "Processing...";
+                    displayWrapper.style.display = 'flex';
+                    const response = await fetch('/process_query', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (!response.ok) throw new Error('Failed to process query from server');
+                    const data = await response.json();
+                    inputElement.processedQuery = data.processed_query;
+                    displayWrapper.querySelector('.processed-query-display').textContent = data.processed_query;
+                } catch (error) {
+                    console.error("Failed to process query:", error);
+                    inputElement.processedQuery = userQuery;
+                    displayWrapper.querySelector('.processed-query-display').textContent = "Error processing query. Using original.";
+                }
+            }
+
             async function handleSearch(imageFileFromClick = null) {
                 const clientStartTime = performance.now();
                 currentPage = 1;
@@ -1270,6 +1482,21 @@
                                 }
                             }
                         }
+
+                        const enhance = stage.querySelector('.option-btn[data-option="enhance"]').classList.contains('active');
+                        const expand = stage.querySelector('.option-btn[data-option="expand"]').classList.contains('active');
+                        
+                        if (stage.querySelector('.type-btn[data-type="text"]').classList.contains('active')) {
+                            const mainTextInput = stage.querySelector('.main-query-input');
+                            const mainDisplay = stage.querySelector('.main-processed-query-wrapper');
+                            await processTextQuery(mainTextInput, mainDisplay, enhance, expand);
+                        }
+                        
+                        if (stage.querySelector('.type-btn[data-type="image"]').classList.contains('active')) {
+                            const imageTextInput = stage.querySelector('.image-search-text-input');
+                            const imageDisplay = stage.querySelector('.image-processed-query-wrapper');
+                            await processTextQuery(imageTextInput, imageDisplay, false, false);
+                        }
                     });
 
                     await Promise.all(precomputationPromises);
@@ -1296,7 +1523,7 @@
 
                         if (firstStage.querySelector('.type-btn[data-type="gen_image"]')?.classList.contains('active')) {
                             const mainInput = firstStage.querySelector('.main-query-input');
-                            searchData.query_text = mainInput.value.trim(); // Lấy query gốc
+                            searchData.query_text = mainInput.processedQuery || mainInput.value.trim();
                             searchData.generated_image_name = firstStage.generatedImageName;
                             searchData.models = ["unite"];
                             if (searchData.query_text) hasPrimaryQuery = true;
@@ -1304,13 +1531,13 @@
                             const imageTextInput = firstStage.querySelector('.image-search-text-input');
                             if (firstStage.tempImageName) {
                                 searchData.query_image_name = firstStage.tempImageName;
-                                searchData.image_search_text = imageTextInput.value.trim(); // Lấy query gốc
+                                searchData.image_search_text = imageTextInput.processedQuery || imageTextInput.value.trim();
                                 searchData.models = ["bge"];
                                 hasPrimaryQuery = true;
                             }
                         } else {
                             const mainInput = firstStage.querySelector('.main-query-input');
-                            searchData.query_text = mainInput.value.trim(); // Lấy query gốc
+                            searchData.query_text = mainInput.processedQuery || mainInput.value.trim();
                             searchData.models = Array.from(document.querySelectorAll('#modelDropdown input:checked')).map(cb => cb.value);
                             searchData.enhance = firstStage.querySelector('.option-btn[data-option="enhance"]').classList.contains('active');
                             searchData.expand = firstStage.querySelector('.option-btn[data-option="expand"]').classList.contains('active');
@@ -1331,7 +1558,7 @@
                         const stagesData = allStages.map(stage => {
                             const mainInput = stage.querySelector('.main-query-input');
                             const stageDatum = {
-                                query: mainInput.value.trim(), // Lấy query gốc
+                                query: mainInput.processedQuery || mainInput.value.trim(),
                                 query_image_name: stage.tempImageName || null,
                                 generated_image_name: stage.generatedImageName || null,
                                 enhance: stage.querySelector('.option-btn[data-option="enhance"]').classList.contains('active'),
@@ -1359,18 +1586,6 @@
                     response = await fetch(searchEndpoint, fetchOptions);
                     if (!response.ok) { const err = await response.json(); throw new Error(err.detail || 'Unknown error from server.'); }
                     currentResponse = await response.json();
-
-                    // Hiển thị processed query trả về từ server (nếu có)
-                    if (currentResponse.processed_query) {
-                        const firstStage = allStages[0];
-                        if (firstStage) {
-                            const displayWrapper = firstStage.querySelector('.main-processed-query-wrapper');
-                            const displaySpan = displayWrapper.querySelector('.processed-query-display');
-                            displaySpan.textContent = currentResponse.processed_query;
-                            displayWrapper.style.display = 'flex';
-                        }
-                    }
-
                     totalResults = currentResponse.total_results || 0;
                     displayTimingInfo(currentResponse.timing_info, clientStartTime);
                     displayResults(currentResponse.results, false);
@@ -1525,8 +1740,29 @@
             imageModal.addEventListener('click', (e) => { if (e.target === imageModal) { imageModal.style.display = "none"; } });
             closeTemporalModalBtn.addEventListener('click', () => { temporalContextModal.style.display = "none"; });
             temporalContextModal.addEventListener('click', (e) => { if (e.target === temporalContextModal) { temporalContextModal.style.display = "none"; } });
-            closeVideoModalBtn.addEventListener('click', () => { videoPreviewModal.style.display = "none"; videoPlayer.pause(); videoPlayer.src = ""; });
-            videoPreviewModal.addEventListener('click', (e) => { if (e.target === videoPreviewModal) { videoPreviewModal.style.display = "none"; videoPlayer.pause(); videoPlayer.src = ""; } });
+            
+            // ## START: MODIFIED VIDEO MODAL CLOSE HANDLERS ##
+            function closeVideoModal() {
+                videoPreviewModal.style.display = "none";
+                videoPlayer.pause();
+                videoPlayer.src = "";
+                // Clean up markers and input for next use
+                document.getElementById('shotMarkersContainer').innerHTML = '';
+                const jumpInput = document.getElementById('shotJumpInput');
+                jumpInput.value = '';
+                // Remove the specific event listener to avoid memory leaks
+                const newJumpInput = jumpInput.cloneNode(true);
+                jumpInput.parentNode.replaceChild(newJumpInput, jumpInput);
+            }
+            closeVideoModalBtn.addEventListener('click', closeVideoModal);
+            videoPreviewModal.addEventListener('click', (e) => { 
+                // Close only if the click is on the overlay itself, not the container/video/controls
+                if (e.target === videoPreviewModal) { 
+                    closeVideoModal(); 
+                } 
+            });
+            // ## END: MODIFIED VIDEO MODAL CLOSE HANDLERS ##
+            
             modalCloseBtn.addEventListener('click', () => objectFilterModal.style.display = 'none');
             dresBtn.addEventListener('click', () => dresModal.style.display = 'flex');
             dresModalCloseBtn.addEventListener('click', () => dresModal.style.display = 'none');
@@ -1545,14 +1781,22 @@
                 if (event.key === 'Escape') {
                     event.preventDefault();
                     if (isTyping) { activeElement.blur(); return; }
-                    if (videoPreviewModal.style.display === 'flex') { videoPreviewModal.style.display = 'none'; videoPlayer.pause(); videoPlayer.src = ''; return; }
+                    if (videoPreviewModal.style.display === 'flex') { closeVideoModal(); return; }
                     if (imageModal.style.display === 'flex') { imageModal.style.display = 'none'; return; }
                     if (temporalContextModal.style.display === 'flex') { temporalContextModal.style.display = 'none'; return; }
                     if (objectFilterModal.style.display === 'flex') { objectFilterModal.style.display = 'none'; return; }
                     if (dresModal.style.display === 'flex') { dresModal.style.display = 'none'; return; }
                     if (modelDropdown.style.display === 'block') { modelDropdown.style.display = 'none'; clearModelFocus(); return; }
                 }
+
                 if ((event.ctrlKey || event.metaKey)) {
+                    // Ctrl+Enter in a textarea should trigger search
+                    if (event.key === 'Enter' && activeElement.tagName === 'TEXTAREA') {
+                        event.preventDefault();
+                        searchBtn.click();
+                        return;
+                    }
+
                     if (event.key.toLowerCase() === 'f' && !event.shiftKey && !event.altKey) {
                         event.preventDefault();
                         if (objectFilterModal.style.display === 'flex') {
@@ -1622,16 +1866,35 @@
                     }
                     return;
                 }
-
-                if (event.key === 'Enter') {
-                    if (isTyping && event.shiftKey) { return; }
-                    if (dresModal.style.display === 'flex') { event.preventDefault(); document.getElementById('dresLoginBtn').click(); return; }
-                    if (usernameModal.style.display === 'flex') { event.preventDefault(); document.getElementById('usernameSubmitBtn').click(); return; }
-                    event.preventDefault();
-                    searchBtn.click();
-                    return;
-                }
                 
+                // ## START: CORRECTED ENTER KEY LOGIC ##
+                if (event.key === 'Enter' && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+                     // If typing in any input field EXCEPT the special ones, trigger a search
+                    if (isTyping && activeElement.id !== 'shotJumpInput' && activeElement.tagName !== 'TEXTAREA') {
+                        event.preventDefault();
+                        searchBtn.click();
+                        return;
+                    }
+                    // Handle modal-specific enter actions
+                    if (dresModal.style.display === 'flex') {
+                        event.preventDefault();
+                        document.getElementById('dresLoginBtn').click();
+                        return;
+                    }
+                    if (usernameModal.style.display === 'flex') {
+                        event.preventDefault();
+                        document.getElementById('usernameSubmitBtn').click();
+                        return;
+                    }
+                    // If not typing and no modals are active, trigger a global search
+                    if (!isTyping && !isModalVisible) {
+                        event.preventDefault();
+                        searchBtn.click();
+                        return;
+                    }
+                }
+                // ## END: CORRECTED ENTER KEY LOGIC ##
+
                 if (isModalVisible) {
                     const isObjectFilterModalVisible = objectFilterModal.style.display === 'flex';
                     if (isObjectFilterModalVisible && !isTyping) {
@@ -1696,6 +1959,7 @@
                     if (handled) event.preventDefault();
                 }
                 else if (isTyping && ['ArrowUp', 'ArrowDown'].includes(event.key)) {
+                    if (activeElement.id === 'shotJumpInput') return; // Don't switch stages when using jump input
                     const allStages = Array.from(stagesContainer.querySelectorAll('.stage-card'));
                     if (allStages.length > 1) {
                         const currentStage = activeElement.closest('.stage-card');

@@ -158,7 +158,7 @@ UNITE_WORKER_URL = "http://model-workers:8003/embed"
 IMAGE_GEN_WORKER_URL = "http://localhost:8004/generate"
 
 ELASTICSEARCH_HOST = "http://elasticsearch2:9200"
-OCR_ASR_INDEX_NAME = "opencubee_2"
+OCR_ASR_INDEX_NAME = "vongsotuyen_batch1"
 MILVUS_HOST = "milvus-standalone"
 MILVUS_PORT = "19530"
 
@@ -194,6 +194,9 @@ COLLECTION_TO_INDEX_TYPE = {
 es = None
 OBJECT_COUNTS_DF: Optional[pl.DataFrame] = None
 OBJECT_POSITIONS_DF: Optional[pl.DataFrame] = None
+# ## START: CORRECTED PLACEMENT OF GLOBAL VARIABLE ##
+VIDEO_SHOT_METADATA: Dict[str, List[Dict[str, int]]] = {}
+# ## END: CORRECTED PLACEMENT OF GLOBAL VARIABLE ##
 beit3_collection: Optional[Collection] = None
 bge_collection: Optional[Collection] = None
 unite_collection: Optional[Collection] = None
@@ -273,9 +276,20 @@ class DRESSubmitRequest(BaseModel):
 class VideoInfoResponse(BaseModel):
     fps: float
 
+# ## START: CORRECTED PLACEMENT OF NEW PYDANTIC MODELS ##
+class ShotInfo(BaseModel):
+    shot_id: int
+    start_frame: int
+    end_frame: int
+
+class VideoShotsResponse(BaseModel):
+    shots: List[ShotInfo]
+# ## END: CORRECTED PLACEMENT OF NEW PYDANTIC MODELS ##
+
+
 @app.on_event("startup")
 def startup_event():
-    global es, OBJECT_COUNTS_DF, OBJECT_POSITIONS_DF, beit3_collection, bge_collection, unite_collection, unite_collection_fusion
+    global es, OBJECT_COUNTS_DF, OBJECT_POSITIONS_DF, beit3_collection, bge_collection, unite_collection, unite_collection_fusion, VIDEO_SHOT_METADATA
     try:
         connections.connect(alias="default", host=MILVUS_HOST, port=MILVUS_PORT)
         print("--- Milvus connection successful. ---")
@@ -334,6 +348,25 @@ def startup_event():
         print(f"!!! WARNING: Could not load object parquet files. Filtering disabled. Error: {e} !!!")
         OBJECT_COUNTS_DF = None
         OBJECT_POSITIONS_DF = None
+
+    # ## START: NEW - LOAD SHOT METADATA AT STARTUP ##
+    try:
+        print("--- Loading video shot metadata... ---")
+        shots_path = "/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/Dataset/video_shot_metadata.parquet"
+        shots_df = pl.read_parquet(shots_path)
+        
+        # Convert DataFrame to a dictionary for fast lookups: {video_id: [list of shots]}
+        grouped = shots_df.group_by("video_id")
+        for video_id, group_df in grouped:
+            # Convert the smaller DataFrame for each group to a list of dictionaries
+            VIDEO_SHOT_METADATA[video_id] = group_df.to_dicts()
+        
+        print(f"--- Video shot metadata loaded for {len(VIDEO_SHOT_METADATA)} videos. ---")
+    except Exception as e:
+        print(f"!!! WARNING: Could not load video shot metadata file. Shot navigation will be disabled. Error: {e} !!!")
+        VIDEO_SHOT_METADATA = {}
+    # ## END: NEW - LOAD SHOT METADATA AT STARTUP ##
+
 
 # --- Helper Functions ---
 def get_video_fps(video_path: str) -> float:
@@ -744,48 +777,35 @@ async def websocket_endpoint(websocket: WebSocket):
 # ## PERFORMANCE OPTIMIZATION: Asynchronous Query Processing with Cache ##
 @app.post("/process_query")
 async def process_query(request_data: ProcessQueryRequest):
-    """
-    Xử lý một truy vấn văn bản gốc dựa trên các tùy chọn enhance và expand.
-    - enhance=True: Dùng AI để dịch và tối ưu hóa (chất lượng cao).
-    - expand=True: Dùng googletrans dịch rồi expand.
-    - Mặc định: Dùng googletrans chỉ để dịch.
-    """
-    query = request_data.query
-    if not query:
+    if not request_data.query: 
         return {"processed_query": ""}
-
-    # Cache key vẫn giữ nguyên để tận dụng cache
-    cache_key = f"{query}|{request_data.enhance}|{request_data.expand}"
+    
+    global processed_query_cache
+    if len(processed_query_cache) > CACHE_MAX_SIZE:
+        processed_query_cache.clear()
+        
+    cache_key = f"{request_data.query}|{request_data.enhance}|{request_data.expand}"
     if cache_key in processed_query_cache:
-        print(f"--- QUERY CACHE HIT for: {query[:50]}... ---")
+        print(f"--- QUERY CACHE HIT for: {request_data.query[:50]}... ---")
         return {"processed_query": processed_query_cache[cache_key]}
-    print(f"--- QUERY CACHE MISS for: {query[:50]}... ---")
+    
+    print(f"--- QUERY CACHE MISS for: {request_data.query[:50]}... ---")
 
-    processed_query = ""
+    base_query = await translate_query(request_data.query)
     
-    # TRƯỜNG HỢP 1: YÊU CẦU "ENHANCE"
-    if request_data.enhance:
-        print(f"--- Action: Enhancing '{query[:50]}...' using AI (high quality translate + optimize)")
-        # enhance_query sẽ tự dịch và tối ưu hóa với chất lượng cao
-        processed_query = await asyncio.to_thread(enhance_query, query)
-    
-    # TRƯỜNG HỢP 2: YÊU CẦU "EXPAND" (NHƯNG KHÔNG ENHANCE)
-    elif request_data.expand:
-        print(f"--- Action: Expanding '{query[:50]}...' using fast translate")
-        # Dùng googletrans để dịch nhanh, sau đó expand
-        translated_query = await translate_query(query)
-        processed_query = await asyncio.to_thread(expand_query_parallel, translated_query)
-    
-    # TRƯỜNG HỢP 3: MẶC ĐỊNH (KHÔNG CÓ YÊU CẦU ĐẶC BIỆT)
+    if request_data.expand:
+        queries_to_process = await asyncio.to_thread(expand_query_parallel, base_query)
     else:
-        print(f"--- Action: Translating '{query[:50]}...' using fast translate")
-        # Chỉ dịch bằng googletrans
-        processed_query = await translate_query(query)
+        queries_to_process = [base_query]
 
-    # Đảm bảo kết quả cuối cùng là một chuỗi string
-    if isinstance(processed_query, list):
-        processed_query = "\n".join(processed_query)
-
+    if request_data.enhance:
+        # Use asyncio.gather to run multiple enhancements in parallel if expand created multiple queries
+        enhance_tasks = [asyncio.to_thread(enhance_query, q) for q in queries_to_process]
+        final_queries = await asyncio.gather(*enhance_tasks)
+    else:
+        final_queries = queries_to_process
+    
+    processed_query = " ".join(final_queries)
     processed_query_cache[cache_key] = processed_query
     return {"processed_query": processed_query}
 
@@ -1324,3 +1344,28 @@ async def get_video_info(video_id: str):
 
     fps = await asyncio.to_thread(get_video_fps, video_path)
     return VideoInfoResponse(fps=fps)
+
+# ## START: NEW ENDPOINT FOR SHOT METADATA ##
+@app.get("/video_shots/{video_id}", response_model=VideoShotsResponse)
+async def get_video_shots(video_id: str):
+    """
+    Returns all shot metadata for a given video ID.
+    Uses the pre-loaded dictionary for instant lookups.
+    """
+    if "/" in video_id or ".." in video_id:
+        raise HTTPException(status_code=400, detail="Invalid video ID format.")
+    
+    # The VIDEO_SHOT_METADATA keys might not have the .mp4 extension
+    video_id_stem = os.path.splitext(video_id)[0]
+
+    # Robust lookup: try the stem first, then the original id
+    shots = VIDEO_SHOT_METADATA.get(video_id_stem)
+    if shots is None:
+        shots = VIDEO_SHOT_METADATA.get(video_id)
+
+
+    if shots is None:
+        raise HTTPException(status_code=404, detail=f"Shot metadata not found for video: {video_id}")
+
+    return VideoShotsResponse(shots=shots)
+# ## END: NEW ENDPOINT FOR SHOT METADATA ##
