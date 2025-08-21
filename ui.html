@@ -1232,32 +1232,6 @@
                 return stageCard;
             }
 
-            async function processTextQuery(inputElement, displayWrapper, enhance, expand) {
-                if (!inputElement || !displayWrapper) return;
-                const userQuery = inputElement.value.trim();
-                
-                if (!userQuery) {
-                    inputElement.processedQuery = "";
-                    displayWrapper.style.display = 'none';
-                    return;
-                }
-
-                const payload = { query: userQuery, enhance, expand };
-                try {
-                    displayWrapper.querySelector('.processed-query-display').textContent = "Processing...";
-                    displayWrapper.style.display = 'flex';
-                    const response = await fetch('/process_query', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                    if (!response.ok) throw new Error('Failed to process query from server');
-                    const data = await response.json();
-                    inputElement.processedQuery = data.processed_query;
-                    displayWrapper.querySelector('.processed-query-display').textContent = data.processed_query;
-                } catch (error) {
-                    console.error("Failed to process query:", error);
-                    inputElement.processedQuery = userQuery;
-                    displayWrapper.querySelector('.processed-query-display').textContent = "Error processing query. Using original.";
-                }
-            }
-
             async function handleSearch(imageFileFromClick = null) {
                 const clientStartTime = performance.now();
                 currentPage = 1;
@@ -1296,21 +1270,6 @@
                                 }
                             }
                         }
-
-                        const enhance = stage.querySelector('.option-btn[data-option="enhance"]').classList.contains('active');
-                        const expand = stage.querySelector('.option-btn[data-option="expand"]').classList.contains('active');
-                        
-                        if (stage.querySelector('.type-btn[data-type="text"]').classList.contains('active')) {
-                            const mainTextInput = stage.querySelector('.main-query-input');
-                            const mainDisplay = stage.querySelector('.main-processed-query-wrapper');
-                            await processTextQuery(mainTextInput, mainDisplay, enhance, expand);
-                        }
-                        
-                        if (stage.querySelector('.type-btn[data-type="image"]').classList.contains('active')) {
-                            const imageTextInput = stage.querySelector('.image-search-text-input');
-                            const imageDisplay = stage.querySelector('.image-processed-query-wrapper');
-                            await processTextQuery(imageTextInput, imageDisplay, false, false);
-                        }
                     });
 
                     await Promise.all(precomputationPromises);
@@ -1337,7 +1296,7 @@
 
                         if (firstStage.querySelector('.type-btn[data-type="gen_image"]')?.classList.contains('active')) {
                             const mainInput = firstStage.querySelector('.main-query-input');
-                            searchData.query_text = mainInput.processedQuery || mainInput.value.trim();
+                            searchData.query_text = mainInput.value.trim(); // Lấy query gốc
                             searchData.generated_image_name = firstStage.generatedImageName;
                             searchData.models = ["unite"];
                             if (searchData.query_text) hasPrimaryQuery = true;
@@ -1345,13 +1304,13 @@
                             const imageTextInput = firstStage.querySelector('.image-search-text-input');
                             if (firstStage.tempImageName) {
                                 searchData.query_image_name = firstStage.tempImageName;
-                                searchData.image_search_text = imageTextInput.processedQuery || imageTextInput.value.trim();
+                                searchData.image_search_text = imageTextInput.value.trim(); // Lấy query gốc
                                 searchData.models = ["bge"];
                                 hasPrimaryQuery = true;
                             }
                         } else {
                             const mainInput = firstStage.querySelector('.main-query-input');
-                            searchData.query_text = mainInput.processedQuery || mainInput.value.trim();
+                            searchData.query_text = mainInput.value.trim(); // Lấy query gốc
                             searchData.models = Array.from(document.querySelectorAll('#modelDropdown input:checked')).map(cb => cb.value);
                             searchData.enhance = firstStage.querySelector('.option-btn[data-option="enhance"]').classList.contains('active');
                             searchData.expand = firstStage.querySelector('.option-btn[data-option="expand"]').classList.contains('active');
@@ -1372,7 +1331,7 @@
                         const stagesData = allStages.map(stage => {
                             const mainInput = stage.querySelector('.main-query-input');
                             const stageDatum = {
-                                query: mainInput.processedQuery || mainInput.value.trim(),
+                                query: mainInput.value.trim(), // Lấy query gốc
                                 query_image_name: stage.tempImageName || null,
                                 generated_image_name: stage.generatedImageName || null,
                                 enhance: stage.querySelector('.option-btn[data-option="enhance"]').classList.contains('active'),
@@ -1400,6 +1359,18 @@
                     response = await fetch(searchEndpoint, fetchOptions);
                     if (!response.ok) { const err = await response.json(); throw new Error(err.detail || 'Unknown error from server.'); }
                     currentResponse = await response.json();
+
+                    // Hiển thị processed query trả về từ server (nếu có)
+                    if (currentResponse.processed_query) {
+                        const firstStage = allStages[0];
+                        if (firstStage) {
+                            const displayWrapper = firstStage.querySelector('.main-processed-query-wrapper');
+                            const displaySpan = displayWrapper.querySelector('.processed-query-display');
+                            displaySpan.textContent = currentResponse.processed_query;
+                            displayWrapper.style.display = 'flex';
+                        }
+                    }
+
                     totalResults = currentResponse.total_results || 0;
                     displayTimingInfo(currentResponse.timing_info, clientStartTime);
                     displayResults(currentResponse.results, false);

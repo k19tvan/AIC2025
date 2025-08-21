@@ -39,21 +39,22 @@ def get_client_for_thread(thread_id: int):
 def enhance_query(original_query: str) -> str:
     """
     Improve a search query for better retrieval accuracy.
-    Hàm này nhận đầu vào là query đã được dịch sang tiếng Anh.
+    This function takes a query in any language, translates it to English if necessary,
+    and then enhances it for optimal search performance.
     """
     for attempt in range(MAX_ATTEMPT):
         try:
             client = genai.Client(api_key=api_key[attempt % len(api_key)])
             
+            # --- PROMPT ĐÃ ĐƯỢC CẬP NHẬT ---
             prompt = (
                 f"You are an expert in search query optimization for accurate and relevant retrieval.\n"
                 f"Here is the original search query:\n"
                 f"\"{original_query}\"\n\n"
-                "Your task: Rewrite this query to maximize the chances of retrieving highly relevant results. "
-                "Make the wording clear, precise, and rich in meaningful keywords. "
-                "Preserve the original intent and all essential details, but remove any ambiguity or unnecessary words. "
-                "If something is vague, make it more specific without changing the meaning. "
-                "The query is already in English. Return only the improved English query, without any explanations."
+                "Your task involves a two-step process:\n"
+                "1. **Language Check & Translation:** First, analyze the provided query. If it is not in English, your primary step is to translate it into clear and accurate English. If it is already in English, proceed directly to the next step.\n"
+                "2. **Enhancement:** Take the resulting English query and rewrite it to maximize the chances of retrieving highly relevant results. Make the wording clear, precise, and rich in meaningful keywords. Preserve the original intent and all essential details, but remove any ambiguity or unnecessary words.\n\n"
+                "Return ONLY the final, enhanced English query. Do not include the original query, translations, or any explanations in your response."
             )
 
             resp = client.models.generate_content(
@@ -64,9 +65,13 @@ def enhance_query(original_query: str) -> str:
                     temperature=0
                 ),
             )
-            return resp.text.strip()
+            # Dọn dẹp output, loại bỏ các ký tự thừa như dấu nháy kép
+            enhanced_text = resp.text.strip().strip('"')
+            return enhanced_text
         except Exception:
+            # Ghi lại lỗi nếu cần (logging)
             continue
+    
     # Nếu enhance thất bại, trả về query gốc
     return original_query
 
@@ -172,21 +177,24 @@ def expand_query_parallel(short_query: str, num_requests: int = NUM_EXPAND_WORKE
 # =========================
 if __name__ == "__main__":
     # Để test một hàm async, chúng ta cần một hàm async bao bọc
-    async def main_test():
-        q_vi = "Một con chó đang nhai cỏ"
-        q_en = "Two men in black suits"
+    # async def main_test():
+    #     q_vi = "Một con chó đang nhai cỏ"
+    #     q_en = "Two men in black suits"
         
-        print("--- Testing Translation (async fixed) ---")
-        # Dùng await để gọi hàm async
-        translated_vi = await translate_query(q_vi)
-        print(f"VI Input: '{q_vi}' -> Translated: '{translated_vi}'")
+    #     print("--- Testing Translation (async fixed) ---")
+    #     # Dùng await để gọi hàm async
+    #     translated_vi = await translate_query(q_vi)
+    #     print(f"VI Input: '{q_vi}' -> Translated: '{translated_vi}'")
         
-        translated_en = await translate_query(q_en)
-        print(f"EN Input: '{q_en}' -> Translated: '{translated_en}'")
+    #     translated_en = await translate_query(q_en)
+    #     print(f"EN Input: '{q_en}' -> Translated: '{translated_en}'")
 
-        print("\n--- Testing Enhancement (sync function) ---")
-        enhanced_text = enhance_query("A dog is chewing grass")
-        print(f"Enhancing 'A dog is chewing grass' -> '{enhanced_text}'")
+    #     print("\n--- Testing Enhancement (sync function) ---")
+    #     enhanced_text = enhance_query("A dog is chewing grass")
+    #     print(f"Enhancing 'A dog is chewing grass' -> '{enhanced_text}'")
 
     # Dùng asyncio.run() ở đây để khởi chạy toàn bộ test
-    asyncio.run(main_test())
+    # asyncio.run(main_test())
+    
+    text = "người đàn ông mặc đồ chó đang đấu với một người đàn ông khác"
+    print(enhance_query(text))

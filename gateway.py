@@ -744,35 +744,48 @@ async def websocket_endpoint(websocket: WebSocket):
 # ## PERFORMANCE OPTIMIZATION: Asynchronous Query Processing with Cache ##
 @app.post("/process_query")
 async def process_query(request_data: ProcessQueryRequest):
-    if not request_data.query: 
+    """
+    Xử lý một truy vấn văn bản gốc dựa trên các tùy chọn enhance và expand.
+    - enhance=True: Dùng AI để dịch và tối ưu hóa (chất lượng cao).
+    - expand=True: Dùng googletrans dịch rồi expand.
+    - Mặc định: Dùng googletrans chỉ để dịch.
+    """
+    query = request_data.query
+    if not query:
         return {"processed_query": ""}
-    
-    global processed_query_cache
-    if len(processed_query_cache) > CACHE_MAX_SIZE:
-        processed_query_cache.clear()
-        
-    cache_key = f"{request_data.query}|{request_data.enhance}|{request_data.expand}"
+
+    # Cache key vẫn giữ nguyên để tận dụng cache
+    cache_key = f"{query}|{request_data.enhance}|{request_data.expand}"
     if cache_key in processed_query_cache:
-        print(f"--- QUERY CACHE HIT for: {request_data.query[:50]}... ---")
+        print(f"--- QUERY CACHE HIT for: {query[:50]}... ---")
         return {"processed_query": processed_query_cache[cache_key]}
-    
-    print(f"--- QUERY CACHE MISS for: {request_data.query[:50]}... ---")
+    print(f"--- QUERY CACHE MISS for: {query[:50]}... ---")
 
-    base_query = await translate_query(request_data.query)
+    processed_query = ""
     
-    if request_data.expand:
-        queries_to_process = await asyncio.to_thread(expand_query_parallel, base_query)
-    else:
-        queries_to_process = [base_query]
-
+    # TRƯỜNG HỢP 1: YÊU CẦU "ENHANCE"
     if request_data.enhance:
-        # Use asyncio.gather to run multiple enhancements in parallel if expand created multiple queries
-        enhance_tasks = [asyncio.to_thread(enhance_query, q) for q in queries_to_process]
-        final_queries = await asyncio.gather(*enhance_tasks)
-    else:
-        final_queries = queries_to_process
+        print(f"--- Action: Enhancing '{query[:50]}...' using AI (high quality translate + optimize)")
+        # enhance_query sẽ tự dịch và tối ưu hóa với chất lượng cao
+        processed_query = await asyncio.to_thread(enhance_query, query)
     
-    processed_query = " ".join(final_queries)
+    # TRƯỜNG HỢP 2: YÊU CẦU "EXPAND" (NHƯNG KHÔNG ENHANCE)
+    elif request_data.expand:
+        print(f"--- Action: Expanding '{query[:50]}...' using fast translate")
+        # Dùng googletrans để dịch nhanh, sau đó expand
+        translated_query = await translate_query(query)
+        processed_query = await asyncio.to_thread(expand_query_parallel, translated_query)
+    
+    # TRƯỜNG HỢP 3: MẶC ĐỊNH (KHÔNG CÓ YÊU CẦU ĐẶC BIỆT)
+    else:
+        print(f"--- Action: Translating '{query[:50]}...' using fast translate")
+        # Chỉ dịch bằng googletrans
+        processed_query = await translate_query(query)
+
+    # Đảm bảo kết quả cuối cùng là một chuỗi string
+    if isinstance(processed_query, list):
+        processed_query = "\n".join(processed_query)
+
     processed_query_cache[cache_key] = processed_query
     return {"processed_query": processed_query}
 
