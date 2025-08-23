@@ -450,17 +450,9 @@
         <span class="image-modal-close" id="closeVideoModalBtn" title="Close (Esc)">&times;</span>
         <div class="video-player-container">
             <video id="videoPlayer" class="image-modal-content" controls autoplay style="background-color: #000;"></video>
-            
-            <!-- Container for the action buttons -->
-            <div id="videoActionButtons" style="margin-top: 20px; display: flex; gap: 15px;">
-                <button id="pushCurrentFrameBtn" class="toolbar-btn" style="width: auto; padding: 12px 24px; font-size: 1rem;" title="Push to Team (Ctrl+Space in player)">
-                    <div class="btn-hover-bg"></div>
-                    <span><i class="fas fa-users"></i> Push to Team</span>
-                </button>
-                <button id="submitCurrentFrameBtn" class="search-btn" style="width: auto; padding: 12px 24px; font-size: 1rem;" title="Submit to DRES (Ctrl+Shift+Space in player)">
-                    <i class="fas fa-paper-plane"></i> Submit Frame
-                </button>
-            </div>
+            <button id="submitCurrentFrameBtn" class="search-btn" style="position: absolute; bottom: 80px; z-index: 2101; width: auto; padding: 12px 24px; font-size: 1rem;">
+                <i class="fas fa-paper-plane"></i> Submit Current Frame
+            </button>
         </div>
     </div>
     <!-- ## END: MODIFIED VIDEO PREVIEW MODAL ## -->
@@ -500,7 +492,6 @@
             const videoPlayer = document.getElementById('videoPlayer');
             const closeVideoModalBtn = document.getElementById('closeVideoModalBtn');
             const submitCurrentFrameBtn = document.getElementById('submitCurrentFrameBtn'); // Add this line
-            const pushCurrentFrameBtn = document.getElementById('pushCurrentFrameBtn'); // <<< ADD THIS LINE
 
             
             const usernameModal = document.getElementById('usernameModal'); const usernameInput = document.getElementById('usernameInput'); const usernameSubmitBtn = document.getElementById('usernameSubmitBtn'); const userInfoDisplay = document.getElementById('userInfo'); const teamworkPanelContainer = document.getElementById('teamworkPanelContainer'); const teamworkGrid = document.getElementById('teamworkGrid');
@@ -557,49 +548,7 @@
                     console.error("Submit button clicked, but 'currentVideoPreviewData' is missing.");
                 }
             });
-            pushCurrentFrameBtn.addEventListener('click', () => {
-                if (videoPreviewModal.style.display === 'flex' && currentVideoPreviewData) {
-                    const currentTime = videoPlayer.currentTime;
-                    const frameId = Math.round(currentTime * currentVideoPreviewData.fps);
 
-                    // 1. Create a temporary canvas to generate a thumbnail
-                    const canvas = document.createElement('canvas');
-                    canvas.width = videoPlayer.videoWidth;
-                    canvas.height = videoPlayer.videoHeight;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
-                    
-                    // 2. Get the thumbnail as a Base64 Data URL
-                    const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8); // 80% quality JPEG
-
-                    // 3. Construct the shotData object for the teamwork panel
-                    // The filepath is a special identifier so we know it's a dynamic frame
-                    const shotData = {
-                        video_id: currentVideoPreviewData.videoId,
-                        frame_id: frameId,
-                        fps: currentVideoPreviewData.fps, // Pass FPS for others to use
-                        filepath: `dynamic-frame-${currentVideoPreviewData.videoId}-${frameId}`,
-                        url: thumbnailUrl, // Use the generated thumbnail
-                        is_dynamic: true // Add a flag for easy identification
-                    };
-
-                    // Detailed debug logging as requested
-                    console.log("--- [Video Player Push to Teamwork] ---");
-                    console.log(`Video ID: ${shotData.video_id}`);
-                    console.log(`Current Time: ${currentTime.toFixed(4)}s`);
-                    console.log(`Video FPS: ${shotData.fps}`);
-                    console.log(`Calculated Frame ID: ${shotData.frame_id}`);
-                    console.log("Pushing shotData object:", shotData);
-                    console.log("---------------------------------------");
-
-                    // 4. Push to the teamwork panel
-                    pushToTeamworkPanel(shotData);
-
-                } else {
-                    alert("No active video context to push from. Please open a video preview first.");
-                    console.error("Push button clicked, but 'currentVideoPreviewData' is missing.");
-                }
-            });
             rightResultsPanel.addEventListener('scroll', () => {
                 if (rightResultsPanel.scrollTop + rightResultsPanel.clientHeight >= rightResultsPanel.scrollHeight - 500) {
                     loadMoreResults();
@@ -1027,7 +976,6 @@
 
             async function openTemporalContextView(e){
                 if(!e||!e.filepath)return void alert("Error: Invalid data for context view.");
-                if (e.is_dynamic) { alert("Temporal context view is not available for frames pushed directly from the video player."); return; }
                 temporalModalTitle.textContent=`Loading context for Video: ${e.video_id}, Frame: ${e.frame_id}...`;
                 temporalGrid.innerHTML='<p style="color: white; text-align: center; padding: 20px;">Checking available frames...</p>';
                 temporalContextModal.style.display="flex";
@@ -1363,16 +1311,6 @@
 
                 const allStages = Array.from(stagesContainer.querySelectorAll('.stage-card'));
 
-                // ## START: FIX - Clear old processed queries ##
-                allStages.forEach(stage => {
-                    const displayWrapper = stage.querySelector('.main-processed-query-wrapper');
-                    if (displayWrapper) {
-                        displayWrapper.style.display = 'none';
-                        displayWrapper.querySelector('.processed-query-display').textContent = '';
-                    }
-                });
-                // ## END: FIX ##
-                
                 try {
                     const precomputationPromises = allStages.map(async (stage) => {
                         const genImageBtn = stage.querySelector('.type-btn[data-type="gen_image"]');
@@ -1487,8 +1425,7 @@
                     if (!response.ok) { const err = await response.json(); throw new Error(err.detail || 'Unknown error from server.'); }
                     currentResponse = await response.json();
 
-                    // ## START: FIX - Display processed queries for all stages ##
-                    // For single-stage search
+                    // Hiển thị processed query trả về từ server (nếu có)
                     if (currentResponse.processed_query) {
                         const firstStage = allStages[0];
                         if (firstStage) {
@@ -1498,21 +1435,6 @@
                             displayWrapper.style.display = 'flex';
                         }
                     }
-                    // For multi-stage search
-                    if (currentResponse.processed_queries && Array.isArray(currentResponse.processed_queries)) {
-                        allStages.forEach((stage, index) => {
-                            const processedQueryText = currentResponse.processed_queries[index];
-                            if (processedQueryText) {
-                                const displayWrapper = stage.querySelector('.main-processed-query-wrapper');
-                                if (displayWrapper) {
-                                    const displaySpan = displayWrapper.querySelector('.processed-query-display');
-                                    displaySpan.textContent = processedQueryText;
-                                    displayWrapper.style.display = 'flex';
-                                }
-                            }
-                        });
-                    }
-                    // ## END: FIX ##
 
                     totalResults = currentResponse.total_results || 0;
                     displayTimingInfo(currentResponse.timing_info, clientStartTime);
@@ -1699,20 +1621,6 @@
                 const activeElement = document.activeElement;
                 const isTyping = activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA');
 
-                // ## START: VIDEO PREVIEW SHORTCUTS ##
-                if (videoPreviewModal.style.display === 'flex' && event.code === 'Space' && (event.ctrlKey || event.metaKey)) {
-                    event.preventDefault();
-                    if (event.shiftKey) {
-                        // Ctrl + Shift + Space: Submit current frame
-                        submitCurrentFrameBtn.click();
-                    } else {
-                        // Ctrl + Space: Push current frame
-                        pushCurrentFrameBtn.click();
-                    }
-                    return; // Stop further processing for this event
-                }
-                // ## END: VIDEO PREVIEW SHORTCUTS ##
-
                 if (event.key === 'Escape') {
                     event.preventDefault();
                     if (isTyping) { activeElement.blur(); return; }
@@ -1726,6 +1634,60 @@
                 
                 const isModalVisible = Array.from(document.querySelectorAll('.modal-overlay')).some(m => m.style.display === 'flex' || m.style.display === 'block');
                 
+                // --- NEW LOGIC START ---
+                // This block handles both Push and Direct Submit shortcuts with clear priority
+                if (event.code === 'Space' && (event.ctrlKey || event.metaKey)) {
+                    event.preventDefault();
+
+                    if (event.shiftKey) { // This is for Ctrl + Shift + Space: Direct Submit
+                        // PRIORITY 1: Submit from the active video player if it is open
+                        if (videoPreviewModal.style.display === 'flex' && currentVideoPreviewData) {
+                            const currentTime = videoPlayer.currentTime;
+                            const frameId = Math.round(currentTime * currentVideoPreviewData.fps);
+                            const submissionData = {
+                                video_id: currentVideoPreviewData.videoId,
+                                frame_id: frameId,
+                                filepath: `player_submission_at_${currentTime.toFixed(2)}s`
+                            };
+                            console.log("Submitting from video player:", submissionData);
+                            handleSubmitToDRES(submissionData, true); // Bypass confirmation
+                            return; // Action is handled, so we stop here.
+                        }
+                        
+                        // PRIORITY 2: If the video player is not open, fall back to submitting the hovered item
+                        if (currentlyHoveredItemData && currentlyHoveredItemElement) {
+                             const itemData = currentlyHoveredItemData;
+                             const itemElement = currentlyHoveredItemElement;
+                             console.log(`Direct Submit action on hovered item.`);
+                             if (itemData.external_url) {
+                                handleGoogleImageAction(itemData.external_url, 'submit', itemElement);
+                             } else {
+                                handleSubmitToDRES(itemData, true);
+                             }
+                             return; // Action handled
+                        }
+
+                    } else { // This is for Ctrl + Space: Push to Teamwork (Unchanged from original logic)
+                        if (currentlyHoveredItemData && currentlyHoveredItemElement) {
+                            const itemData = currentlyHoveredItemData;
+                            const itemElement = currentlyHoveredItemElement;
+                            const source = itemElement.dataset.source;
+
+                            if (source === 'teamwork') { // Remove from teamwork panel
+                                if (!ws || ws.readyState !== WebSocket.OPEN) { alert("Teamwork connection is not available."); return; }
+                                ws.send(JSON.stringify({ type: 'remove_frame', data: { filepath: itemData.filepath, user: { name: username } } }));
+                            } else { // Push to teamwork panel
+                                if (itemData.external_url) {
+                                    handleGoogleImageAction(itemData.external_url, 'push', itemElement);
+                                } else {
+                                    pushToTeamworkPanel(itemData);
+                                }
+                            }
+                            return; // Action handled
+                        }
+                    }
+                }
+                // --- NEW LOGIC END ---
                 if ((event.ctrlKey || event.metaKey)) {
                     if (event.key.toLowerCase() === 'f' && !event.shiftKey && !event.altKey) {
                         event.preventDefault();
@@ -1749,6 +1711,7 @@
                         return;
                     }
                 }
+
 
                 if (event.code === 'Space' && (event.ctrlKey || event.metaKey)) {
                     if (!isModalVisible && currentlyHoveredItemData && currentlyHoveredItemElement) {

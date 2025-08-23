@@ -150,7 +150,7 @@ except ImportError:
 # --- Cấu hình DRES và hệ thống ---
 DRES_BASE_URL = "http://192.168.28.151:5000"
 VIDEO_BASE_DIR = "/mlcv2/Datasets/HCMAI25/batch1/video"
-IMAGE_BASE_PATH = "/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/Dataset/Retrieval/Keyframes_filtered"
+IMAGE_BASE_PATH = "/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/Dataset/Retrieval/Keyframes/webp_keyframes"
 
 BEIT3_WORKER_URL = "http://model-workers:8001/embed"
 BGE_WORKER_URL = "http://model-workers:8002/embed"
@@ -162,10 +162,10 @@ OCR_ASR_INDEX_NAME = "vongsotuyen_batch1"
 MILVUS_HOST = "milvus-standalone"
 MILVUS_PORT = "19530"
 
-BEIT3_COLLECTION_NAME = "beit3_batch1"
-BGE_COLLECTION_NAME = "bge_batch1"
-UNITE_COLLECTION_NAME = "Unite_Batch1_with_filepath"
-UNITE_FUSION_COLLECTION_NAME = "Unite_Fusion_Batch1_with_filepath"
+BEIT3_COLLECTION_NAME = "beit3_batch1_filter"
+BGE_COLLECTION_NAME = "bge_batch1_filter"
+UNITE_COLLECTION_NAME = "Unite_Batch1_with_filepath_filter"
+UNITE_FUSION_COLLECTION_NAME = "Unite_Fusion_Batch1_with_filepath_filter"
 
 MODEL_WEIGHTS = {"beit3": 0.4, "bge": 0.2, "unite": 0.4}
 SEARCH_DEPTH = 1000
@@ -565,6 +565,8 @@ def search_milvus_sync(collection: Collection, collection_name: str, query_vecto
     try:
         if not collection or not query_vectors:
             return []
+        
+        # --- Phần kiểm tra collection có được load hay chưa ---
         need_load = False
         try:
             state = utility.load_state(collection.name)
@@ -577,10 +579,13 @@ def search_milvus_sync(collection: Collection, collection_name: str, query_vecto
         except Exception as e:
             print(f"Could not determine load state for '{collection.name}' ({e}); will attempt load.")
             need_load = True
+        
         if need_load:
             print(f"--- Collection '{collection.name}' not loaded. Loading... ---")
             collection.load()
             print(f"--- Collection '{collection.name}' loaded. ---")
+
+        # --- Cấu hình và thực hiện search ---
         index_type = COLLECTION_TO_INDEX_TYPE.get(collection_name, "HNSW")
         search_params = SEARCH_PARAMS.get(index_type, SEARCH_PARAMS["HNSW"])
         
@@ -596,29 +601,29 @@ def search_milvus_sync(collection: Collection, collection_name: str, query_vecto
             expr=expr
         )
         
+        # --- Xử lý kết quả trả về (ĐÃ SỬA LỖI) ---
         final_results = []
-        for one_query in results:
-            for hit in one_query:
+        for one_query_hits in results:
+            for hit in one_query_hits:
                 entity = hit.entity
-                # ## START: SỬA LỖI TẠI ĐÂY ##
-                # Thêm UNITE_FUSION_COLLECTION_NAME vào danh sách này.
-                if collection_name in [BEIT3_COLLECTION_NAME, BGE_COLLECTION_NAME, UNITE_COLLECTION_NAME, UNITE_FUSION_COLLECTION_NAME]:
-                # ## END: SỬA LỖI TẠI ĐÂY ##
-                    frame_name = entity.get("frame_name")
-                    if frame_name is None: # Thêm kiểm tra để tránh lỗi nếu frame_name bị thiếu
-                        continue
-                    if ".webp" in frame_name:
-                        filepath = os.path.join(IMAGE_BASE_PATH, f"{frame_name}")
-                    else: 
-                        filepath = os.path.join(IMAGE_BASE_PATH, f"{frame_name}.webp")
-                else:
-                    filepath = entity.get("filepath")
                 
-                print(filepath) # Bây giờ sẽ in ra đường dẫn đúng
+                # ## START: LOGIC SỬA LỖI ##
+                # Luôn sử dụng 'frame_name' để xây dựng 'filepath', vì đây là trường
+                # chúng ta yêu cầu Milvus trả về trong output_fields.
+                frame_name = entity.get("frame_name")
                 
-                if filepath is None: # Bỏ qua các kết quả không có đường dẫn
+                # Nếu không có frame_name, đây là một bản ghi không hợp lệ, bỏ qua.
+                if frame_name is None:
                     continue
-                    
+
+                # Xây dựng đường dẫn đầy đủ một cách nhất quán cho tất cả các collection
+                if ".webp" in frame_name:
+                    filepath = os.path.join(IMAGE_BASE_PATH, f"{frame_name}")
+                else: 
+                    filepath = os.path.join(IMAGE_BASE_PATH, f"{frame_name}.webp")
+                
+                # ## END: LOGIC SỬA LỖI ##
+
                 final_results.append({
                     "filepath": filepath,
                     "score": hit.distance,
@@ -627,6 +632,7 @@ def search_milvus_sync(collection: Collection, collection_name: str, query_vecto
                     "shot_id": str(entity.get("shot_id"))
                 })
         return final_results
+        
     except Exception as e:
         print(f"ERROR during Milvus search on '{collection_name}': {e}")
         traceback.print_exc()
@@ -819,35 +825,40 @@ async def websocket_endpoint(websocket: WebSocket):
 # ## PERFORMANCE OPTIMIZATION: Asynchronous Query Processing with Cache ##
 @app.post("/process_query")
 async def process_query(request_data: ProcessQueryRequest):
-    if not request_data.query: 
+    """
+    Xử lý một truy vấn văn bản gốc dựa trên các tùy chọn enhance và expand.
+    - enhance=True: Dùng AI để dịch và tối ưu hóa (chất lượng cao).
+    - expand=True: Dùng googletrans dịch rồi expand.
+    - Mặc định: Dùng googletrans chỉ để dịch.
+    """
+    query = request_data.query
+    if not query:
         return {"processed_query": ""}
-    
-    global processed_query_cache
-    if len(processed_query_cache) > CACHE_MAX_SIZE:
-        processed_query_cache.clear()
-        
-    cache_key = f"{request_data.query}|{request_data.enhance}|{request_data.expand}"
+
+    cache_key = f"{query}|{request_data.enhance}|{request_data.expand}"
     if cache_key in processed_query_cache:
-        print(f"--- QUERY CACHE HIT for: {request_data.query[:50]}... ---")
+        print(f"--- QUERY CACHE HIT for: {query[:50]}... ---")
         return {"processed_query": processed_query_cache[cache_key]}
-    
-    print(f"--- QUERY CACHE MISS for: {request_data.query[:50]}... ---")
+    print(f"--- QUERY CACHE MISS for: {query[:50]}... ---")
 
-    base_query = await translate_query(request_data.query)
+    processed_query = ""
     
-    if request_data.expand:
-        queries_to_process = await asyncio.to_thread(expand_query_parallel, base_query)
-    else:
-        queries_to_process = [base_query]
-
     if request_data.enhance:
-        # Use asyncio.gather to run multiple enhancements in parallel if expand created multiple queries
-        enhance_tasks = [asyncio.to_thread(enhance_query, q) for q in queries_to_process]
-        final_queries = await asyncio.gather(*enhance_tasks)
-    else:
-        final_queries = queries_to_process
+        print(f"--- Action: Enhancing '{query[:50]}...' using AI (high quality translate + optimize)")
+        processed_query = await asyncio.to_thread(enhance_query, query)
     
-    processed_query = " ".join(final_queries)
+    elif request_data.expand:
+        print(f"--- Action: Expanding '{query[:50]}...' using fast translate")
+        translated_query = await translate_query(query)
+        processed_query = await asyncio.to_thread(expand_query_parallel, translated_query)
+    
+    else:
+        print(f"--- Action: Translating '{query[:50]}...' using fast translate")
+        processed_query = await translate_query(query)
+
+    if isinstance(processed_query, list):
+        processed_query = "\n".join(processed_query)
+
     processed_query_cache[cache_key] = processed_query
     return {"processed_query": processed_query}
 
@@ -992,7 +1003,7 @@ async def search_unified(request: Request, search_data: str = Form(...), query_i
             response_content.update({"processed_query": "", "total_results": 0, "timing_info": {**timings, "total_request_s": time.time() - start_total_time}})
             return ORJSONResponse(content=response_content)
         
-        candidate_frame_names = [os.path.basename(res['filepath']) for res in es_results_for_standalone_search]
+        candidate_frame_names = [os.path.splitext(os.path.basename(res['filepath']))[0] for res in es_results_for_standalone_search]
         if candidate_frame_names:
             formatted_names = [f'"{name}"' for name in candidate_frame_names]
             milvus_expr = f'frame_name in [{",".join(formatted_names)}]'
