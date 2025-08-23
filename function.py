@@ -78,6 +78,7 @@ def enhance_query(original_query: str) -> str:
             enhanced_text = resp.text.strip().strip('"')
             return enhanced_text
         except Exception:
+            print("Fail, trying next key")
             continue
     return original_query
     
@@ -165,34 +166,6 @@ def expand_query_parallel(short_query: str, num_requests: int = NUM_EXPAND_WORKE
 # =========================
 if __name__ == "__main__":
     async def main_test():
-        q_vi = "ông già mặc áo màu xanh đi dạo trong công viên"
-        q_en = "a dog playing with a red ball"
-
-        print("--- DEMO TỐC ĐỘ DỊCH THUẬT ---")
-
-        # --- Lần 1: Dịch câu tiếng Việt (sẽ chậm do gọi API) ---
-        print(f"\n[Lần 1] Đang dịch: '{q_vi}'")
-        st = time.monotonic()
-        translated_vi_1 = await translate_query(q_vi)
-        et = time.monotonic()
-        print(f"-> Kết quả: '{translated_vi_1}'")
-        print(f"-> Thời gian: {et - st:.4f} giây (Gọi API thật)")
-
-        # --- Lần 2: Dịch lại câu tiếng Việt (sẽ cực nhanh do lấy từ cache) ---
-        print(f"\n[Lần 2] Đang dịch lại: '{q_vi}'")
-        st = time.monotonic()
-        translated_vi_2 = await translate_query(q_vi)
-        et = time.monotonic()
-        print(f"-> Kết quả: '{translated_vi_2}'")
-        print(f"-> Thời gian: {et - st:.4f} giây (Lấy từ cache)")
-
-        # --- Lần 3: Dịch câu tiếng Anh (cũng nhanh vì không cần dịch) ---
-        print(f"\n[Lần 3] Xử lý câu tiếng Anh: '{q_en}'")
-        st = time.monotonic()
-        translated_en = await translate_query(q_en)
-        et = time.monotonic()
-        print(f"-> Kết quả: '{translated_en}'")
-        print(f"-> Thời gian: {et - st:.4f} giây (Phát hiện ngôn ngữ & bỏ qua)")
-
+        print(enhance_query("con chó"))
     asyncio.run(main_test())
     

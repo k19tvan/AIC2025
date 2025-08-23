@@ -199,6 +199,9 @@ bge_collection: Optional[Collection] = None
 unite_collection: Optional[Collection] = None
 unite_collection_fusion: Optional[Collection] = None
 
+FRAME_CONTEXT_CACHE_FILE = "/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/DataPreprocessing/KF/frame_context_cache.json"
+FRAME_CONTEXT_CACHE: Optional[Dict[str, List[str]]] = None
+
 # ## TEAMWORK: Connection Manager for WebSockets ##
 class ConnectionManager:
     def __init__(self):
@@ -277,6 +280,10 @@ class VideoInfoResponse(BaseModel):
 def startup_event():
     global es, OBJECT_COUNTS_DF, OBJECT_POSITIONS_DF, beit3_collection, bge_collection, unite_collection, unite_collection_fusion
     try:
+        print("--- Loading cache json ---")
+        load_frame_context_cache_from_json()
+        print("--- Loading cache json successfully ---")
+    
         connections.connect(alias="default", host=MILVUS_HOST, port=MILVUS_PORT)
         print("--- Milvus connection successful. ---")
         print("--- Loading Milvus collections into memory... ---")
@@ -336,6 +343,35 @@ def startup_event():
         OBJECT_POSITIONS_DF = None
 
 # --- Helper Functions ---
+
+def load_frame_context_cache_from_json():
+    """
+    Tải cache tra cứu context từ file JSON đã được tính toán trước.
+    """
+    global FRAME_CONTEXT_CACHE
+    if not os.path.exists(FRAME_CONTEXT_CACHE_FILE):
+        print("\n" + "="*80)
+        print(f"!!! CẢNH BÁO QUAN TRỌNG: Không tìm thấy file cache '{FRAME_CONTEXT_CACHE_FILE}'.")
+        print("!!! Tính năng 'Xem Context' sẽ không hoạt động tối ưu.")
+        print(f"!!! Hãy chạy script 'create_context_cache.py' để tạo file này.")
+        print("="*80 + "\n")
+        FRAME_CONTEXT_CACHE = {} # Khởi tạo rỗng để tránh lỗi khi server chạy
+        return
+
+    print(f"--- Đang tải Frame Context Cache từ '{FRAME_CONTEXT_CACHE_FILE}'... ---")
+    start_time = time.time()
+    try:
+        with open(FRAME_CONTEXT_CACHE_FILE, 'r', encoding='utf-8') as f:
+            FRAME_CONTEXT_CACHE = json.load(f)
+        end_time = time.time()
+        print(f"--- Tải Frame Context Cache thành công sau {end_time - start_time:.2f}s. ---")
+        print(f"--- Đã cache context cho {len(FRAME_CONTEXT_CACHE)} frames. ---")
+    except Exception as e:
+        print(f"!!! LỖI NGHIÊM TRỌNG: Không thể đọc hoặc phân tích file cache '{FRAME_CONTEXT_CACHE_FILE}'. Lỗi: {e}")
+        FRAME_CONTEXT_CACHE = {}
+
+# ## END: TỐI ƯU HÓA CONTEXT VIEW ##
+
 def get_video_fps(video_path: str) -> float:
     """Gets the FPS of a video file using OpenCV. Returns a default if it fails."""
     if not os.path.exists(video_path):
@@ -1334,33 +1370,37 @@ async def temporal_search(request_data: TemporalSearchRequest, request: Request)
 
 @app.post("/check_temporal_frames")
 async def check_temporal_frames(request_data: CheckFramesRequest) -> List[str]:
+    """
+    Phiên bản siêu tối ưu: Sử dụng cache đã tính toán trước từ file JSON.
+    1. Lấy tên file từ đường dẫn đầy đủ.
+    2. Dùng tên file làm key để tra cứu trong cache.
+    3. Ghép lại đường dẫn đầy đủ cho các file xung quanh và trả về.
+    """
     base_filepath = request_data.base_filepath
-    if not base_filepath or not os.path.isfile(base_filepath):
-        raise HTTPException(status_code=404, detail="Base filepath not found or does not exist.")
-    try:
-        def find_frames():
-            directory = os.path.dirname(base_filepath)
-            target_filename = os.path.basename(base_filepath)
-            video_match = re.match(r'^(L\d+_V\d+)', target_filename)
-            if not video_match: return [base_filepath]
-            video_prefix = video_match.group(1)
-            all_frames_in_video = []
-            for filename in os.listdir(directory):
-                if filename.startswith(video_prefix):
-                    frame_num_match = re.search(r'_(\d+)\.[^.]+$', filename)
-                    if frame_num_match:
-                        all_frames_in_video.append({'num': int(frame_num_match.group(1)), 'path': os.path.join(directory, filename)})
-            all_frames_in_video.sort(key=lambda x: x['num'])
-            sorted_paths = [frame['path'] for frame in all_frames_in_video]
-            try: target_index = sorted_paths.index(base_filepath)
-            except ValueError: return [base_filepath]
-            start_index = max(0, target_index - 10)
-            end_index = min(len(sorted_paths), target_index + 11)
-            return sorted_paths[start_index:end_index]
-        return await asyncio.to_thread(find_frames)
-    except Exception as e:
-        print(f"ERROR in check_temporal_frames: {e}"); traceback.print_exc()
-        return []
+    
+    # Nếu cache không được tải vì lý do nào đó, trả về chính file đó để không bị lỗi
+    print(base_filepath)
+    if not FRAME_CONTEXT_CACHE:
+        return [base_filepath]
+    
+    # 1. Lấy tên file (key) từ đường dẫn đầy đủ mà frontend gửi lên
+    # Ví dụ: từ "/path/to/L26_V462_0001_000000.webp" -> "L26_V462_0001_000000.webp"
+    key_filename = os.path.basename(base_filepath)
+    
+    # 2. Tra cứu danh sách các tên file xung quanh từ cache
+    # Nếu không tìm thấy, trả về một danh sách chỉ chứa file gốc
+    neighbor_filenames = FRAME_CONTEXT_CACHE.get(key_filename)
+    
+    if not neighbor_filenames:
+        return [base_filepath]
+
+    # 3. Ghép lại đường dẫn đầy đủ và trả về cho frontend
+    # Frontend cần đường dẫn đầy đủ để có thể hiển thị ảnh
+    # Ví dụ: từ "L26_V462_0001_000016.webp" -> "/.../Keyframes/webp_keyframes/L26_V462_0001_000016.webp"
+    full_neighbor_paths = [os.path.join(IMAGE_BASE_PATH, fname) for fname in neighbor_filenames]
+    
+    return full_neighbor_paths
+
 
 @app.get("/videos/{video_id}")
 async def get_video(video_id: str):
