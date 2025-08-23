@@ -601,27 +601,29 @@ def search_milvus_sync(collection: Collection, collection_name: str, query_vecto
             expr=expr
         )
         
-        # --- Xử lý kết quả trả về (ĐÃ SỬA LỖI) ---
+        print(results)
+        
+        # --- Xử lý kết quả trả về (ĐÃ SỬA LỖI THEO YÊU CẦU MỚI) ---
         final_results = []
         for one_query_hits in results:
             for hit in one_query_hits:
                 entity = hit.entity
                 
-                # ## START: LOGIC SỬA LỖI ##
-                # Luôn sử dụng 'frame_name' để xây dựng 'filepath', vì đây là trường
-                # chúng ta yêu cầu Milvus trả về trong output_fields.
+                # ## START: LOGIC SỬA LỖI - ÁP DỤNG QUY TẮC NHẤT QUÁN ##
                 frame_name = entity.get("frame_name")
                 
-                # Nếu không có frame_name, đây là một bản ghi không hợp lệ, bỏ qua.
-                if frame_name is None:
+                # Bỏ qua nếu bản ghi không hợp lệ (không có frame_name)
+                if not frame_name:
                     continue
 
-                # Xây dựng đường dẫn đầy đủ một cách nhất quán cho tất cả các collection
-                if ".webp" in frame_name:
-                    filepath = os.path.join(IMAGE_BASE_PATH, f"{frame_name}")
-                else: 
-                    filepath = os.path.join(IMAGE_BASE_PATH, f"{frame_name}.webp")
-                
+                # Quy tắc nhất quán: Mọi frame_name từ Milvus đều là TÊN GỐC KHÔNG CÓ ĐUÔI.
+                # Luôn luôn ghép nó với IMAGE_BASE_PATH và thêm đuôi .webp.
+                # Logic này giờ đây áp dụng cho TẤT CẢ các collection.
+                if frame_name.endswith(".webp"):
+                    frame_name = frame_name[:-5]
+                    
+                filepath = os.path.join(IMAGE_BASE_PATH, f"{frame_name}.webp")
+                print(filepath)
                 # ## END: LOGIC SỬA LỖI ##
 
                 final_results.append({
