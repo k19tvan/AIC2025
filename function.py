@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from google import genai
 from google.genai import types
 from typing import List
-from api_key import api_key
+
 import asyncio
 import time # Thêm để test tốc độ
 
@@ -15,6 +15,11 @@ import time # Thêm để test tốc độ
 from fast_langdetect import LangDetector
 from googletrans import Translator
 from async_lru import alru_cache # Import thư viện cache cho hàm async
+
+import sys
+path_to_api = '/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/DataPreprocessing/Api'
+sys.path.append(path_to_api)
+from Api_key import api_key
 
 # =========================
 # Config
