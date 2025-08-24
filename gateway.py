@@ -155,6 +155,7 @@ IMAGE_BASE_PATH = "/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_
 BEIT3_WORKER_URL = "http://model-workers:8001/embed"
 BGE_WORKER_URL = "http://model-workers:8002/embed"
 UNITE_WORKER_URL = "http://model-workers:8003/embed"
+OPS_MM_WORKER_URL = "http://model-workers:8004/embed"
 IMAGE_GEN_WORKER_URL = "http://localhost:8004/generate"
 
 ELASTICSEARCH_HOST = "http://elasticsearch2:9200"
@@ -166,8 +167,9 @@ BEIT3_COLLECTION_NAME = "beit3_batch1_filter"
 BGE_COLLECTION_NAME = "bge_batch1_filter"
 UNITE_COLLECTION_NAME = "Unite_Batch1_with_filepath_filter"
 UNITE_FUSION_COLLECTION_NAME = "Unite_Fusion_Batch1_with_filepath_filter"
+OPS_MM_COLLECTION_NAME = "Mm_embed_Batch1_with_filepath_filter"
 
-MODEL_WEIGHTS = {"beit3": 0.4, "bge": 0.2, "unite": 0.4}
+MODEL_WEIGHTS = {"beit3": 0.3, "bge": 0.1, "unite": 0.3, "ops_mm": 0.3}
 SEARCH_DEPTH = 1000
 TOP_K_RESULTS = 1000
 MAX_SEQUENCES_TO_RETURN = 500
@@ -188,7 +190,8 @@ COLLECTION_TO_INDEX_TYPE = {
     BEIT3_COLLECTION_NAME: "HNSW",
     BGE_COLLECTION_NAME: "HNSW",
     UNITE_COLLECTION_NAME: "HNSW",
-    UNITE_FUSION_COLLECTION_NAME: "HNSW"
+    UNITE_FUSION_COLLECTION_NAME: "HNSW",
+    OPS_MM_COLLECTION_NAME: "HNSW"
 }
 
 es = None
@@ -198,6 +201,7 @@ beit3_collection: Optional[Collection] = None
 bge_collection: Optional[Collection] = None
 unite_collection: Optional[Collection] = None
 unite_collection_fusion: Optional[Collection] = None
+ops_mm_collection: Optional[Collection] = None
 
 FRAME_CONTEXT_CACHE_FILE = "/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/DataPreprocessing/KF/frame_context_cache.json"
 FRAME_CONTEXT_CACHE: Optional[Dict[str, List[str]]] = None
@@ -278,7 +282,7 @@ class VideoInfoResponse(BaseModel):
 
 @app.on_event("startup")
 def startup_event():
-    global es, OBJECT_COUNTS_DF, OBJECT_POSITIONS_DF, beit3_collection, bge_collection, unite_collection, unite_collection_fusion
+    global es, OBJECT_COUNTS_DF, OBJECT_POSITIONS_DF, beit3_collection, bge_collection, unite_collection, unite_collection_fusion, ops_mm_collection
     try:
         print("--- Loading cache json ---")
         load_frame_context_cache_from_json()
@@ -292,7 +296,8 @@ def startup_event():
             "BEiT3": (BEIT3_COLLECTION_NAME, "beit3"),
             "BGE": (BGE_COLLECTION_NAME, "bge"),
             "Unite": (UNITE_COLLECTION_NAME, "unite"),
-            "UniteFusion": (UNITE_FUSION_COLLECTION_NAME, "unite_fusion")
+            "UniteFusion": (UNITE_FUSION_COLLECTION_NAME, "unite_fusion"),
+            "OpsMM": (OPS_MM_COLLECTION_NAME, "ops_mm")
         }
 
         for name, (col_name, var_name) in collections_to_load.items():
@@ -308,6 +313,8 @@ def startup_event():
                     unite_collection = collection
                 elif var_name == "unite_fusion":
                     unite_collection_fusion = collection
+                elif var_name == "ops_mm": # <-- THÊM KHỐI LỆNH NÀY
+                    ops_mm_collection = collection
                     
                 print(f"--- Collection '{col_name}' (for {name}) loaded successfully. ---")
             else:
@@ -599,6 +606,7 @@ def get_valid_filepaths_for_strict_search(all_filepaths: set, filters: ObjectFil
 
 def search_milvus_sync(collection: Collection, collection_name: str, query_vectors: list, limit: int, expr: str = None):
     try:
+        # print(collection)
         if not collection or not query_vectors:
             return []
         
@@ -803,7 +811,7 @@ async def get_embeddings_for_query_from_worker(
     is_fusion: bool = False
 ) -> Dict[str, List[List[float]]]:
     tasks = []
-    model_url_map = {"beit3": BEIT3_WORKER_URL, "bge": BGE_WORKER_URL, "unite": UNITE_WORKER_URL}
+    model_url_map = {"beit3": BEIT3_WORKER_URL, "bge": BGE_WORKER_URL, "unite": UNITE_WORKER_URL, "ops_mm": OPS_MM_WORKER_URL}
     async def get_model_embedding(model_name: str) -> tuple[str, list]:
         url = model_url_map.get(model_name)
         if not url: return model_name, []
@@ -1099,24 +1107,41 @@ async def search_unified(request: Request, search_data: str = Form(...), query_i
             if any(results_by_model.values()):
                 start_milvus = time.time()
                 milvus_tasks = []
-                milvus_tasks.append(search_milvus_async(beit3_collection, BEIT3_COLLECTION_NAME, results_by_model.get("beit3", []), SEARCH_DEPTH, expr=milvus_expr) if "beit3" in models_to_use and results_by_model.get("beit3") else asyncio.sleep(0, result=[]))
-                milvus_tasks.append(search_milvus_async(bge_collection, BGE_COLLECTION_NAME, results_by_model.get("bge", []), SEARCH_DEPTH, expr=milvus_expr) if "bge" in models_to_use and results_by_model.get("bge") else asyncio.sleep(0, result=[]))
-                
+                models_in_task_order = [] # <-- Biến mới để theo dõi thứ tự
+
+                # Thêm task theo thứ tự nhất quán
+                if "beit3" in models_to_use and results_by_model.get("beit3"):
+                    milvus_tasks.append(search_milvus_async(beit3_collection, BEIT3_COLLECTION_NAME, results_by_model["beit3"], SEARCH_DEPTH, expr=milvus_expr))
+                    models_in_task_order.append("beit3")
+
+                if "bge" in models_to_use and results_by_model.get("bge"):
+                    milvus_tasks.append(search_milvus_async(bge_collection, BGE_COLLECTION_NAME, results_by_model["bge"], SEARCH_DEPTH, expr=milvus_expr))
+                    models_in_task_order.append("bge")
+                    
                 if "unite" in models_to_use and results_by_model.get("unite"):
                     is_fusion = search_data_model.use_unite_fusion
                     unite_col = unite_collection_fusion if is_fusion else unite_collection
                     unite_name = UNITE_FUSION_COLLECTION_NAME if is_fusion else UNITE_COLLECTION_NAME
-                    milvus_tasks.append(search_milvus_async(unite_col, unite_name, results_by_model.get("unite", []), SEARCH_DEPTH, expr=milvus_expr))
-                else:
-                    milvus_tasks.append(asyncio.sleep(0, result=[]))
-                
-                beit3_res, bge_res, unite_res = await asyncio.gather(*milvus_tasks)
+                    milvus_tasks.append(search_milvus_async(unite_col, unite_name, results_by_model["unite"], SEARCH_DEPTH, expr=milvus_expr))
+                    models_in_task_order.append("unite")
+
+                if "ops_mm" in models_to_use and results_by_model.get("ops_mm"):
+                    milvus_tasks.append(search_milvus_async(ops_mm_collection, OPS_MM_COLLECTION_NAME, results_by_model["ops_mm"], SEARCH_DEPTH, expr=milvus_expr))
+                    models_in_task_order.append("ops_mm")
+
+                # Gọi gather và gán kết quả một cách an toàn
+                milvus_results_list = await asyncio.gather(*milvus_tasks)
                 timings["vector_search_s"] = time.time() - start_milvus
                 
                 start_post_proc = time.time()
+                
+                # Tạo dictionary kết quả dựa trên thứ tự đã lưu
+                results_for_rrf = {model_name: result for model_name, result in zip(models_in_task_order, milvus_results_list)}
+                
                 milvus_weights = {m: w for m, w in MODEL_WEIGHTS.items() if m in models_to_use}
-                final_fused_results = reciprocal_rank_fusion({"beit3": beit3_res, "bge": bge_res, "unite": unite_res}, milvus_weights)
+                final_fused_results = reciprocal_rank_fusion(results_for_rrf, milvus_weights)
                 timings["post_processing_s"] = time.time() - start_post_proc
+                
     elif is_filter_search:
         start_post_proc = time.time()
         for res in es_results_for_standalone_search:
@@ -1226,9 +1251,24 @@ async def temporal_search(request_data: TemporalSearchRequest, request: Request)
                 unite_col = unite_collection_fusion if stage.use_unite_fusion else unite_collection
                 unite_name = UNITE_FUSION_COLLECTION_NAME if stage.use_unite_fusion else UNITE_COLLECTION_NAME
                 milvus_tasks.append(search_milvus_async(unite_col, unite_name, results_by_model["unite"], SEARCH_DEPTH_PER_STAGE, expr=milvus_expr))
+                
+            if "ops_mm" in models and results_by_model.get("ops_mm"):
+                milvus_tasks.append(search_milvus_async(ops_mm_collection, OPS_MM_COLLECTION_NAME, results_by_model["ops_mm"], SEARCH_DEPTH_PER_STAGE, expr=milvus_expr))
             
             milvus_results = await asyncio.gather(*milvus_tasks)
-            results_dict = {"beit3": milvus_results[0] if len(milvus_results) > 0 else [], "bge": milvus_results[1] if len(milvus_results) > 1 else [], "unite": milvus_results[2] if len(milvus_results) > 2 else []}
+            results_dict = {}
+            model_idx = 0
+            def assign_result(model_name):
+                nonlocal model_idx
+                if model_name in models:
+                    results_dict[model_name] = milvus_results[model_idx] if len(milvus_results) > model_idx else []
+                    model_idx += 1
+            
+            assign_result("beit3")
+            assign_result("bge")
+            assign_result("unite")
+            assign_result("ops_mm") # <-- THÊM DÒNG NÀY
+            
             return reciprocal_rank_fusion(results_dict, MODEL_WEIGHTS)
         elif has_ocr_asr_filter:
             processed_queries_for_ui.append(f"OCR/ASR: {stage.ocr_query or ''} / {stage.asr_query or ''}")
