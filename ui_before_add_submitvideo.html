@@ -354,15 +354,7 @@
             background: var(--accent-blue);
             transform: scale(1.1);
         }
-    /* ## START: NEW CSS FOR VIDEO PREVIEW ENHANCEMENTS ## */
-        .video-player-container {
-            position: relative;
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        /* ## END: NEW CSS FOR VIDEO PREVIEW ENHANCEMENTS ## */
+
     </style>
 </head>
 <body>
@@ -382,7 +374,6 @@
                     <div class="model-dropdown-item"><input type="checkbox" id="model-beit3" value="beit3" checked><label for="model-beit3">BEiT-3</label></div>
                     <div class="model-dropdown-item"><input type="checkbox" id="model-bge" value="bge" checked><label for="model-bge">BGE-VL</label></div>
                     <div class="model-dropdown-item"><input type="checkbox" id="model-unite" value="unite" checked><label for="model-unite">Unite</label></div>
-                    <div class="model-dropdown-item"><input type="checkbox" id="model-ops_mm" value="ops_mm" checked><label for="model-ops_mm">Ops-MM</label></div>
                 </div>
             </div>
             <button class="toolbar-btn" id="objectFilterBtn" title="Object Filters (Ctrl+F)"><div class="btn-hover-bg"></div><span><i class="fas fa-shapes"></i> Filters</span></button>
@@ -446,25 +437,10 @@
     <div id="temporalContextModal" class="image-modal-overlay"><div class="temporal-modal-content"><div class="temporal-modal-header"><h2 id="temporalModalTitle"></h2><span class="image-modal-close" id="closeTemporalModalBtn" title="Close (Esc)">&times;</span></div><div class="temporal-modal-body"><div class="temporal-grid" id="temporalGrid"></div></div><div class="temporal-modal-footer">Shortcuts: Click to zoom. Ctrl+Click/Space on button to Push. Ctrl+Shift+Click/Space on button to Submit Direct.</div></div></div>
     <div id="dresModal" class="modal-overlay"><div class="modal-content" style="max-width: 500px;"><div class="modal-header"><h2 class="modal-title"><i class="fas fa-trophy"></i> DRES Submission</h2><span class="modal-close" id="dresModalCloseBtn">&times;</span></div><div class="modal-body" style="flex-direction: column; gap: 20px;"><div><label for="dresUsername">Username</label><input type="text" id="dresUsername" class="filter-input" placeholder="Enter your username..."></div><div><label for="dresPassword">Password</label><input type="password" id="dresPassword" class="filter-input" placeholder="Enter your password..."></div><button id="dresLoginBtn" class="search-btn" style="width: 100%;">Login & Get Evaluations</button><div id="dresStatus" class="dres-status">Status: Not logged in.</div><div><label for="dresEvaluationSelect">Select Evaluation</label><select id="dresEvaluationSelect" class="filter-input" disabled></select></div></div></div></div>
 
-    <!-- ## START: MODIFIED VIDEO PREVIEW MODAL ## -->
     <div id="videoPreviewModal" class="image-modal-overlay">
         <span class="image-modal-close" id="closeVideoModalBtn" title="Close (Esc)">&times;</span>
-        <div class="video-player-container">
-            <video id="videoPlayer" class="image-modal-content" controls autoplay style="background-color: #000;"></video>
-            
-            <!-- Container for the action buttons -->
-            <div id="videoActionButtons" style="margin-top: 20px; display: flex; gap: 15px;">
-                <button id="pushCurrentFrameBtn" class="toolbar-btn" style="width: auto; padding: 12px 24px; font-size: 1rem;" title="Push to Team (Ctrl+Space in player)">
-                    <div class="btn-hover-bg"></div>
-                    <span><i class="fas fa-users"></i> Push to Team</span>
-                </button>
-                <button id="submitCurrentFrameBtn" class="search-btn" style="width: auto; padding: 12px 24px; font-size: 1rem;" title="Submit to DRES (Ctrl+Shift+Space in player)">
-                    <i class="fas fa-paper-plane"></i> Submit Frame
-                </button>
-            </div>
-        </div>
+        <video id="videoPlayer" class="image-modal-content" controls autoplay style="background-color: #000;"></video>
     </div>
-    <!-- ## END: MODIFIED VIDEO PREVIEW MODAL ## -->
 
     <script>
         // ## MERGED & CORRECTED SCRIPT ##
@@ -500,10 +476,6 @@
             const videoPreviewModal = document.getElementById('videoPreviewModal');
             const videoPlayer = document.getElementById('videoPlayer');
             const closeVideoModalBtn = document.getElementById('closeVideoModalBtn');
-            const submitCurrentFrameBtn = document.getElementById('submitCurrentFrameBtn'); // Add this line
-            const pushCurrentFrameBtn = document.getElementById('pushCurrentFrameBtn'); // <<< ADD THIS LINE
-
-            
             const usernameModal = document.getElementById('usernameModal'); const usernameInput = document.getElementById('usernameInput'); const usernameSubmitBtn = document.getElementById('usernameSubmitBtn'); const userInfoDisplay = document.getElementById('userInfo'); const teamworkPanelContainer = document.getElementById('teamworkPanelContainer'); const teamworkGrid = document.getElementById('teamworkGrid');
             let dresSessionId = sessionStorage.getItem('dresSessionId'); let dresEvaluationId = sessionStorage.getItem('dresEvaluationId'); let currentResponse = {}; let drawnBoxes = []; let isDrawing = false; let startX, startY, currentX, currentY; const PREDEFINED_OBJECTS = ['person', 'car', 'truck', 'dog', 'cat', 'cow', 'toaster']; const LABEL_SHORTCUTS = { '1': 'person', '2': 'car', '3': 'truck', '4': 'dog', '5': 'cat', '6': 'toaster'}; let focusedModelIndex = -1;
 
@@ -532,75 +504,6 @@
             }
             // ##################
             
-            // Add the event listener for our new button
-            submitCurrentFrameBtn.addEventListener('click', () => {
-                if (videoPreviewModal.style.display === 'flex' && currentVideoPreviewData) {
-                    const currentTime = videoPlayer.currentTime;
-                    const frameId = Math.round(currentTime * currentVideoPreviewData.fps);
-
-                    // Detailed debug logging as requested
-                    console.log("--- [Video Player Submission] ---");
-                    console.log(`Video ID: ${currentVideoPreviewData.videoId}`);
-                    console.log(`Current Time: ${currentTime.toFixed(4)}s`);
-                    console.log(`Video FPS: ${currentVideoPreviewData.fps}`);
-                    console.log(`Calculated Frame ID: ${frameId}`);
-                    console.log("---------------------------------");
-
-                    const submissionData = {
-                        video_id: currentVideoPreviewData.videoId,
-                        frame_id: frameId,
-                        filepath: `player_submission_at_${currentTime.toFixed(2)}s` // Dummy filepath is sufficient
-                    };
-                    
-                    handleSubmitToDRES(submissionData, true); // Bypass confirmation
-                } else {
-                    alert("No active video context to submit from. Please open a video preview first.");
-                    console.error("Submit button clicked, but 'currentVideoPreviewData' is missing.");
-                }
-            });
-            pushCurrentFrameBtn.addEventListener('click', () => {
-                if (videoPreviewModal.style.display === 'flex' && currentVideoPreviewData) {
-                    const currentTime = videoPlayer.currentTime;
-                    const frameId = Math.round(currentTime * currentVideoPreviewData.fps);
-
-                    // 1. Create a temporary canvas to generate a thumbnail
-                    const canvas = document.createElement('canvas');
-                    canvas.width = videoPlayer.videoWidth;
-                    canvas.height = videoPlayer.videoHeight;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
-                    
-                    // 2. Get the thumbnail as a Base64 Data URL
-                    const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8); // 80% quality JPEG
-
-                    // 3. Construct the shotData object for the teamwork panel
-                    // The filepath is a special identifier so we know it's a dynamic frame
-                    const shotData = {
-                        video_id: currentVideoPreviewData.videoId,
-                        frame_id: frameId,
-                        fps: currentVideoPreviewData.fps, // Pass FPS for others to use
-                        filepath: `dynamic-frame-${currentVideoPreviewData.videoId}-${frameId}`,
-                        url: thumbnailUrl, // Use the generated thumbnail
-                        is_dynamic: true // Add a flag for easy identification
-                    };
-
-                    // Detailed debug logging as requested
-                    console.log("--- [Video Player Push to Teamwork] ---");
-                    console.log(`Video ID: ${shotData.video_id}`);
-                    console.log(`Current Time: ${currentTime.toFixed(4)}s`);
-                    console.log(`Video FPS: ${shotData.fps}`);
-                    console.log(`Calculated Frame ID: ${shotData.frame_id}`);
-                    console.log("Pushing shotData object:", shotData);
-                    console.log("---------------------------------------");
-
-                    // 4. Push to the teamwork panel
-                    pushToTeamworkPanel(shotData);
-
-                } else {
-                    alert("No active video context to push from. Please open a video preview first.");
-                    console.error("Push button clicked, but 'currentVideoPreviewData' is missing.");
-                }
-            });
             rightResultsPanel.addEventListener('scroll', () => {
                 if (rightResultsPanel.scrollTop + rightResultsPanel.clientHeight >= rightResultsPanel.scrollHeight - 500) {
                     loadMoreResults();
@@ -1028,7 +931,6 @@
 
             async function openTemporalContextView(e){
                 if(!e||!e.filepath)return void alert("Error: Invalid data for context view.");
-                if (e.is_dynamic) { alert("Temporal context view is not available for frames pushed directly from the video player."); return; }
                 temporalModalTitle.textContent=`Loading context for Video: ${e.video_id}, Frame: ${e.frame_id}...`;
                 temporalGrid.innerHTML='<p style="color: white; text-align: center; padding: 20px;">Checking available frames...</p>';
                 temporalContextModal.style.display="flex";
@@ -1364,16 +1266,6 @@
 
                 const allStages = Array.from(stagesContainer.querySelectorAll('.stage-card'));
 
-                // ## START: FIX - Clear old processed queries ##
-                allStages.forEach(stage => {
-                    const displayWrapper = stage.querySelector('.main-processed-query-wrapper');
-                    if (displayWrapper) {
-                        displayWrapper.style.display = 'none';
-                        displayWrapper.querySelector('.processed-query-display').textContent = '';
-                    }
-                });
-                // ## END: FIX ##
-                
                 try {
                     const precomputationPromises = allStages.map(async (stage) => {
                         const genImageBtn = stage.querySelector('.type-btn[data-type="gen_image"]');
@@ -1488,8 +1380,7 @@
                     if (!response.ok) { const err = await response.json(); throw new Error(err.detail || 'Unknown error from server.'); }
                     currentResponse = await response.json();
 
-                    // ## START: FIX - Display processed queries for all stages ##
-                    // For single-stage search
+                    // Hiển thị processed query trả về từ server (nếu có)
                     if (currentResponse.processed_query) {
                         const firstStage = allStages[0];
                         if (firstStage) {
@@ -1499,21 +1390,6 @@
                             displayWrapper.style.display = 'flex';
                         }
                     }
-                    // For multi-stage search
-                    if (currentResponse.processed_queries && Array.isArray(currentResponse.processed_queries)) {
-                        allStages.forEach((stage, index) => {
-                            const processedQueryText = currentResponse.processed_queries[index];
-                            if (processedQueryText) {
-                                const displayWrapper = stage.querySelector('.main-processed-query-wrapper');
-                                if (displayWrapper) {
-                                    const displaySpan = displayWrapper.querySelector('.processed-query-display');
-                                    displaySpan.textContent = processedQueryText;
-                                    displayWrapper.style.display = 'flex';
-                                }
-                            }
-                        });
-                    }
-                    // ## END: FIX ##
 
                     totalResults = currentResponse.total_results || 0;
                     displayTimingInfo(currentResponse.timing_info, clientStartTime);
@@ -1700,20 +1576,6 @@
                 const activeElement = document.activeElement;
                 const isTyping = activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA');
 
-                // ## START: VIDEO PREVIEW SHORTCUTS ##
-                if (videoPreviewModal.style.display === 'flex' && event.code === 'Space' && (event.ctrlKey || event.metaKey)) {
-                    event.preventDefault();
-                    if (event.shiftKey) {
-                        // Ctrl + Shift + Space: Submit current frame
-                        submitCurrentFrameBtn.click();
-                    } else {
-                        // Ctrl + Space: Push current frame
-                        pushCurrentFrameBtn.click();
-                    }
-                    return; // Stop further processing for this event
-                }
-                // ## END: VIDEO PREVIEW SHORTCUTS ##
-
                 if (event.key === 'Escape') {
                     event.preventDefault();
                     if (isTyping) { activeElement.blur(); return; }
@@ -1727,6 +1589,60 @@
                 
                 const isModalVisible = Array.from(document.querySelectorAll('.modal-overlay')).some(m => m.style.display === 'flex' || m.style.display === 'block');
                 
+                // --- NEW LOGIC START ---
+                // This block handles both Push and Direct Submit shortcuts with clear priority
+                if (event.code === 'Space' && (event.ctrlKey || event.metaKey)) {
+                    event.preventDefault();
+
+                    if (event.shiftKey) { // This is for Ctrl + Shift + Space: Direct Submit
+                        // PRIORITY 1: Submit from the active video player if it is open
+                        if (videoPreviewModal.style.display === 'flex' && currentVideoPreviewData) {
+                            const currentTime = videoPlayer.currentTime;
+                            const frameId = Math.round(currentTime * currentVideoPreviewData.fps);
+                            const submissionData = {
+                                video_id: currentVideoPreviewData.videoId,
+                                frame_id: frameId,
+                                filepath: `player_submission_at_${currentTime.toFixed(2)}s`
+                            };
+                            console.log("Submitting from video player:", submissionData);
+                            handleSubmitToDRES(submissionData, true); // Bypass confirmation
+                            return; // Action is handled, so we stop here.
+                        }
+                        
+                        // PRIORITY 2: If the video player is not open, fall back to submitting the hovered item
+                        if (currentlyHoveredItemData && currentlyHoveredItemElement) {
+                             const itemData = currentlyHoveredItemData;
+                             const itemElement = currentlyHoveredItemElement;
+                             console.log(`Direct Submit action on hovered item.`);
+                             if (itemData.external_url) {
+                                handleGoogleImageAction(itemData.external_url, 'submit', itemElement);
+                             } else {
+                                handleSubmitToDRES(itemData, true);
+                             }
+                             return; // Action handled
+                        }
+
+                    } else { // This is for Ctrl + Space: Push to Teamwork (Unchanged from original logic)
+                        if (currentlyHoveredItemData && currentlyHoveredItemElement) {
+                            const itemData = currentlyHoveredItemData;
+                            const itemElement = currentlyHoveredItemElement;
+                            const source = itemElement.dataset.source;
+
+                            if (source === 'teamwork') { // Remove from teamwork panel
+                                if (!ws || ws.readyState !== WebSocket.OPEN) { alert("Teamwork connection is not available."); return; }
+                                ws.send(JSON.stringify({ type: 'remove_frame', data: { filepath: itemData.filepath, user: { name: username } } }));
+                            } else { // Push to teamwork panel
+                                if (itemData.external_url) {
+                                    handleGoogleImageAction(itemData.external_url, 'push', itemElement);
+                                } else {
+                                    pushToTeamworkPanel(itemData);
+                                }
+                            }
+                            return; // Action handled
+                        }
+                    }
+                }
+                // --- NEW LOGIC END ---
                 if ((event.ctrlKey || event.metaKey)) {
                     if (event.key.toLowerCase() === 'f' && !event.shiftKey && !event.altKey) {
                         event.preventDefault();
@@ -1750,6 +1666,7 @@
                         return;
                     }
                 }
+
 
                 if (event.code === 'Space' && (event.ctrlKey || event.metaKey)) {
                     if (!isModalVisible && currentlyHoveredItemData && currentlyHoveredItemElement) {
