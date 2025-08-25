@@ -79,9 +79,9 @@ class DownloadImageRequest(BaseModel):
 # --- Thiết lập & Cấu hình ---
 app = FastAPI(default_response_class=ORJSONResponse)
 
-TEMP_UPLOAD_DIR = Path("/mlcv2/WorkingSpace/Personal/nguyenmv/temp_uploads")
+TEMP_UPLOAD_DIR = Path("/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/temp_uploads")
 TEMP_UPLOAD_DIR.mkdir(exist_ok=True)
-ALLOWED_BASE_DIR = "/mlcv2"
+ALLOWED_BASE_DIR = "/workspace/mlcv2"
 
 # ## START: GOOGLE IMAGE SEARCH API ENDPOINTS ##
 @app.post("/google_image_search")
@@ -141,7 +141,8 @@ if COMMON_PARENT_DIR not in sys.path:
 try:
     from function import translate_query, enhance_query, expand_query_parallel
     print("--- Gateway Server: Đã import thành công các hàm xử lý truy vấn. ---")
-except ImportError:
+except ImportError as i:
+    print(i)
     print("!!! CẢNH BÁO: Không thể import các hàm xử lý truy vấn. Sử dụng hàm DUMMY. !!!")
     def enhance_query(q: str) -> str: return q
     def expand_query_parallel(q: str) -> list[str]: return [q]
@@ -149,8 +150,8 @@ except ImportError:
 
 # --- Cấu hình DRES và hệ thống ---
 DRES_BASE_URL = "http://192.168.28.151:5000"
-VIDEO_BASE_DIR = "/mlcv2/Datasets/HCMAI25/batch1/video"
-IMAGE_BASE_PATH = "/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/Dataset/Retrieval/Keyframes/webp_keyframes"
+VIDEO_BASE_DIR = "/workspace/mlcv1/Datasets/HCMAI25/batch1/video"
+IMAGE_BASE_PATH = "/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/Dataset/Retrieval/Keyframes/webp_keyframes"
 
 BEIT3_WORKER_URL = "http://model-workers:8001/embed"
 BGE_WORKER_URL = "http://model-workers:8002/embed"
@@ -199,7 +200,7 @@ bge_collection: Optional[Collection] = None
 unite_collection: Optional[Collection] = None
 unite_collection_fusion: Optional[Collection] = None
 
-FRAME_CONTEXT_CACHE_FILE = "/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/DataPreprocessing/KF/frame_context_cache.json"
+FRAME_CONTEXT_CACHE_FILE = "/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/DataPreprocessing/KF/frame_context_cache.json"
 FRAME_CONTEXT_CACHE: Optional[Dict[str, List[str]]] = None
 
 # ## TEAMWORK: Connection Manager for WebSockets ##
@@ -330,8 +331,8 @@ def startup_event():
         
     try:
         print("--- Loading object detection data... ---")
-        counts_path = "/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/Dataset/Object/object_counts.parquet"
-        positions_path = "/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/Dataset/Object/object_positions.parquet"
+        counts_path = "/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/Dataset/Object/object_counts.parquet"
+        positions_path = "/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/Dataset/Object/object_positions.parquet"
         counts_df = pl.read_parquet(counts_path)
         OBJECT_COUNTS_DF = counts_df.with_columns(pl.col("image_name").str.split(".").list.first().alias("name_stem"))
         positions_df = pl.read_parquet(positions_path)
@@ -637,8 +638,6 @@ def search_milvus_sync(collection: Collection, collection_name: str, query_vecto
             expr=expr
         )
         
-        print(results)
-        
         # --- Xử lý kết quả trả về (ĐÃ SỬA LỖI THEO YÊU CẦU MỚI) ---
         final_results = []
         for one_query_hits in results:
@@ -659,7 +658,6 @@ def search_milvus_sync(collection: Collection, collection_name: str, query_vecto
                     frame_name = frame_name[:-5]
                     
                 filepath = os.path.join(IMAGE_BASE_PATH, f"{frame_name}.webp")
-                print(filepath)
                 # ## END: LOGIC SỬA LỖI ##
 
                 final_results.append({
@@ -753,9 +751,8 @@ def package_response_with_urls(data: List[Dict[str, Any]], base_url: str):
                     if not current_path.startswith(ALLOWED_BASE_DIR):
                         current_path = os.path.join(IMAGE_BASE_PATH, os.path.basename(current_path))
                     if current_path.startswith("/workspace"):
-                        current_path = current_path.replace("/workspace", "/mlcv2/WorkingSpace/Personal/nguyenmv", 1)
                     
-                    shot_dict['filepath'] = current_path
+                        shot_dict['filepath'] = current_path
                     if 'url' not in shot_dict:
                          shot_dict['url'] = f"{base_url}images/{base64.urlsafe_b64encode(current_path.encode('utf-8')).decode('utf-8')}"
         if 'shots' in item and isinstance(item['shots'], list):
@@ -1423,9 +1420,10 @@ async def get_image(encoded_path: str):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid base64 path.")
     
-    remapped_path = original_path.replace("/workspace", "/mlcv2/WorkingSpace/Personal/nguyenmv", 1) if original_path.startswith("/workspace") else original_path
     safe_base = os.path.realpath(ALLOWED_BASE_DIR)
-    safe_path = os.path.realpath(remapped_path)
+    safe_path = os.path.realpath(original_path)
+    
+    print(safe_path)
     
     if not safe_path.startswith(safe_base) or not os.path.isfile(safe_path):
         raise HTTPException(status_code=404, detail="File not found or access denied.")
