@@ -129,7 +129,7 @@
         .modal-body { padding: 25px; display: flex; gap: 30px; overflow-y: auto; }
         .modal-body .filter-input { background: rgba(10, 14, 26, 0.8); border: 1px solid var(--border-color); color: white; border-radius: 6px; padding: 8px 10px; font-size: 0.95rem; width: 100%; }
         .modal-body .filter-input:focus { outline: none; border-color: var(--accent-blue); }
-        .dres-status { margin-top: 15px; font-size: 0.9rem; color: var(--text-secondary); }
+        .dres-status { margin-top: 15px; font-size: 0.9rem; color: var(--text-secondary); text-align: center; width: 100%; }
         .filter-section { flex: 1; display: flex; flex-direction: column; }
         .filter-section-header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
         .filter-section-title { font-size: 1.2rem; color: var(--accent-blue); }
@@ -363,32 +363,6 @@
             align-items: center;
         }
         /* ## END: NEW CSS FOR VIDEO PREVIEW ENHANCEMENTS ## */
-
-        /* ## START: DRES Dropdown CSS ## */
-        .dres-dropdown-item {
-            display: block;
-            padding: 12px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .dres-dropdown-item:hover {
-            background: var(--glass-bg);
-        }
-        .dres-dropdown-item.active {
-            background: var(--success-gradient);
-            color: var(--text-primary);
-            font-weight: 600;
-            box-shadow: 0 4px 12px rgba(79, 172, 254, 0.3);
-        }
-        .dres-dropdown-item.disabled {
-            color: var(--text-secondary);
-            cursor: not-allowed;
-        }
-        /* ## END: DRES Dropdown CSS ## */
     </style>
 </head>
 <body>
@@ -401,17 +375,7 @@
             <div id="userInfo" style="color: var(--text-secondary);"></div>
         </div>
         <div class="toolbar-right">
-            <!-- START: MODIFIED DRES BUTTON STRUCTURE -->
-            <div class="model-btn-wrapper"> <!-- We can reuse this class for positioning -->
-                <button class="toolbar-btn" id="dresBtn" title="Login to DRES">
-                    <div class="btn-hover-bg"></div>
-                    <span><i class="fas fa-sign-in-alt"></i> Login</span>
-                </button>
-                <div id="dresDropdown" class="model-dropdown" style="width: 300px; max-height: 400px; overflow-y: auto;">
-                    <!-- DRES evaluations will be populated here by JavaScript -->
-                </div>
-            </div>
-            <!-- END: MODIFIED DRES BUTTON STRUCTURE -->
+            <button class="toolbar-btn" id="dresBtn" title="DRES Submission"><div class="btn-hover-bg"></div><span><i class="fas fa-trophy"></i> DRES</span></button>
             <div class="model-btn-wrapper">
                 <button id="modelSelectBtn" class="toolbar-btn" title="Toggle Models (Ctrl+M)"><div class="btn-hover-bg"></div><span><i class="fas fa-layer-group"></i> Models</span></button>
                 <div id="modelDropdown" class="model-dropdown">
@@ -431,7 +395,7 @@
         <div id="left-search-panel">
             <div id="google-image-search-container">
                 <div class="google-search-header">
-                </div> <!-- <<<<<<<<<<<<<<<<<<<< THÊM LẠI DÒNG NÀY -->
+                </div>
                 <div class="google-search-input-wrapper">
                     <input type="text" id="googleSearchInput" class="stage-input" placeholder="Tìm ảnh trên Google...">
                     <button id="googleSearchBtn" class="control-btn" title="Search"><i class="fas fa-search"></i></button>
@@ -480,7 +444,46 @@
     <div id="objectFilterModal" class="modal-overlay"><div class="modal-content"><div class="modal-header"><h2 class="modal-title"><i class="fas fa-shapes"></i> Object Filters</h2><span class="modal-close" id="modalCloseBtn">&times;</span></div><div class="modal-body"><div class="filter-section"><div class="filter-section-header"><h3 class="filter-section-title">Object Counting</h3><label class="switch"><input type="checkbox" id="enableCountFilter"><span class="slider"></span></label></div><div id="countFilterControls" class="filter-controls-container"></div><button class="add-custom-btn" id="addCustomCountBtn" style="margin-top: 15px; width: 100%;"><i class="fas fa-plus"></i> Add Custom Object</button></div><div class="filter-section"><div class="filter-section-header"><h3 class="filter-section-title">Object Positioning</h3><label class="switch"><input type="checkbox" id="enablePositionFilter"><span class="slider"></span></label></div><div class="position-controls"><canvas id="positioningCanvas" width="640" height="360"></canvas><div id="drawnBoxesList" class="drawn-boxes-list"></div><p class="shortcuts-info"><b>Shortcuts:</b> Draw box with mouse. <br><b>1-6:</b> person, car, truck, dog, cat, toaster. <b>7:</b> Custom. <br><b>Backspace:</b> Delete last box. <b>C:</b> Clear all.</p></div></div></div></div></div>
     <div id="imageModal" class="image-modal-overlay"><span class="image-modal-close" title="Close (Esc)">&times;</span><img class="image-modal-content" id="zoomedImage"></div>
     <div id="temporalContextModal" class="image-modal-overlay"><div class="temporal-modal-content"><div class="temporal-modal-header"><h2 id="temporalModalTitle"></h2><span class="image-modal-close" id="closeTemporalModalBtn" title="Close (Esc)">&times;</span></div><div class="temporal-modal-body"><div class="temporal-grid" id="temporalGrid"></div></div><div class="temporal-modal-footer">Shortcuts: Click to zoom. Ctrl+Click/Space on button to Push. Ctrl+Shift+Click/Space on button to Submit Direct.</div></div></div>
-    <div id="dresModal" class="modal-overlay"><div class="modal-content" style="max-width: 500px;"><div class="modal-header"><h2 class="modal-title"><i class="fas fa-trophy"></i> DRES Submission</h2><span class="modal-close" id="dresModalCloseBtn">&times;</span></div><div class="modal-body" style="flex-direction: column; gap: 20px;"><div><label for="dresUsername">Username</label><input type="text" id="dresUsername" class="filter-input" placeholder="Enter your username..."></div><div><label for="dresPassword">Password</label><input type="password" id="dresPassword" class="filter-input" placeholder="Enter your password..."></div><button id="dresLoginBtn" class="search-btn" style="width: 100%;">Login & Get Evaluations</button><div id="dresStatus" class="dres-status">Status: Not logged in.</div></div></div>
+    
+    <!-- ## START: MODIFIED DRES MODAL WITH NEW FLOW ## -->
+    <div id="dresModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 class="modal-title"><i class="fas fa-trophy"></i> DRES Submission</h2>
+                <span class="modal-close" id="dresModalCloseBtn">&times;</span>
+            </div>
+            <div class="modal-body" style="flex-direction: column; gap: 20px;">
+                
+                <!-- View 1: Initial Login Button -->
+                <div id="dresInitialView">
+                    <button id="dresShowLoginBtn" class="search-btn" style="width: 100%;">Login to DRES</button>
+                </div>
+                
+                <!-- View 2: Login Form (hidden by default) -->
+                <div id="dresLoginView" style="display: none; flex-direction: column; gap: 20px;">
+                    <div>
+                        <label for="dresUsername">Username</label>
+                        <input type="text" id="dresUsername" class="filter-input" placeholder="Enter your username...">
+                    </div>
+                    <div>
+                        <label for="dresPassword">Password</label>
+                        <input type="password" id="dresPassword" class="filter-input" placeholder="Enter your password...">
+                    </div>
+                    <button id="dresLoginBtn" class="search-btn" style="width: 100%;">Login & Get Evaluations</button>
+                </div>
+                
+                <!-- View 3: Evaluation Selector (hidden by default) -->
+                <div id="dresEvaluationView" style="display: none; width: 100%;">
+                    <label for="dresEvaluationSelect">Select Evaluation</label>
+                    <select id="dresEvaluationSelect" class="filter-input" disabled></select>
+                </div>
+
+                <!-- Status message is always visible -->
+                <div id="dresStatus" class="dres-status">Status: Not logged in.</div>
+            </div>
+        </div>
+    </div>
+    <!-- ## END: MODIFIED DRES MODAL ## -->
 
     <!-- ## START: MODIFIED VIDEO PREVIEW MODAL ## -->
     <div id="videoPreviewModal" class="image-modal-overlay">
@@ -528,13 +531,22 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             const stagesContainer = document.getElementById('stagesContainer'); const addStageBtn = document.getElementById('addStageBtn'); const removeStageBtn = document.getElementById('removeStageBtn'); const searchBtn = document.getElementById('searchBtn'); const resultsContainer = document.getElementById('resultsContainer'); const loadingIndicator = document.getElementById('loadingIndicator'); const modelSelectBtn = document.getElementById('modelSelectBtn'); const modelDropdown = document.getElementById('modelDropdown'); const clusterBtn = document.getElementById('clusterBtn'); const ambiguousBtn = document.getElementById('ambiguousBtn'); const objectFilterBtn = document.getElementById('objectFilterBtn'); const objectFilterModal = document.getElementById('objectFilterModal'); const modalCloseBtn = document.getElementById('modalCloseBtn'); const imageModal = document.getElementById('imageModal'); const zoomedImage = document.getElementById('zoomedImage'); const closeImageModalBtn = document.querySelector('#imageModal .image-modal-close'); const temporalContextModal = document.getElementById('temporalContextModal'); const temporalGrid = document.getElementById('temporalGrid'); const temporalModalTitle = document.getElementById('temporalModalTitle'); const closeTemporalModalBtn = document.getElementById('closeTemporalModalBtn'); const enableCountFilter = document.getElementById('enableCountFilter'); const enablePositionFilter = document.getElementById('enablePositionFilter'); const countFilterControls = document.getElementById('countFilterControls'); const addCustomCountBtn = document.getElementById('addCustomCountBtn'); const posCanvas = document.getElementById('positioningCanvas'); const drawnBoxesList = document.getElementById('drawnBoxesList'); const posCtx = posCanvas.getContext('2d');
-            const dresBtn = document.getElementById('dresBtn');
-            const dresModal = document.getElementById('dresModal');
-            const dresDropdown = document.getElementById('dresDropdown'); // <<< ADDED THIS LINE
-            const dresModalCloseBtn = document.getElementById('dresModalCloseBtn');
-            const dresLoginBtn = document.getElementById('dresLoginBtn');
-            const dresStatus = document.getElementById('dresStatus');
             
+            // ## START: DRES MODAL ELEMENTS (NEW STRUCTURE) ##
+            const dresBtn = document.getElementById('dresBtn'); // Toolbar button
+            const dresModal = document.getElementById('dresModal');
+            const dresModalCloseBtn = document.getElementById('dresModalCloseBtn');
+            const dresInitialView = document.getElementById('dresInitialView');
+            const dresShowLoginBtn = document.getElementById('dresShowLoginBtn');
+            const dresLoginView = document.getElementById('dresLoginView');
+            const dresUsername = document.getElementById('dresUsername');
+            const dresPassword = document.getElementById('dresPassword');
+            const dresLoginBtn = document.getElementById('dresLoginBtn'); // Form button
+            const dresEvaluationView = document.getElementById('dresEvaluationView');
+            const dresEvaluationSelect = document.getElementById('dresEvaluationSelect');
+            const dresStatus = document.getElementById('dresStatus');
+            // ## END: DRES MODAL ELEMENTS ##
+
             const googleSearchInput = document.getElementById('googleSearchInput');
             const googleSearchBtn = document.getElementById('googleSearchBtn');
             const googleResultsWrapper = document.getElementById('google-image-results-wrapper');
@@ -543,8 +555,8 @@
             const videoPreviewModal = document.getElementById('videoPreviewModal');
             const videoPlayer = document.getElementById('videoPlayer');
             const closeVideoModalBtn = document.getElementById('closeVideoModalBtn');
-            const submitCurrentFrameBtn = document.getElementById('submitCurrentFrameBtn'); // Add this line
-            const pushCurrentFrameBtn = document.getElementById('pushCurrentFrameBtn'); // <<< ADD THIS LINE
+            const submitCurrentFrameBtn = document.getElementById('submitCurrentFrameBtn');
+            const pushCurrentFrameBtn = document.getElementById('pushCurrentFrameBtn');
 
             
             const usernameModal = document.getElementById('usernameModal'); const usernameInput = document.getElementById('usernameInput'); const usernameSubmitBtn = document.getElementById('usernameSubmitBtn'); const userInfoDisplay = document.getElementById('userInfo'); const teamworkPanelContainer = document.getElementById('teamworkPanelContainer'); const teamworkGrid = document.getElementById('teamworkGrid');
@@ -575,59 +587,46 @@
             }
             // ##################
             
-            // Add the event listener for our new button
             submitCurrentFrameBtn.addEventListener('click', () => {
                 if (videoPreviewModal.style.display === 'flex' && currentVideoPreviewData) {
                     const currentTime = videoPlayer.currentTime;
                     const frameId = Math.round(currentTime * currentVideoPreviewData.fps);
-
-                    // Detailed debug logging as requested
                     console.log("--- [Video Player Submission] ---");
                     console.log(`Video ID: ${currentVideoPreviewData.videoId}`);
                     console.log(`Current Time: ${currentTime.toFixed(4)}s`);
                     console.log(`Video FPS: ${currentVideoPreviewData.fps}`);
                     console.log(`Calculated Frame ID: ${frameId}`);
                     console.log("---------------------------------");
-
                     const submissionData = {
                         video_id: currentVideoPreviewData.videoId,
                         frame_id: frameId,
-                        filepath: `player_submission_at_${currentTime.toFixed(2)}s` // Dummy filepath is sufficient
+                        filepath: `player_submission_at_${currentTime.toFixed(2)}s`
                     };
-                    
-                    handleSubmitToDRES(submissionData, true); // Bypass confirmation
+                    handleSubmitToDRES(submissionData, true);
                 } else {
                     alert("No active video context to submit from. Please open a video preview first.");
                     console.error("Submit button clicked, but 'currentVideoPreviewData' is missing.");
                 }
             });
+
             pushCurrentFrameBtn.addEventListener('click', () => {
                 if (videoPreviewModal.style.display === 'flex' && currentVideoPreviewData) {
                     const currentTime = videoPlayer.currentTime;
                     const frameId = Math.round(currentTime * currentVideoPreviewData.fps);
-
-                    // 1. Create a temporary canvas to generate a thumbnail
                     const canvas = document.createElement('canvas');
                     canvas.width = videoPlayer.videoWidth;
                     canvas.height = videoPlayer.videoHeight;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
-                    
-                    // 2. Get the thumbnail as a Base64 Data URL
-                    const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8); // 80% quality JPEG
-
-                    // 3. Construct the shotData object for the teamwork panel
-                    // The filepath is a special identifier so we know it's a dynamic frame
+                    const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
                     const shotData = {
                         video_id: currentVideoPreviewData.videoId,
                         frame_id: frameId,
-                        fps: currentVideoPreviewData.fps, // Pass FPS for others to use
+                        fps: currentVideoPreviewData.fps,
                         filepath: `dynamic-frame-${currentVideoPreviewData.videoId}-${frameId}`,
-                        url: thumbnailUrl, // Use the generated thumbnail
-                        is_dynamic: true // Add a flag for easy identification
+                        url: thumbnailUrl,
+                        is_dynamic: true
                     };
-
-                    // Detailed debug logging as requested
                     console.log("--- [Video Player Push to Teamwork] ---");
                     console.log(`Video ID: ${shotData.video_id}`);
                     console.log(`Current Time: ${currentTime.toFixed(4)}s`);
@@ -635,15 +634,13 @@
                     console.log(`Calculated Frame ID: ${shotData.frame_id}`);
                     console.log("Pushing shotData object:", shotData);
                     console.log("---------------------------------------");
-
-                    // 4. Push to the teamwork panel
                     pushToTeamworkPanel(shotData);
-
                 } else {
                     alert("No active video context to push from. Please open a video preview first.");
                     console.error("Push button clicked, but 'currentVideoPreviewData' is missing.");
                 }
             });
+
             rightResultsPanel.addEventListener('scroll', () => {
                 if (rightResultsPanel.scrollTop + rightResultsPanel.clientHeight >= rightResultsPanel.scrollHeight - 500) {
                     loadMoreResults();
@@ -792,12 +789,9 @@
                 item.dataset.shotId = shot.shot_id;
                 item.dataset.frameId = shot.frame_id;
                 
-                // ## LAZY LOADING ##
-                // For main results, we lazy load. For teamwork/context, load immediately.
                 const isLazy = source === 'main';
                 const srcAttribute = isLazy ? `data-src="${shot.url}"` : `src="${shot.url}"`;
                 const imgClass = isLazy ? 'lazy-load' : 'loaded';
-                // ##################
 
                 let title = '';
                 let itemHTML = '';
@@ -1067,7 +1061,6 @@
                     videoPlayer.currentTime = startTime > 0 ? startTime : 0;
                 }
             }
-            // ## END: REPLACEMENT FOR openVideoPreview FUNCTION ##
 
             async function openTemporalContextView(e){
                 if(!e||!e.filepath)return void alert("Error: Invalid data for context view.");
@@ -1407,7 +1400,6 @@
 
                 const allStages = Array.from(stagesContainer.querySelectorAll('.stage-card'));
 
-                // ## START: FIX - Clear old processed queries ##
                 allStages.forEach(stage => {
                     const displayWrapper = stage.querySelector('.main-processed-query-wrapper');
                     if (displayWrapper) {
@@ -1415,7 +1407,6 @@
                         displayWrapper.querySelector('.processed-query-display').textContent = '';
                     }
                 });
-                // ## END: FIX ##
                 
                 try {
                     const precomputationPromises = allStages.map(async (stage) => {
@@ -1467,7 +1458,7 @@
 
                         if (firstStage.querySelector('.type-btn[data-type="gen_image"]')?.classList.contains('active')) {
                             const mainInput = firstStage.querySelector('.main-query-input');
-                            searchData.query_text = mainInput.value.trim(); // Lấy query gốc
+                            searchData.query_text = mainInput.value.trim();
                             searchData.generated_image_name = firstStage.generatedImageName;
                             searchData.models = ["unite"];
                             if (searchData.query_text) hasPrimaryQuery = true;
@@ -1475,13 +1466,13 @@
                             const imageTextInput = firstStage.querySelector('.image-search-text-input');
                             if (firstStage.tempImageName) {
                                 searchData.query_image_name = firstStage.tempImageName;
-                                searchData.image_search_text = imageTextInput.value.trim(); // Lấy query gốc
+                                searchData.image_search_text = imageTextInput.value.trim();
                                 searchData.models = ["bge"];
                                 hasPrimaryQuery = true;
                             }
                         } else {
                             const mainInput = firstStage.querySelector('.main-query-input');
-                            searchData.query_text = mainInput.value.trim(); // Lấy query gốc
+                            searchData.query_text = mainInput.value.trim();
                             searchData.models = Array.from(document.querySelectorAll('#modelDropdown input:checked')).map(cb => cb.value);
                             searchData.enhance = firstStage.querySelector('.option-btn[data-option="enhance"]').classList.contains('active');
                             searchData.expand = firstStage.querySelector('.option-btn[data-option="expand"]').classList.contains('active');
@@ -1502,7 +1493,7 @@
                         const stagesData = allStages.map(stage => {
                             const mainInput = stage.querySelector('.main-query-input');
                             const stageDatum = {
-                                query: mainInput.value.trim(), // Lấy query gốc
+                                query: mainInput.value.trim(),
                                 query_image_name: stage.tempImageName || null,
                                 generated_image_name: stage.generatedImageName || null,
                                 enhance: stage.querySelector('.option-btn[data-option="enhance"]').classList.contains('active'),
@@ -1531,8 +1522,6 @@
                     if (!response.ok) { const err = await response.json(); throw new Error(err.detail || 'Unknown error from server.'); }
                     currentResponse = await response.json();
 
-                    // ## START: FIX - Display processed queries for all stages ##
-                    // For single-stage search
                     if (currentResponse.processed_query) {
                         const firstStage = allStages[0];
                         if (firstStage) {
@@ -1542,7 +1531,6 @@
                             displayWrapper.style.display = 'flex';
                         }
                     }
-                    // For multi-stage search
                     if (currentResponse.processed_queries && Array.isArray(currentResponse.processed_queries)) {
                         allStages.forEach((stage, index) => {
                             const processedQueryText = currentResponse.processed_queries[index];
@@ -1556,7 +1544,6 @@
                             }
                         });
                     }
-                    // ## END: FIX ##
 
                     totalResults = currentResponse.total_results || 0;
                     displayTimingInfo(currentResponse.timing_info, clientStartTime);
@@ -1616,7 +1603,7 @@
                         throw new Error(err.detail || 'Failed to load more results.');
                     }
                     const data = await response.json();
-                    displayResults(data.results, true); // Append results
+                    displayResults(data.results, true);
 
                 } catch (error) {
                     console.error("Error loading more results:", error);
@@ -1674,100 +1661,8 @@
                 }
             }
             
-            // ## START: New DRES UI Management Function ##
-            function updateDresUI(isLoggedIn, evaluations = [], selectedEvaluationId = null) {
-                const btnSpan = dresBtn.querySelector('span');
-                
-                // This is the main fix: we construct the innerHTML instead of using textContent
-                // to avoid deleting the icon tag.
-                
-                if (isLoggedIn) {
-                    let selectedEvalName = 'Select Evaluation';
-                    dresDropdown.innerHTML = ''; // Clear previous items
-
-                    if (evaluations.length > 0) {
-                        // Find if the stored ID is valid
-                        const validSelectedEval = evaluations.find(ev => ev.id === selectedEvaluationId);
-                        if (!validSelectedEval) {
-                            // If not valid or null, default to the first one
-                            selectedEvaluationId = evaluations[0].id;
-                            sessionStorage.setItem('dresEvaluationId', selectedEvaluationId);
-                            dresEvaluationId = selectedEvaluationId;
-                        }
-
-                        evaluations.forEach(ev => {
-                            const item = document.createElement('div');
-                            item.className = 'dres-dropdown-item';
-                            item.textContent = ev.name;
-                            item.dataset.evalId = ev.id;
-
-                            if (ev.id === selectedEvaluationId) {
-                                item.classList.add('active');
-                                selectedEvalName = ev.name;
-                            }
-
-                            item.addEventListener('click', () => {
-                                dresEvaluationId = ev.id;
-                                sessionStorage.setItem('dresEvaluationId', ev.id);
-                                dresDropdown.querySelectorAll('.dres-dropdown-item').forEach(el => el.classList.remove('active'));
-                                item.classList.add('active');
-                                // Correctly update the button text without removing the icon
-                                btnSpan.innerHTML = `<i class="fas fa-trophy"></i> DRES: ${ev.name}`;
-                                dresDropdown.style.display = 'none';
-                            });
-                            dresDropdown.appendChild(item);
-                        });
-                        btnSpan.innerHTML = `<i class="fas fa-trophy"></i> DRES: ${selectedEvalName}`;
-
-                    } else {
-                        btnSpan.innerHTML = '<i class="fas fa-trophy"></i> DRES: No evaluations';
-                        dresDropdown.innerHTML = '<div class="dres-dropdown-item disabled">No active evaluations found.</div>';
-                    }
-                    dresBtn.title = 'Select DRES Evaluation';
-                } else {
-                    // Not logged in state
-                    btnSpan.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login';
-                    dresBtn.title = 'Login to DRES';
-                    dresDropdown.style.display = 'none';
-                    dresDropdown.innerHTML = '';
-                }
-            }
-            // ## END: New DRES UI Management Function ##
-
-            // ## START: Check DRES status on page load ##
-            async function checkDresLoginStatusOnLoad() {
-                dresSessionId = sessionStorage.getItem('dresSessionId');
-                if (dresSessionId) {
-                    dresStatus.textContent = `Existing session found. Verifying...`;
-                    try {
-                        const evalResponse = await fetch(`/dres/list_evaluations?session=${dresSessionId}`);
-                        if (!evalResponse.ok) throw new Error('Session invalid, please log in again.');
-                        const evaluations = (await evalResponse.json()).filter(ev => ev.status === 'ACTIVE');
-                        const selectedEvalId = sessionStorage.getItem('dresEvaluationId');
-                        
-                        // Update the UI based on stored session
-                        updateDresUI(true, evaluations, selectedEvalId);
-                        dresStatus.textContent = `Logged in. Session ID: ${dresSessionId.substring(0, 8)}...`;
-                        dresStatus.style.color = 'var(--accent-blue)';
-                    } catch (error) {
-                        console.error("DRES session check failed:", error.message);
-                        sessionStorage.removeItem('dresSessionId');
-                        sessionStorage.removeItem('dresEvaluationId');
-                        dresSessionId = null;
-                        dresEvaluationId = null;
-                        updateDresUI(false); // Set UI to logged-out state
-                        dresStatus.textContent = `Status: ${error.message}`;
-                        dresStatus.style.color = '#ef4444';
-                    }
-                } else {
-                    updateDresUI(false); // Set UI to logged-out state
-                }
-            }
-            // ## END: Check DRES status on page load ##
-
             setupImageObserver();
             setupUser();
-            checkDresLoginStatusOnLoad(); // <<< ADDED THIS LINE
             const initialStage = createStageCard(1);
             stagesContainer.appendChild(initialStage);
             focusOnStageInput(initialStage);
@@ -1799,33 +1694,17 @@
             });
             ambiguousBtn.addEventListener('click', () => { ambiguousBtn.classList.toggle('active'); });
             modelSelectBtn.addEventListener('click', (event) => { event.stopPropagation(); const isOpening = modelDropdown.style.display !== 'block'; modelDropdown.style.display = isOpening ? 'block' : 'none'; if (isOpening) { focusedModelIndex = 0; updateModelFocus(); } else { clearModelFocus(); } });
-            
-            window.addEventListener('click', (e) => {
-                if (!modelDropdown.contains(e.target) && !modelSelectBtn.contains(e.target)) {
-                    if (modelDropdown.style.display === 'block') {
-                        modelDropdown.style.display = 'none';
-                        clearModelFocus();
-                    }
-                }
-                // vvv ADDED THIS IF STATEMENT vvv
-                if (!dresDropdown.contains(e.target) && !dresBtn.contains(e.target)) {
-                    if (dresDropdown.style.display === 'block') {
-                        dresDropdown.style.display = 'none';
-                    }
-                }
-            });
-
+            window.addEventListener('click', (e) => { if (!modelDropdown.contains(e.target) && !modelSelectBtn.contains(e.target)) { if (modelDropdown.style.display === 'block') { modelDropdown.style.display = 'none'; clearModelFocus(); } } });
             closeImageModalBtn.addEventListener('click', () => { imageModal.style.display = "none"; });
             imageModal.addEventListener('click', (e) => { if (e.target === imageModal) { imageModal.style.display = "none"; } });
             closeTemporalModalBtn.addEventListener('click', () => { temporalContextModal.style.display = "none"; });
             temporalContextModal.addEventListener('click', (e) => { if (e.target === temporalContextModal) { temporalContextModal.style.display = "none"; } });
             
-            // ## START: DEFINING AND USING closeVideoModal FUNCTION ##
             function closeVideoModal() {
                 videoPreviewModal.style.display = "none";
                 videoPlayer.pause();
                 videoPlayer.src = "";
-                currentVideoPreviewData = null; // IMPORTANT: Clear context on close
+                currentVideoPreviewData = null;
             }
 
             closeVideoModalBtn.addEventListener('click', closeVideoModal);
@@ -1834,94 +1713,130 @@
                     closeVideoModal(); 
                 } 
             });
-            // ## END: DEFINING AND USING closeVideoModal FUNCTION ##
             modalCloseBtn.addEventListener('click', () => objectFilterModal.style.display = 'none');
             
-            // ## START: MODIFIED DRES BUTTON CLICK HANDLER ##
-            dresBtn.addEventListener('click', (event) => {
-                event.stopPropagation();
-                if (dresSessionId) {
-                    // If logged in, toggle the evaluation dropdown
-                    dresDropdown.style.display = dresDropdown.style.display === 'block' ? 'none' : 'block';
-                } else {
-                    // If not logged in, show the login modal
-                    dresModal.style.display = 'flex';
-                }
-            });
-            // ## END: MODIFIED DRES BUTTON CLICK HANDLER ##
-
+            // ## START: DRES MODAL LOGIC WITH NEW FLOW ##
             dresModalCloseBtn.addEventListener('click', () => dresModal.style.display = 'none');
-            objectFilterBtn.addEventListener('click', () => {
-                objectFilterModal.style.display = 'flex';
+
+            // Handle showing the modal from the toolbar
+            dresBtn.addEventListener('click', () => {
+                if (dresSessionId) {
+                    // If already logged in, show evaluation selection directly
+                    dresInitialView.style.display = 'none';
+                    dresLoginView.style.display = 'none';
+                    dresEvaluationView.style.display = 'block';
+                    
+                    const selectedOption = dresEvaluationSelect.options[dresEvaluationSelect.selectedIndex];
+                    dresStatus.textContent = selectedOption ? `Ready to submit to: ${selectedOption.text}` : 'Logged in, please select an evaluation.';
+                    dresStatus.style.color = 'var(--accent-blue)';
+                } else {
+                    // If not logged in, show the initial login button
+                    dresInitialView.style.display = 'block';
+                    dresLoginView.style.display = 'none';
+                    dresEvaluationView.style.display = 'none';
+                    dresStatus.textContent = 'Status: Not logged in.';
+                    dresStatus.style.color = 'var(--text-secondary)';
+                }
+                dresModal.style.display = 'flex';
             });
-            
+
+            // Handle clicking the "Login to DRES" button inside the modal
+            dresShowLoginBtn.addEventListener('click', () => {
+                dresInitialView.style.display = 'none';
+                dresLoginView.style.display = 'flex';
+                dresUsername.focus();
+            });
+
+            // Handle the actual login attempt
             dresLoginBtn.addEventListener('click', async () => {
-                const username = document.getElementById('dresUsername').value;
-                const password = document.getElementById('dresPassword').value;
-                if (!username || !password) {
+                const user = dresUsername.value;
+                const pass = dresPassword.value;
+                if (!user || !pass) {
                     alert('Please enter username and password.');
                     return;
                 }
                 dresStatus.textContent = 'Logging in...';
                 dresStatus.style.color = 'var(--text-secondary)';
-                
-                // ## START: MODIFIED LOGIN LOGIC ##
                 try {
-                    const response = await fetch('/dres/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ username, password }) });
-                    if (!response.ok) { const err = await response.json(); throw new Error(err.detail || 'Login failed'); }
-                    
+                    const response = await fetch('/dres/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username: user, password: pass })
+                    });
+                    if (!response.ok) {
+                        const err = await response.json();
+                        throw new Error(err.detail || 'Login failed');
+                    }
                     const data = await response.json();
                     dresSessionId = data.sessionId;
                     sessionStorage.setItem('dresSessionId', dresSessionId);
-                    dresStatus.textContent = `Login successful! Fetching evaluations...`;
-                    dresStatus.style.color = 'var(--accent-blue)';
-
+                    
                     const evalResponse = await fetch(`/dres/list_evaluations?session=${dresSessionId}`);
                     if (!evalResponse.ok) throw new Error('Failed to fetch evaluations');
-                    const evaluations = (await evalResponse.json()).filter(ev => ev.status === 'ACTIVE');
-                    // Update the new UI and close the modal
-                    updateDresUI(true, evaluations);
-                    dresModal.style.display = 'none';
+                    const evaluations = await evalResponse.json();
+                    
+                    dresEvaluationSelect.innerHTML = '';
+                    dresEvaluationSelect.disabled = false;
+                    evaluations.forEach(ev => {
+                        if (ev.status === 'ACTIVE') {
+                            const option = document.createElement('option');
+                            option.value = ev.id;
+                            option.textContent = ev.name;
+                            dresEvaluationSelect.appendChild(option);
+                        }
+                    });
+
+                    if (dresEvaluationSelect.options.length > 0) {
+                        dresEvaluationId = dresEvaluationSelect.value;
+                        sessionStorage.setItem('dresEvaluationId', dresEvaluationId);
+                    }
+                    
+                    alert('Login successful!');
+                    dresModal.style.display = 'none'; // <-- EXIT afrer successful login
 
                 } catch (error) {
                     dresStatus.textContent = `Error: ${error.message}`;
                     dresStatus.style.color = '#ef4444';
                     dresSessionId = null;
                     sessionStorage.removeItem('dresSessionId');
-                    sessionStorage.removeItem('dresEvaluationId');
-                    updateDresUI(false); // Reset the UI to logged-out state on failure
                 }
-                // ## END: MODIFIED LOGIN LOGIC ##
             });
+
+            dresEvaluationSelect.addEventListener('change', () => {
+                dresEvaluationId = dresEvaluationSelect.value;
+                sessionStorage.setItem('dresEvaluationId', dresEvaluationId);
+                dresStatus.textContent = `Ready to submit to: ${dresEvaluationSelect.options[dresEvaluationSelect.selectedIndex].text}`;
+            });
+            // ## END: DRES MODAL LOGIC ##
+            
+            objectFilterBtn.addEventListener('click', () => {
+                objectFilterModal.style.display = 'flex';
+            });
+            
 
             window.addEventListener('keydown', (event) => {
                 const activeElement = document.activeElement;
                 const isTyping = activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA');
 
-                // ## START: VIDEO PREVIEW SHORTCUTS ##
                 if (videoPreviewModal.style.display === 'flex' && event.code === 'Space' && (event.ctrlKey || event.metaKey)) {
                     event.preventDefault();
                     if (event.shiftKey) {
-                        // Ctrl + Shift + Space: Submit current frame
                         submitCurrentFrameBtn.click();
                     } else {
-                        // Ctrl + Space: Push current frame
                         pushCurrentFrameBtn.click();
                     }
-                    return; // Stop further processing for this event
+                    return;
                 }
-                // ## END: VIDEO PREVIEW SHORTCUTS ##
 
                 if (event.key === 'Escape') {
                     event.preventDefault();
                     if (isTyping) { activeElement.blur(); return; }
-                    if (videoPreviewModal.style.display === 'flex') { closeVideoModal(); return; } // <-- Uses our new function
+                    if (videoPreviewModal.style.display === 'flex') { closeVideoModal(); return; }
                     if (imageModal.style.display === 'flex') { imageModal.style.display = 'none'; return; }
                     if (temporalContextModal.style.display === 'flex') { temporalContextModal.style.display = 'none'; return; }
                     if (objectFilterModal.style.display === 'flex') { objectFilterModal.style.display = 'none'; return; }
                     if (dresModal.style.display === 'flex') { dresModal.style.display = 'none'; return; }
                     if (modelDropdown.style.display === 'block') { modelDropdown.style.display = 'none'; clearModelFocus(); return; }
-                    if (dresDropdown.style.display === 'block') { dresDropdown.style.display = 'none'; return; }
                 }
                 
                 const isModalVisible = Array.from(document.querySelectorAll('.modal-overlay')).some(m => m.style.display === 'flex' || m.style.display === 'block');
@@ -1997,8 +1912,17 @@
 
                 if (event.key === 'Enter') {
                     if (isTyping && event.shiftKey) { return; }
-                    if (dresModal.style.display === 'flex') { event.preventDefault(); document.getElementById('dresLoginBtn').click(); return; }
-                    if (usernameModal.style.display === 'flex') { event.preventDefault(); document.getElementById('usernameSubmitBtn').click(); return; }
+                    // Check which view is visible inside the DRES modal to trigger the correct button
+                    if (dresModal.style.display === 'flex') {
+                        event.preventDefault();
+                        if (dresLoginView.style.display === 'flex') {
+                            dresLoginBtn.click();
+                        } else if (dresInitialView.style.display === 'block') {
+                            dresShowLoginBtn.click();
+                        }
+                        return;
+                    }
+                    if (usernameModal.style.display === 'flex') { event.preventDefault(); usernameSubmitBtn.click(); return; }
                     event.preventDefault();
                     searchBtn.click();
                     return;
