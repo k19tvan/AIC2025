@@ -1,11 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OpenCubee Video Search System</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style">
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" as="style">
     <style>
         :root {
             --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -13,38 +18,171 @@
             --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
             --warning-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
             --dark-bg: #0a0e1a;
-            --card-bg: rgba(20, 25, 40, 0.85);
-            --border-color: rgba(255, 255, 255, 0.1);
+            --card-bg: rgba(20, 25, 40, 0.6);
+            --border-color: rgba(255, 255, 255, 0.15);
             --text-primary: #ffffff;
             --text-secondary: #b8c5d6;
             --accent-blue: #4facfe;
             --accent-purple: #667eea;
             --accent-pink: #f093fb;
-            --glass-bg: rgba(255, 255, 255, 0.05);
-            --shadow-light: 0 8px 32px rgba(0, 0, 0, 0.3);
-            --shadow-heavy: 0 20px 60px rgba(0, 0, 0, 0.5);
+            --glass-bg: rgba(255, 255, 255, 0.08);
+            --shadow-light: 0 8px 32px rgba(0, 0, 0, 0.25);
+            --shadow-heavy: 0 20px 60px rgba(0, 0, 0, 0.45);
+            --radius: 16px;
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-        body { background: var(--dark-bg); background-image: radial-gradient(circle at 25% 25%, rgba(102, 126, 234, 0.1) 0%, transparent 50%), radial-gradient(circle at 75% 75%, rgba(240, 147, 251, 0.1) 0%, transparent 50%); color: var(--text-primary); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        .top-toolbar { position: fixed; top: 0; left: 0; width: 100%; background: rgba(10, 14, 26, 0.95); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border-color); padding: 12px 32px; display: flex; justify-content: space-between; align-items: center; z-index: 100; box-shadow: var(--shadow-light); height: 80px; }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        body {
+            background: var(--dark-bg);
+            background-image:
+                radial-gradient(circle at 20% 20%, rgba(102, 126, 234, 0.2) 0%, transparent 60%),
+                radial-gradient(circle at 80% 80%, rgba(240, 147, 251, 0.2) 0%, transparent 60%);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .top-toolbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(10, 14, 26, 0.7);
+            backdrop-filter: blur(30px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            box-shadow: var(--shadow-light);
+            height: 76px;
+        }
         .toolbar-left, .toolbar-right { display: flex; gap: 24px; align-items: center; }
-        .app-title { font-size: 1.8rem; font-weight: 700; background: var(--primary-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; display: flex; align-items: center; gap: 12px; text-shadow: 0 0 30px rgba(102, 126, 234, 0.5); }
-        .app-logo { height: 65px; width: 65px; border-radius: 0%; object-fit: cover; }
+        .app-title {
+            font-size: 1.7rem;
+            font-weight: 700;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .app-logo {
+            height: 54px;
+            width: 54px;
+            border-radius: 0;
+            object-fit: cover;
+        }
         .model-btn-wrapper { position: relative; }
-        .toolbar-btn { background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--border-color); color: var(--text-secondary); padding: 12px 20px; border-radius: 12px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; gap: 10px; font-size: 0.95rem; font-weight: 500; position: relative; overflow: hidden; }
+        .toolbar-btn {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 10px 18px;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
         .toolbar-btn .btn-hover-bg { position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: var(--primary-gradient); transition: left 0.3s ease; z-index: 0; }
         .toolbar-btn > span { position: relative; z-index: 1; display: flex; align-items: center; gap: 10px; }
         .toolbar-btn:hover .btn-hover-bg { left: 0; }
-        .toolbar-btn:hover { transform: translateY(-2px); border-color: var(--accent-blue); box-shadow: 0 10px 25px rgba(79, 172, 254, 0.3); color: var(--text-primary); }
-        .toolbar-btn.active { background: var(--success-gradient); border-color: var(--accent-blue); color: var(--text-primary); font-weight: 600; box-shadow: 0 8px 20px rgba(79, 172, 254, 0.4); }
+        .toolbar-btn:hover {
+            transform: translateY(-2px) scale(1.03);
+            border-color: var(--accent-blue);
+            box-shadow: 0 10px 25px rgba(79, 172, 254, 0.35);
+            color: var(--text-primary);
+        }
+
+        .toolbar-btn.active {
+            background: var(--success-gradient);
+            border-color: var(--accent-blue);
+            color: var(--text-primary);
+            font-weight: 600;
+            box-shadow: 0 8px 20px rgba(79, 172, 254, 0.4);
+        }
+
         .model-dropdown { display: none; position: absolute; top: 100%; right: 0; margin-top: 8px; background: var(--card-bg); backdrop-filter: blur(20px); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: var(--shadow-heavy); padding: 12px; z-index: 101; width: 220px; }
-        .main-content-wrapper { display: flex; flex-grow: 1; padding-top: 80px; height: 100vh; gap: 2px; }
-        #left-search-panel { width: 380px; flex-shrink: 0; background: var(--card-bg); backdrop-filter: blur(20px); border-right: 1px solid var(--border-color); padding: 24px; display: flex; flex-direction: column; box-shadow: var(--shadow-light); }
-        #right-results-panel { flex-grow: 1; overflow-y: auto; background: rgba(10, 14, 26, 0.3); }
+        .main-content-wrapper {
+            display: flex;
+            flex-grow: 1;
+            padding-top: 76px;
+            height: 100vh;
+            gap: 4px;
+        }
+
+        #left-search-panel {
+            width: 380px;
+            flex-shrink: 0;
+            background: var(--card-bg);
+            backdrop-filter: blur(25px);
+            border-right: 1px solid var(--border-color);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-light);
+            border-radius: var(--radius) 0 0 var(--radius);
+        }
+
+        #right-results-panel {
+            flex-grow: 1;
+            overflow-y: auto;
+            background: rgba(10, 14, 26, 0.2);
+            border-radius: 0 var(--radius) var(--radius) 0;
+        }
+
         .stages-container { display: flex; flex-direction: column; gap: 24px; padding-top: 24px; overflow-y: auto; padding-right: 12px; flex-grow: 1; }
-        .stage-card { background: var(--glass-bg); backdrop-filter: blur(15px); border-radius: 16px; padding: 24px; position: relative; border: 1px solid var(--border-color); box-shadow: var(--shadow-light); flex-shrink: 0; transition: all 0.3s ease; }
-        .stage-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-heavy); border-color: var(--accent-blue); }
-        .stage-number { position: absolute; top: -14px; left: 0px; background: var(--primary-gradient); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.1rem; color: white; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); z-index: 1;}
+        .stage-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(25px);
+            border-radius: var(--radius);
+            padding: 24px;
+            position: relative;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-light);
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .stage-card:hover {
+            transform: translateY(-4px) scale(1.01);
+            box-shadow: var(--shadow-heavy);
+            border-color: var(--accent-blue);
+        }
+
+        .stage-number {
+            position: absolute;
+            top: -12px;
+            left: 12px;
+            background: var(--primary-gradient);
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1rem;
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+            z-index: 1;
+        }
         .stage-header {
             display: flex;
             align-items: center;
@@ -56,13 +194,68 @@
             flex-wrap: nowrap; /* Ngăn không cho các nút xuống hàng */
             flex-grow: 1;     /* Yêu cầu nó chiếm hết không gian trống còn lại */
         }
-        .type-btn { width: 44px; height: 44px; font-size: 1.1rem; background: var(--glass-bg); border: 1px solid var(--border-color); border-radius: 12px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; justify-content: center; color: var(--text-secondary); position: relative; overflow: hidden; }
-        .type-btn::before { content: ''; position: absolute; top: 50%; left: 50%; width: 0; height: 0; background: var(--primary-gradient); border-radius: 50%; transition: all 0.3s ease; transform: translate(-50%, -50%); z-index: -1; }
-        .type-btn.active::before { width: 200%; height: 200%; }
-        .type-btn.active { background: transparent; border-color: var(--accent-blue); color: var(--text-primary); transform: translateY(-3px); box-shadow: 0 8px 20px rgba(79, 172, 254, 0.3); }
-        .type-btn[data-type="asr"].active, .type-btn[data-type="ocr"].active, .type-btn[data-type="gen_image"].active { border-color: var(--accent-pink); box-shadow: 0 8px 20px rgba(240, 147, 251, 0.3); }
-        .type-btn[data-type="asr"].active::before, .type-btn[data-type="ocr"].active::before, .type-btn[data-type="gen_image"].active::before { background: var(--secondary-gradient); }
-        .type-btn:hover:not(.active) { border-color: var(--accent-purple); color: var(--accent-purple); transform: translateY(-2px); }
+        .type-btn {
+            width: 44px;
+            height: 44px;
+            font-size: 1.1rem;
+            background: var(--glass-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .type-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: var(--primary-gradient);
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            transform: translate(-50%, -50%);
+            z-index: -1;
+        }
+
+        .type-btn.active::before {
+            width: 200%;
+            height: 200%;
+        }
+
+        .type-btn.active {
+            background: transparent;
+            border-color: var(--accent-blue);
+            color: var(--text-primary);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(79, 172, 254, 0.3);
+        }
+
+        .type-btn[data-type="asr"].active,
+        .type-btn[data-type="ocr"].active,
+        .type-btn[data-type="gen_image"].active {
+            border-color: var(--accent-pink);
+            box-shadow: 0 8px 20px rgba(240, 147, 251, 0.3);
+        }
+
+        .type-btn[data-type="asr"].active::before,
+        .type-btn[data-type="ocr"].active::before,
+        .type-btn[data-type="gen_image"].active::before {
+            background: var(--secondary-gradient);
+        }
+
+        .type-btn:hover:not(.active) {
+            border-color: var(--accent-purple);
+            color: var(--accent-purple);
+            transform: translateY(-2px);
+        }
         .delete-stage {
             position: absolute;
             top: 8px;
@@ -89,10 +282,47 @@
         .stage-controls { display: flex; gap: 16px; }
         .control-btn { width: 54px; height: 54px; border-radius: 14px; border: 1px solid var(--border-color); background: var(--glass-bg); color: var(--text-secondary); font-size: 1.4rem; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
         .control-btn:hover { background: var(--primary-gradient); transform: scale(1.05) translateY(-2px); color: var(--text-primary); border-color: var(--accent-blue); box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4); }
-        .search-btn { background: var(--primary-gradient); color: white; border: none; padding: 16px 32px; border-radius: 14px; font-weight: 600; font-size: 1.1rem; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; gap: 12px; box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4); position: relative; overflow: hidden; }
-        .search-btn::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); transition: left 0.5s; }
-        .search-btn:hover::before { left: 100%; }
-        .search-btn:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 12px 35px rgba(102, 126, 234, 0.6); }
+        .search-btn {
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 14px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .search-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .search-btn:hover::before {
+            left: 100%;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.6);
+        }
+
+        .search-btn:active {
+            transform: scale(0.98);
+        }
         .query-input-area { margin-top: 15px; position: relative; }
         .stage-input { width: 100%; padding: 12px 16px; background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary); font-size: 1.0rem; line-height: 1.5; resize: vertical; transition: all 0.3s ease; font-family: inherit; }
         .main-query-input { min-height: 80px; }
@@ -121,15 +351,53 @@
         .result-item:hover img { transform: scale(1.05); }
         .submit-btn { position: absolute; top: 8px; right: 8px; background: rgba(79, 172, 254, 0.8); color: white; border: none; border-radius: 50%; width: 32px; height: 32px; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; display: none; align-items: center; justify-content: center; z-index: 5; }
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(20px); z-index: 1000; display: none; align-items: center; justify-content: center; }
-        .modal-content { background: var(--card-bg); backdrop-filter: blur(25px); border: 1px solid var(--border-color); width: 90%; max-width: 1200px; max-height: 90vh; border-radius: 20px; box-shadow: var(--shadow-heavy); display: flex; flex-direction: column; }
-        .modal-header { padding: 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
-        .modal-title { font-size: 1.5rem; color: var(--accent-blue); }
-        .modal-close { font-size: 1.5rem; cursor: pointer; color: var(--text-secondary); transition: color 0.2s; }
-        .modal-close:hover { color: #ef4444; }
+        .modal-content {
+            background: var(--card-bg);
+            backdrop-filter: blur(25px);
+            border: 1px solid var(--border-color);
+            width: 90%;
+            max-width: 1200px;
+            max-height: 90vh;
+            border-radius: 20px;
+            box-shadow: var(--shadow-heavy);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: modalZoom 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .modal-header {
+            padding: 20px 30px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--glass-bg);
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        .modal-close {
+            font-size: 1.6rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: color 0.3s ease;
+        }
+
+        .modal-close:hover {
+            color: #ef4444;
+            transform: rotate(90deg);
+        }
         .modal-body { padding: 25px; display: flex; gap: 30px; overflow-y: auto; }
         .modal-body .filter-input { background: rgba(10, 14, 26, 0.8); border: 1px solid var(--border-color); color: white; border-radius: 6px; padding: 8px 10px; font-size: 0.95rem; width: 100%; }
         .modal-body .filter-input:focus { outline: none; border-color: var(--accent-blue); }
-        .dres-status { margin-top: 15px; font-size: 0.9rem; color: var(--text-secondary); }
+        .dres-status { margin-top: 15px; font-size: 0.9rem; color: var(--text-secondary); text-align: center; width: 100%; }
         .filter-section { flex: 1; display: flex; flex-direction: column; }
         .filter-section-header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
         .filter-section-title { font-size: 1.2rem; color: var(--accent-blue); }
@@ -172,13 +440,39 @@
         .temporal-grid-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .temporal-item-label { position: absolute; top: 4px; left: 4px; background-color: rgba(0, 0, 0, 0.7); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
         #temporalContextModal .temporal-modal-footer { padding: 16px 24px; border-top: 1px solid var(--border-color); text-align: center; font-size: 0.9rem; color: var(--text-secondary); flex-shrink: 0; }
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb { background: var(--primary-gradient); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--secondary-gradient); }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary-gradient);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--secondary-gradient);
+        }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        #loadingIndicator { animation: pulse 2s infinite; color: var(--accent-blue); font-size: 1.4rem; padding: 40px 24px; }
-        #loadingIndicator i { margin-right: 10px; }
+        #loadingIndicator {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent-blue);
+            font-size: 1.1rem;  /* Giảm kích thước */
+            padding: 20px 12px;
+            gap: 8px;
+            animation: pulse 1s infinite;  /* Nhanh hơn */
+        }
+
+        #loadingIndicator i {
+            font-size: 1.5rem;  /* Giảm kích thước */
+        }
         .processed-query-display-wrapper { display: none; margin-top: 10px; padding: 8px 12px; background: rgba(0,0,0,0.25); border-radius: 8px; border-left: 3px solid var(--accent-purple); align-items: center; gap: 10px; transition: all 0.3s ease; }
         .processed-query-display-wrapper i { color: var(--accent-purple); }
         .processed-query-display { font-size: 0.9rem; color: var(--text-secondary); font-style: italic; word-break: break-all; }
@@ -228,18 +522,27 @@
         #teamworkGrid .result-item {
             flex: 0 0 220px;
         }
+        
         .teamwork-item {
             border: 3px solid var(--user-color, var(--accent-blue));
-            box-shadow: 0 0 15px 0px var(--user-color, var(--accent-blue));
+            border-radius: 12px;
+            box-shadow: 0 0 12px var(--user-color, var(--accent-blue));
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
+
+        .teamwork-item:hover {
+            transform: scale(1.03) translateY(-4px);
+            box-shadow: 0 12px 30px var(--user-color, var(--accent-blue));
+        }
+
         .teamwork-item-user-label {
             position: absolute;
-            bottom: 4px;
-            left: 4px;
-            background-color: rgba(0, 0, 0, 0.8);
+            bottom: 6px;
+            left: 6px;
+            background: rgba(0, 0, 0, 0.85);
             color: white;
-            padding: 2px 8px;
-            border-radius: 4px;
+            padding: 4px 10px;
+            border-radius: 6px;
             font-size: 0.8rem;
             font-weight: 600;
             border-left: 3px solid var(--user-color, var(--accent-blue));
@@ -294,14 +597,16 @@
         }
         #google-image-results {
             display: flex;
-            gap: 10px;
+            gap: 12px;
             overflow-x: auto;
             padding: 10px;
-            background: rgba(0,0,0,0.2);
+            background: var(--glass-bg);
             border-radius: 12px;
             min-height: 120px;
             align-items: center;
+            backdrop-filter: blur(10px);
         }
+
         .google-image-item {
             flex: 0 0 160px;
             height: 90px;
@@ -310,10 +615,12 @@
             position: relative;
             cursor: pointer;
             border: 2px solid transparent;
-            transition: border-color 0.3s ease;
+            transition: border-color 0.3s ease, transform 0.2s ease;
         }
+
         .google-image-item:hover {
             border-color: var(--accent-blue);
+            transform: scale(1.05);
         }
         .google-image-item img {
             width: 100%;
@@ -363,6 +670,34 @@
             align-items: center;
         }
         /* ## END: NEW CSS FOR VIDEO PREVIEW ENHANCEMENTS ## */
+        
+        /* === BƯỚC 2: CSS CHO NÚT MICRO === */
+        .mic-btn.recording {
+            background: transparent;
+            border-color: #f43f5e; /* Màu đỏ */
+            color: #f43f5e;
+            box-shadow: 0 8px 20px rgba(244, 63, 94, 0.3);
+        }
+
+        .mic-btn.recording::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(135deg, #f5576c 0%, #f43f5e 100%);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: -1;
+            animation: pulse-red 1.5s infinite; /* Thêm hiệu ứng pulse */
+        }
+        @keyframes pulse-red {
+            0% { transform: translate(-50%, -50%) scale(0.9); }
+            70% { transform: translate(-50%, -50%) scale(1.1); }
+            100% { transform: translate(-50%, -50%) scale(0.9); }
+        }
+        /* === KẾT THÚC CSS CHO NÚT MICRO === */
     </style>
 </head>
 <body>
@@ -395,7 +730,7 @@
         <div id="left-search-panel">
             <div id="google-image-search-container">
                 <div class="google-search-header">
-                </div> <!-- <<<<<<<<<<<<<<<<<<<< THÊM LẠI DÒNG NÀY -->
+                </div>
                 <div class="google-search-input-wrapper">
                     <input type="text" id="googleSearchInput" class="stage-input" placeholder="Tìm ảnh trên Google...">
                     <button id="googleSearchBtn" class="control-btn" title="Search"><i class="fas fa-search"></i></button>
@@ -444,7 +779,46 @@
     <div id="objectFilterModal" class="modal-overlay"><div class="modal-content"><div class="modal-header"><h2 class="modal-title"><i class="fas fa-shapes"></i> Object Filters</h2><span class="modal-close" id="modalCloseBtn">&times;</span></div><div class="modal-body"><div class="filter-section"><div class="filter-section-header"><h3 class="filter-section-title">Object Counting</h3><label class="switch"><input type="checkbox" id="enableCountFilter"><span class="slider"></span></label></div><div id="countFilterControls" class="filter-controls-container"></div><button class="add-custom-btn" id="addCustomCountBtn" style="margin-top: 15px; width: 100%;"><i class="fas fa-plus"></i> Add Custom Object</button></div><div class="filter-section"><div class="filter-section-header"><h3 class="filter-section-title">Object Positioning</h3><label class="switch"><input type="checkbox" id="enablePositionFilter"><span class="slider"></span></label></div><div class="position-controls"><canvas id="positioningCanvas" width="640" height="360"></canvas><div id="drawnBoxesList" class="drawn-boxes-list"></div><p class="shortcuts-info"><b>Shortcuts:</b> Draw box with mouse. <br><b>1-6:</b> person, car, truck, dog, cat, toaster. <b>7:</b> Custom. <br><b>Backspace:</b> Delete last box. <b>C:</b> Clear all.</p></div></div></div></div></div>
     <div id="imageModal" class="image-modal-overlay"><span class="image-modal-close" title="Close (Esc)">&times;</span><img class="image-modal-content" id="zoomedImage"></div>
     <div id="temporalContextModal" class="image-modal-overlay"><div class="temporal-modal-content"><div class="temporal-modal-header"><h2 id="temporalModalTitle"></h2><span class="image-modal-close" id="closeTemporalModalBtn" title="Close (Esc)">&times;</span></div><div class="temporal-modal-body"><div class="temporal-grid" id="temporalGrid"></div></div><div class="temporal-modal-footer">Shortcuts: Click to zoom. Ctrl+Click/Space on button to Push. Ctrl+Shift+Click/Space on button to Submit Direct.</div></div></div>
-    <div id="dresModal" class="modal-overlay"><div class="modal-content" style="max-width: 500px;"><div class="modal-header"><h2 class="modal-title"><i class="fas fa-trophy"></i> DRES Submission</h2><span class="modal-close" id="dresModalCloseBtn">&times;</span></div><div class="modal-body" style="flex-direction: column; gap: 20px;"><div><label for="dresUsername">Username</label><input type="text" id="dresUsername" class="filter-input" placeholder="Enter your username..."></div><div><label for="dresPassword">Password</label><input type="password" id="dresPassword" class="filter-input" placeholder="Enter your password..."></div><button id="dresLoginBtn" class="search-btn" style="width: 100%;">Login & Get Evaluations</button><div id="dresStatus" class="dres-status">Status: Not logged in.</div><div><label for="dresEvaluationSelect">Select Evaluation</label><select id="dresEvaluationSelect" class="filter-input" disabled></select></div></div></div></div>
+    
+    <!-- ## START: MODIFIED DRES MODAL WITH NEW FLOW ## -->
+    <div id="dresModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 class="modal-title"><i class="fas fa-trophy"></i> DRES Submission</h2>
+                <span class="modal-close" id="dresModalCloseBtn">&times;</span>
+            </div>
+            <div class="modal-body" style="flex-direction: column; gap: 20px;">
+                
+                <!-- View 1: Initial Login Button -->
+                <div id="dresInitialView">
+                    <button id="dresShowLoginBtn" class="search-btn" style="width: 100%;">Login to DRES</button>
+                </div>
+                
+                <!-- View 2: Login Form (hidden by default) -->
+                <div id="dresLoginView" style="display: none; flex-direction: column; gap: 20px;">
+                    <div>
+                        <label for="dresUsername">Username</label>
+                        <input type="text" id="dresUsername" class="filter-input" placeholder="Enter your username...">
+                    </div>
+                    <div>
+                        <label for="dresPassword">Password</label>
+                        <input type="password" id="dresPassword" class="filter-input" placeholder="Enter your password...">
+                    </div>
+                    <button id="dresLoginBtn" class="search-btn" style="width: 100%;">Login & Get Evaluations</button>
+                </div>
+                
+                <!-- View 3: Evaluation Selector (hidden by default) -->
+                <div id="dresEvaluationView" style="display: none; width: 100%;">
+                    <label for="dresEvaluationSelect">Select Evaluation</label>
+                    <select id="dresEvaluationSelect" class="filter-input" disabled></select>
+                </div>
+
+                <!-- Status message is always visible -->
+                <div id="dresStatus" class="dres-status">Status: Not logged in.</div>
+            </div>
+        </div>
+    </div>
+    <!-- ## END: MODIFIED DRES MODAL ## -->
 
     <!-- ## START: MODIFIED VIDEO PREVIEW MODAL ## -->
     <div id="videoPreviewModal" class="image-modal-overlay">
@@ -491,7 +865,80 @@
         function urlSafeB64Encode(str) { try { const utf8Bytes = new TextEncoder().encode(str); let binaryString = ''; utf8Bytes.forEach(byte => { binaryString += String.fromCharCode(byte); }); return btoa(binaryString).replace(/\+/g, '-').replace(/\//g, '_'); } catch (e) { console.error("Failed to encode string:", str, e); return ""; } }
 
         document.addEventListener('DOMContentLoaded', () => {
-            const stagesContainer = document.getElementById('stagesContainer'); const addStageBtn = document.getElementById('addStageBtn'); const removeStageBtn = document.getElementById('removeStageBtn'); const searchBtn = document.getElementById('searchBtn'); const resultsContainer = document.getElementById('resultsContainer'); const loadingIndicator = document.getElementById('loadingIndicator'); const modelSelectBtn = document.getElementById('modelSelectBtn'); const modelDropdown = document.getElementById('modelDropdown'); const clusterBtn = document.getElementById('clusterBtn'); const ambiguousBtn = document.getElementById('ambiguousBtn'); const objectFilterBtn = document.getElementById('objectFilterBtn'); const objectFilterModal = document.getElementById('objectFilterModal'); const modalCloseBtn = document.getElementById('modalCloseBtn'); const imageModal = document.getElementById('imageModal'); const zoomedImage = document.getElementById('zoomedImage'); const closeImageModalBtn = document.querySelector('#imageModal .image-modal-close'); const temporalContextModal = document.getElementById('temporalContextModal'); const temporalGrid = document.getElementById('temporalGrid'); const temporalModalTitle = document.getElementById('temporalModalTitle'); const closeTemporalModalBtn = document.getElementById('closeTemporalModalBtn'); const enableCountFilter = document.getElementById('enableCountFilter'); const enablePositionFilter = document.getElementById('enablePositionFilter'); const countFilterControls = document.getElementById('countFilterControls'); const addCustomCountBtn = document.getElementById('addCustomCountBtn'); const posCanvas = document.getElementById('positioningCanvas'); const drawnBoxesList = document.getElementById('drawnBoxesList'); const posCtx = posCanvas.getContext('2d'); const dresBtn = document.getElementById('dresBtn'); const dresModal = document.getElementById('dresModal'); const dresModalCloseBtn = document.getElementById('dresModalCloseBtn'); const dresLoginBtn = document.getElementById('dresLoginBtn'); const dresStatus = document.getElementById('dresStatus'); const dresEvaluationSelect = document.getElementById('dresEvaluationSelect');
+            // --- BƯỚC 3: KHỞI TẠO SPEECH RECOGNITION ---
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            let recognition;
+            let activeSpeechInput = null;
+            let isRecording = false;
+            // ### FIX START: Thêm biến để lưu trữ văn bản đã được xác nhận ###
+            let currentTranscriptBase = ''; 
+            // ### FIX END ###
+
+            if (!SpeechRecognition) {
+                console.warn("Trình duyệt không hỗ trợ nhận dạng giọng nói.");
+            } else {
+                recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = 'vi-VN';
+
+                recognition.onstart = () => {
+                    isRecording = true;
+                    // ### FIX START: Reset transcript base khi bắt đầu ###
+                    currentTranscriptBase = ''; 
+                    // ### FIX END ###
+                    if (activeSpeechInput) {
+                        const stageCard = activeSpeechInput.closest('.stage-card');
+                        stageCard.querySelector('.mic-btn')?.classList.add('recording');
+                    }
+                };
+                
+                recognition.onend = () => {
+                    isRecording = false;
+                    // ### FIX START: Dọn dẹp state khi kết thúc ###
+                    activeSpeechInput = null; 
+                    currentTranscriptBase = ''; 
+                    // ### FIX END ###
+                    document.querySelectorAll('.mic-btn.recording').forEach(btn => btn.classList.remove('recording'));
+                };
+                
+                // ### FIX START: Sửa toàn bộ logic onresult ###
+                recognition.onresult = (event) => {
+                    if (!activeSpeechInput) return;
+
+                    let interimTranscript = '';
+                    // Lặp qua tất cả các kết quả từ lần cuối cùng
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        // Nếu kết quả là final, nối nó vào chuỗi base đã xác nhận
+                        if (event.results[i].isFinal) {
+                            currentTranscriptBase += event.results[i][0].transcript.trim() + ' ';
+                        } else {
+                        // Nếu không, nó là kết quả tạm thời
+                            interimTranscript += event.results[i][0].transcript;
+                        }
+                    }
+                    // Cập nhật giá trị của input bằng chuỗi base + chuỗi tạm thời
+                    activeSpeechInput.value = (currentTranscriptBase + interimTranscript).trim();
+                };
+                // ### FIX END ###
+            }
+            // --- KẾT THÚC KHỞI TẠO ---
+            
+            const stagesContainer = document.getElementById('stagesContainer'); const addStageBtn = document.getElementById('addStageBtn'); const removeStageBtn = document.getElementById('removeStageBtn'); const searchBtn = document.getElementById('searchBtn'); const resultsContainer = document.getElementById('resultsContainer'); const loadingIndicator = document.getElementById('loadingIndicator'); const modelSelectBtn = document.getElementById('modelSelectBtn'); const modelDropdown = document.getElementById('modelDropdown'); const clusterBtn = document.getElementById('clusterBtn'); const ambiguousBtn = document.getElementById('ambiguousBtn'); const objectFilterBtn = document.getElementById('objectFilterBtn'); const objectFilterModal = document.getElementById('objectFilterModal'); const modalCloseBtn = document.getElementById('modalCloseBtn'); const imageModal = document.getElementById('imageModal'); const zoomedImage = document.getElementById('zoomedImage'); const closeImageModalBtn = document.querySelector('#imageModal .image-modal-close'); const temporalContextModal = document.getElementById('temporalContextModal'); const temporalGrid = document.getElementById('temporalGrid'); const temporalModalTitle = document.getElementById('temporalModalTitle'); const closeTemporalModalBtn = document.getElementById('closeTemporalModalBtn'); const enableCountFilter = document.getElementById('enableCountFilter'); const enablePositionFilter = document.getElementById('enablePositionFilter'); const countFilterControls = document.getElementById('countFilterControls'); const addCustomCountBtn = document.getElementById('addCustomCountBtn'); const posCanvas = document.getElementById('positioningCanvas'); const drawnBoxesList = document.getElementById('drawnBoxesList'); const posCtx = posCanvas.getContext('2d');
+            
+            const dresBtn = document.getElementById('dresBtn'); 
+            const dresModal = document.getElementById('dresModal');
+            const dresModalCloseBtn = document.getElementById('dresModalCloseBtn');
+            const dresInitialView = document.getElementById('dresInitialView');
+            const dresShowLoginBtn = document.getElementById('dresShowLoginBtn');
+            const dresLoginView = document.getElementById('dresLoginView');
+            const dresUsername = document.getElementById('dresUsername');
+            const dresPassword = document.getElementById('dresPassword');
+            const dresLoginBtn = document.getElementById('dresLoginBtn'); 
+            const dresEvaluationView = document.getElementById('dresEvaluationView');
+            const dresEvaluationSelect = document.getElementById('dresEvaluationSelect');
+            const dresStatus = document.getElementById('dresStatus');
+
             const googleSearchInput = document.getElementById('googleSearchInput');
             const googleSearchBtn = document.getElementById('googleSearchBtn');
             const googleResultsWrapper = document.getElementById('google-image-results-wrapper');
@@ -500,21 +947,20 @@
             const videoPreviewModal = document.getElementById('videoPreviewModal');
             const videoPlayer = document.getElementById('videoPlayer');
             const closeVideoModalBtn = document.getElementById('closeVideoModalBtn');
-            const submitCurrentFrameBtn = document.getElementById('submitCurrentFrameBtn'); // Add this line
-            const pushCurrentFrameBtn = document.getElementById('pushCurrentFrameBtn'); // <<< ADD THIS LINE
+            const submitCurrentFrameBtn = document.getElementById('submitCurrentFrameBtn');
+            const pushCurrentFrameBtn = document.getElementById('pushCurrentFrameBtn');
 
             
             const usernameModal = document.getElementById('usernameModal'); const usernameInput = document.getElementById('usernameInput'); const usernameSubmitBtn = document.getElementById('usernameSubmitBtn'); const userInfoDisplay = document.getElementById('userInfo'); const teamworkPanelContainer = document.getElementById('teamworkPanelContainer'); const teamworkGrid = document.getElementById('teamworkGrid');
             let dresSessionId = sessionStorage.getItem('dresSessionId'); let dresEvaluationId = sessionStorage.getItem('dresEvaluationId'); let currentResponse = {}; let drawnBoxes = []; let isDrawing = false; let startX, startY, currentX, currentY; const PREDEFINED_OBJECTS = ['person', 'car', 'truck', 'dog', 'cat', 'cow', 'toaster']; const LABEL_SHORTCUTS = { '1': 'person', '2': 'car', '3': 'truck', '4': 'dog', '5': 'cat', '6': 'toaster'}; let focusedModelIndex = -1;
 
-            // ## LAZY LOADING ##
             function setupImageObserver() {
                 if (imageObserver) {
                     imageObserver.disconnect();
                 }
                 const options = {
-                    root: rightResultsPanel, // Observe within the results panel
-                    rootMargin: '0px 0px 500px 0px', // Start loading images 500px before they enter the viewport
+                    root: rightResultsPanel, 
+                    rootMargin: '0px 0px 500px 0px', 
                     threshold: 0.01
                 };
                 imageObserver = new IntersectionObserver((entries, observer) => {
@@ -530,61 +976,103 @@
                     });
                 }, options);
             }
-            // ##################
             
-            // Add the event listener for our new button
+            // --- BƯỚC 4: THÊM EVENT DELEGATION CHO NÚT MICRO ---
+            stagesContainer.addEventListener('click', (e) => {
+                const micBtn = e.target.closest('.mic-btn');
+                if (micBtn && recognition) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const stageCard = micBtn.closest('.stage-card');
+                    
+                    // ## BẮT ĐẦU SỬA ĐIỀU 2: LOGIC NHẬP LIỆU GIỌNG NÓI ##
+
+                    // 1. Xác định ô input mục tiêu một cách thông minh.
+                    // Ưu tiên ô đang được focus trong stage hiện tại.
+                    let targetInput = stageCard.querySelector('.main-query-input'); // Mặc định
+                    const activeEl = document.activeElement;
+                    // Kiểm tra xem có phần tử nào đang được focus không, và nó có nằm trong stage card này không
+                    if (activeEl && stageCard.contains(activeEl) && (activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'INPUT')) {
+                        targetInput = activeEl; // Nếu có, đó chính là mục tiêu của chúng ta
+                    }
+
+                    // 2. Xóa bỏ logic cũ tự động chuyển sang tab "Text".
+                    // Điều này cho phép ghi âm vào các ô filter như OCR, ASR.
+                    /* 
+                    // ĐOẠN CODE CŨ BỊ XÓA:
+                    const textTypeBtn = stageCard.querySelector('.type-btn[data-type="text"]');
+                    if (!textTypeBtn.classList.contains('active')) {
+                        textTypeBtn.click();
+                    }
+                    */
+
+                    // 3. Sử dụng `targetInput` đã được xác định chính xác để xử lý ghi âm.
+                    if (isRecording) {
+                        if (activeSpeechInput === targetInput) {
+                            // Nếu đang ghi âm đúng ô này thì dừng lại
+                            recognition.stop();
+                        } else { 
+                            // Nếu đang ghi âm ở ô khác, dừng cái cũ và bắt đầu cái mới
+                            recognition.stop();
+                            setTimeout(() => {
+                                activeSpeechInput = targetInput;
+                                targetInput.value = ''; // Xóa sạch ô input khi chuyển đổi
+                                recognition.start();
+                            }, 250); // Đợi một chút để recognition dừng hẳn
+                        }
+                    } else {
+                        // Nếu chưa ghi âm, bắt đầu ghi âm vào ô mục tiêu
+                        activeSpeechInput = targetInput;
+                        targetInput.value = ''; 
+                        targetInput.focus();
+                        recognition.start();
+                    }
+                    // ## KẾT THÚC SỬA ĐIỀU 2 ##
+                }
+            });
+            // --- KẾT THÚC EVENT DELEGATION ---
+            
             submitCurrentFrameBtn.addEventListener('click', () => {
                 if (videoPreviewModal.style.display === 'flex' && currentVideoPreviewData) {
                     const currentTime = videoPlayer.currentTime;
                     const frameId = Math.round(currentTime * currentVideoPreviewData.fps);
-
-                    // Detailed debug logging as requested
                     console.log("--- [Video Player Submission] ---");
                     console.log(`Video ID: ${currentVideoPreviewData.videoId}`);
                     console.log(`Current Time: ${currentTime.toFixed(4)}s`);
                     console.log(`Video FPS: ${currentVideoPreviewData.fps}`);
                     console.log(`Calculated Frame ID: ${frameId}`);
                     console.log("---------------------------------");
-
                     const submissionData = {
                         video_id: currentVideoPreviewData.videoId,
                         frame_id: frameId,
-                        filepath: `player_submission_at_${currentTime.toFixed(2)}s` // Dummy filepath is sufficient
+                        filepath: `player_submission_at_${currentTime.toFixed(2)}s`
                     };
-                    
-                    handleSubmitToDRES(submissionData, true); // Bypass confirmation
+                    handleSubmitToDRES(submissionData, true);
                 } else {
                     alert("No active video context to submit from. Please open a video preview first.");
                     console.error("Submit button clicked, but 'currentVideoPreviewData' is missing.");
                 }
             });
+
             pushCurrentFrameBtn.addEventListener('click', () => {
                 if (videoPreviewModal.style.display === 'flex' && currentVideoPreviewData) {
                     const currentTime = videoPlayer.currentTime;
                     const frameId = Math.round(currentTime * currentVideoPreviewData.fps);
-
-                    // 1. Create a temporary canvas to generate a thumbnail
                     const canvas = document.createElement('canvas');
                     canvas.width = videoPlayer.videoWidth;
                     canvas.height = videoPlayer.videoHeight;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
-                    
-                    // 2. Get the thumbnail as a Base64 Data URL
-                    const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8); // 80% quality JPEG
-
-                    // 3. Construct the shotData object for the teamwork panel
-                    // The filepath is a special identifier so we know it's a dynamic frame
+                    const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
                     const shotData = {
                         video_id: currentVideoPreviewData.videoId,
                         frame_id: frameId,
-                        fps: currentVideoPreviewData.fps, // Pass FPS for others to use
+                        fps: currentVideoPreviewData.fps,
                         filepath: `dynamic-frame-${currentVideoPreviewData.videoId}-${frameId}`,
-                        url: thumbnailUrl, // Use the generated thumbnail
-                        is_dynamic: true // Add a flag for easy identification
+                        url: thumbnailUrl,
+                        is_dynamic: true
                     };
-
-                    // Detailed debug logging as requested
                     console.log("--- [Video Player Push to Teamwork] ---");
                     console.log(`Video ID: ${shotData.video_id}`);
                     console.log(`Current Time: ${currentTime.toFixed(4)}s`);
@@ -592,15 +1080,13 @@
                     console.log(`Calculated Frame ID: ${shotData.frame_id}`);
                     console.log("Pushing shotData object:", shotData);
                     console.log("---------------------------------------");
-
-                    // 4. Push to the teamwork panel
                     pushToTeamworkPanel(shotData);
-
                 } else {
                     alert("No active video context to push from. Please open a video preview first.");
                     console.error("Push button clicked, but 'currentVideoPreviewData' is missing.");
                 }
             });
+
             rightResultsPanel.addEventListener('scroll', () => {
                 if (rightResultsPanel.scrollTop + rightResultsPanel.clientHeight >= rightResultsPanel.scrollHeight - 500) {
                     loadMoreResults();
@@ -744,17 +1230,14 @@
                 const item = document.createElement('div');
                 item.className = 'result-item';
                 item.dataset.source = source;
-                item.dataset.filepath = shot.filepath;             
+                item.dataset.filepath = shot.filepath;
                 item.dataset.videoId = shot.video_id;
                 item.dataset.shotId = shot.shot_id;
                 item.dataset.frameId = shot.frame_id;
-                
-                // ## LAZY LOADING ##
-                // For main results, we lazy load. For teamwork/context, load immediately.
+
                 const isLazy = source === 'main';
                 const srcAttribute = isLazy ? `data-src="${shot.url}"` : `src="${shot.url}"`;
                 const imgClass = isLazy ? 'lazy-load' : 'loaded';
-                // ##################
 
                 let title = '';
                 let itemHTML = '';
@@ -764,13 +1247,20 @@
                     item.style.setProperty('--user-color', user.color);
                     title = `Pushed by: ${user.name}\n\nClick: Submit to DRES\nCtrl+Click: Submit directly`;
                     const dresButtonHTML = `<button class="submit-btn" title="Click: Submit with confirmation | Ctrl+Click: Submit Direct"><i class="fas fa-paper-plane"></i></button>`;
-                    itemHTML = `<img class="loaded" src="${shot.url}" alt="Teamwork Frame" title="${title}">${dresButtonHTML}<div class="teamwork-item-user-label">${user.name}</div>`;
+                    itemHTML = `
+                        <img class="loaded" src="${shot.url}" alt="Teamwork Frame" title="${title}"
+                            loading="lazy" decoding="async" />
+                        ${dresButtonHTML}
+                        <div class="teamwork-item-user-label">${user.name}</div>`;
                 } else {
                     title = `Click: Zoom\nCtrl+Shift+Click: Similarity Search\nRight-Click: Video Preview\nCtrl+Click: View Context`;
                     const score = shot.rrf_score || shot.cluster_score || shot.score || shot.average_rrf_score || shot.combined_score;
                     if (score) title += `\nScore: ${score.toFixed(4)}`;
                     const dresButtonHTML = `<button class="submit-btn" title="This button is for Teamwork Panel items. Use keyboard shortcuts for this item."></button>`;
-                    itemHTML = `<img class="${imgClass}" ${srcAttribute} alt="Result Frame" title="${title}">${dresButtonHTML}`;
+                    itemHTML = `
+                        <img class="${imgClass}" ${srcAttribute} alt="Result Frame" title="${title}"
+                            loading="lazy" decoding="async" />
+                        ${dresButtonHTML}`;
                 }
 
                 item.innerHTML = itemHTML;
@@ -782,8 +1272,14 @@
                     submitBtn.addEventListener("click", e => handleFrameInteraction(e, shot, source));
                 }
 
-                item.addEventListener("mouseenter", () => { currentlyHoveredItemData = shot; currentlyHoveredItemElement = item; });
-                item.addEventListener("mouseleave", () => { currentlyHoveredItemData = null; currentlyHoveredItemElement = null; });
+                item.addEventListener("mouseenter", () => {
+                    currentlyHoveredItemData = shot;
+                    currentlyHoveredItemElement = item;
+                });
+                item.addEventListener("mouseleave", () => {
+                    currentlyHoveredItemData = null;
+                    currentlyHoveredItemElement = null;
+                });
 
                 return item;
             }
@@ -791,11 +1287,17 @@
             function initWebSocket() {
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
-                ws.onopen = () => { console.log('WebSocket connection established.'); teamworkPanelContainer.style.display = 'block'; };
-                
+
+                let reconnectDelay = 1000;
+
+                ws.onopen = () => {
+                    console.log('WebSocket connection established.');
+                    teamworkPanelContainer.style.display = 'block';
+                    reconnectDelay = 1000; // Reset delay on success
+                };
+
                 ws.onmessage = (event) => {
                     const message = JSON.parse(event.data);
-                    
                     if (message.type === 'new_frame') {
                         const newItem = createResultItem(message.data, 'teamwork');
                         if (newItem) teamworkGrid.prepend(newItem);
@@ -803,10 +1305,7 @@
                         const filepathToRemove = message.data.filepath;
                         if (filepathToRemove) {
                             const itemToRemove = teamworkGrid.querySelector(`.result-item[data-filepath="${filepathToRemove}"]`);
-                            if (itemToRemove) {
-                                console.log(`Removing frame ${filepathToRemove} requested by ${message.data.user.name}.`);
-                                itemToRemove.remove();
-                            }
+                            if (itemToRemove) itemToRemove.remove();
                             pushedFrames.delete(filepathToRemove);
                         }
                     } else if (message.type === 'clear_panel') {
@@ -818,9 +1317,18 @@
                         }
                     }
                 };
-                
-                ws.onclose = () => { console.log('WebSocket connection closed. Retrying in 3 seconds...'); setTimeout(initWebSocket, 3000); };
-                ws.onerror = (error) => { console.error('WebSocket error:', error); };
+
+                ws.onclose = () => {
+                    console.log('WebSocket connection closed. Retrying in', reconnectDelay, 'ms');
+                    setTimeout(() => {
+                        reconnectDelay = Math.min(reconnectDelay * 2, 30000); // Exponential backoff
+                        initWebSocket();
+                    }, reconnectDelay);
+                };
+
+                ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                };
             }
             
             function setupUser() {
@@ -847,36 +1355,92 @@
                 ws.send(JSON.stringify(payload));
                 console.log("Pushed to teamwork panel:", shotData.filepath);
             }
+
             async function handleSubmitToDRES(shot, bypassConfirmation = false) {
                 if (!dresSessionId || !dresEvaluationId) {
-                    alert("Please log in to DRES and select an evaluation first.");
+                    alert("Please log in to DRES first!");
                     dresModal.style.display = 'flex';
                     return;
                 }
+                
                 if (shot.video_id && shot.video_id !== 'N/A' && shot.filepath) {
                     lastSuccessfulSubmission = shot;
-                    const confirmation = bypassConfirmation ? true : confirm(`Submit this result to DRES?\n\nVideo: ${shot.video_id}\nFilepath: ${shot.filepath}`);
-                    if (!confirmation) {
-                        lastSuccessfulSubmission = null;
-                        return;
-                    }
+                    
                     try {
-                        const response = await fetch('/dres/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: dresSessionId, evaluationId: dresEvaluationId, video_id: shot.video_id, filepath: shot.filepath, frame_id: shot.frame_id }) });
-                        if (!response.ok) { const err = await response.json(); throw new Error(err.detail || 'Submission failed'); }
+                        const response = await fetch('/dres/submit', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                sessionId: dresSessionId,
+                                evaluationId: dresEvaluationId,
+                                video_id: shot.video_id,
+                                filepath: shot.filepath,
+                                frame_id: shot.frame_id
+                            })
+                        });
+                        
+                        if (!response.ok) {
+                            const err = await response.json();
+                            throw new Error(err.detail || 'Submission failed');
+                        }
+                        
                         const result = await response.json();
-                        alert(`Submission successful!\nStatus: ${result.submission}\nDescription: ${result.description}`);
+                        
+                        showToast(`✅ Submitted! ${result.description || 'Success'}`, 1500);
+                        
+                        // ## BẮT ĐẦU SỬA LỖI HIỂN THỊ TEAMWORK ##
+                        // Lỗi cũ: `await manager.broadcast(...)` -> Đây là code server-side, client không thể gọi được.
+                        // Sửa lại: Client gửi một tin nhắn 'clear_panel' đến server thông qua WebSocket (ws).
+                        // Server sẽ nhận tin nhắn này và thực hiện broadcast cho tất cả client khác.
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({"type": "clear_panel", "status": "success"}));
+                        }
+                        // ## KẾT THÚC SỬA LỖI ##
+                        
                     } catch (error) {
-                        alert(`Submission Error: ${error.message}`);
-                        lastSuccessfulSubmission = null;
+                        // Hiển thị lỗi cụ thể hơn để dễ debug
+                        showToast(`❌ Error: ${error.message}`, 3000);
+                        console.error("DRES Submission or Broadcast failed:", error); // Thêm log lỗi vào console
                     }
-                } 
-                else if (shot.external_url) {
-                    alert("Direct DRES submission is not supported for external Google Images yet.");
-                }
-                else {
-                    alert("Submission failed: Missing required data (video_id, filepath, or external_url).");
                 }
             }
+
+            function showToast(message, duration = 2000) {
+                const toast = document.createElement('div');
+                toast.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: var(--success-gradient);
+                    color: white;
+                    padding: 12px 20px;
+                    border-radius: 8px;
+                    box-shadow: var(--shadow-heavy);
+                    z-index: 10000;
+                    font-weight: 600;
+                    animation: slideIn 0.3s ease;
+                `;
+                toast.textContent = message;
+                document.body.appendChild(toast);
+                
+                setTimeout(() => {
+                    toast.style.animation = 'slideOut 0.3s ease';
+                    setTimeout(() => toast.remove(), 300);
+                }, duration);
+            }
+
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes slideOut {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(100%); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
 
             async function handleGoogleImageAction(url, action, element) {
                 if (!url || !action) return;
@@ -963,6 +1527,8 @@
                     zoomedImage.src = shotData.url;
                 }
             }
+            let fpsCache = new Map(); 
+
             async function openVideoPreview(shotData) {
                 if (!shotData || !shotData.video_id || !shotData.filepath) {
                     alert("Error: Invalid data for video preview (missing video_id or filepath).");
@@ -974,57 +1540,40 @@
                     alert(`Error: Frame ID is missing for this result.`);
                     return;
                 }
-                
+
                 videoPreviewModal.style.display = "flex";
                 videoPlayer.pause();
                 videoPlayer.src = "";
-                currentVideoPreviewData = null; // Reset context on open
+                currentVideoPreviewData = null;
 
                 try {
-                    console.log(`[Player] Opening preview for video: ${shotData.video_id}, frame: ${frameId}`);
-                    
-                    // Fetch video info (for FPS) from the server
-                    const infoResponse = await fetch(`/video_info/${shotData.video_id}`);
-                    if (!infoResponse.ok) {
-                        throw new Error(`Could not fetch video info (status: ${infoResponse.status})`);
+                    let fps = fpsCache.get(shotData.video_id);
+                    if (!fps) {
+                        const infoResponse = await fetch(`/video_info/${shotData.video_id}`);
+                        if (!infoResponse.ok) throw new Error(`Could not fetch video info (status: ${infoResponse.status})`);
+                        const videoInfo = await infoResponse.json();
+                        fps = videoInfo.fps;
+                        fpsCache.set(shotData.video_id, fps);
                     }
-                    const videoInfo = await infoResponse.json();
-                    const actualFps = videoInfo.fps;
-                    
-                    // Store the essential data for the submission shortcut
-                    currentVideoPreviewData = {
-                        videoId: shotData.video_id,
-                        fps: actualFps
-                    };
-                    console.log(`[Player] Video context set: ID=${currentVideoPreviewData.videoId}, FPS=${currentVideoPreviewData.fps}`);
 
-                    const startTime = frameId / actualFps;
+                    currentVideoPreviewData = { videoId: shotData.video_id, fps };
+                    const startTime = frameId / fps;
                     const videoUrl = `/videos/${shotData.video_id}`;
-                    
-                    console.log(`[Player] Setting video source to: ${videoUrl} and seeking to ${startTime.toFixed(2)}s`);
+
                     videoPlayer.src = videoUrl;
-                    
                     videoPlayer.addEventListener('loadedmetadata', () => {
-                        console.log(`[Player] Video metadata loaded. Duration: ${videoPlayer.duration}s`);
                         if (isFinite(startTime) && startTime < videoPlayer.duration) {
                             videoPlayer.currentTime = startTime;
                         }
                     }, { once: true });
 
                     videoPlayer.load();
-
                 } catch (error) {
                     console.error("Error setting up video preview:", error);
                     alert("Error loading video preview: " + error.message);
-                    currentVideoPreviewData = null; // Clear context on error
-                    // Fallback to original simple behavior if anything fails
-                    const startTime = frameId / 30; // Fallback FPS
-                    const videoUrl = `/videos/${shotData.video_id}`;
-                    videoPlayer.src = videoUrl;
-                    videoPlayer.currentTime = startTime > 0 ? startTime : 0;
+                    currentVideoPreviewData = null;
                 }
             }
-            // ## END: REPLACEMENT FOR openVideoPreview FUNCTION ##
 
             async function openTemporalContextView(e){
                 if(!e||!e.filepath)return void alert("Error: Invalid data for context view.");
@@ -1227,8 +1776,13 @@
                 const stageCard = document.createElement('div');
                 stageCard.className = 'stage-card';
                 stageCard.dataset.stageNumber = number;
-                const queryTypes = [{ id: 'text', icon: 'fas fa-font', label: 'Text (Ctrl+Alt+U)', type: 'primary' }, { id: 'image', icon: 'fas fa-image', label: 'Image (Ctrl+Alt+I)', type: 'primary' }, { id: 'ocr', icon: 'fas fa-text-height', label: 'OCR Filter (Ctrl+Alt+O)', type: 'filter' }, { id: 'asr', icon: 'fas fa-microphone', label: 'ASR Filter (Ctrl+Alt+P)', type: 'filter' }, { id: 'gen_image', icon: 'fas fa-lightbulb', label: 'Generate Image (Ctrl+Alt+G)', type: 'filter' }];
-                let typesHTML = queryTypes.map(type => `<button class="type-btn ${type.id === 'text' ? 'active' : ''}" data-type="${type.id}" data-basetype="${type.type}" title="${type.label}"><i class="${type.icon}"></i></button>`).join('');
+                const queryTypes = [{ id: 'text', icon: 'fas fa-font', label: 'Text (Ctrl+Alt+U)', type: 'primary' }, { id: 'image', icon: 'fas fa-image', label: 'Image (Ctrl+Alt+I)', type: 'primary' }, { id: 'ocr', icon: 'fas fa-text-height', label: 'OCR Filter (Ctrl+Alt+O)', type: 'filter' }, { id: 'asr', icon: 'fas fa-microphone', label: 'ASR Filter (Ctrl+Alt+P)', type: 'filter' }];
+                
+                // ## BẮT ĐẦU SỬA ĐIỀU 1: ĐỔI ICON ##
+                // Đã đổi icon từ "fa-microphone" thành "fa-microphone-lines" để trực quan hơn.
+                let typesHTML = queryTypes.map(type => `<button class="type-btn ${type.id === 'text' ? 'active' : ''}" data-type="${type.id}" data-basetype="${type.type}" title="${type.label}"><i class="${type.icon}"></i></button>`).join('') +
+                                `<button class="type-btn mic-btn" title="Ghi âm giọng nói (Ctrl+Alt+M)"><i class="fas fa-microphone-lines"></i></button>`;
+                // ## KẾT THÚC SỬA ĐIỀU 1 ##
                 
                 stageCard.innerHTML = `
                     <div class="stage-number">${number}</div>
@@ -1239,10 +1793,6 @@
                         <div class="processed-query-display-wrapper main-processed-query-wrapper">
                             <i class="fas fa-cogs" title="Processed Query"></i>
                             <span class="processed-query-display"></span>
-                        </div>
-                        <div class="generated-image-container" style="display: none; margin-top: 10px; border: 1px solid var(--border-color); border-radius: 12px; padding: 5px; background: var(--glass-bg); min-height: 50px; text-align: center;">
-                            <img class="generated-image-preview" style="display: none; max-width: 100%; max-height: 150px; border-radius: 8px; object-fit: contain;">
-                            <p class="gen-image-status" style="color: var(--text-secondary); padding: 10px;"></p>
                         </div>
                         <div class="image-search-container" style="display: none;">
                             <label for="file-input-${number}" class="image-upload-zone">
@@ -1266,7 +1816,6 @@
                     </div>
                     <div class="stage-options">
                         <button class="option-btn" data-option="enhance" title="Enhance Query (Ctrl+Q)">Enhance</button>
-                        <button class="option-btn" data-option="expand" title="Expand Query (Ctrl+E)">Expand</button>
                         <button class="option-btn" data-option="unite_fusion" title="Use Unite Fusion Search (Ctrl+U)">Fusion</button>
                     </div>`;
 
@@ -1276,7 +1825,7 @@
                 const imageUploadZone = stageCard.querySelector('.image-upload-zone');
                 const mainProcessedWrapper = stageCard.querySelector('.main-processed-query-wrapper');
                 
-                stageCard.querySelectorAll('.type-btn').forEach(button => {
+                stageCard.querySelectorAll('.type-btn:not(.mic-btn)').forEach(button => {
                     button.addEventListener('click', () => {
                         const type = button.dataset.type;
                         const baseType = button.dataset.basetype;
@@ -1315,19 +1864,20 @@
                     const previewImage = stageCard.querySelector('.image-preview');
                     const uploadInstructions = stageCard.querySelector('.upload-instructions');
                     const removeImageBtn = stageCard.querySelector('.remove-image-btn');
+
                     previewImage.src = URL.createObjectURL(file);
                     previewImage.style.display = 'block';
-                    uploadInstructions.innerHTML = `<p>Uploading...</p>`;
-                    uploadInstructions.style.display = 'block';
+                    uploadInstructions.style.display = 'none';
                     removeImageBtn.style.display = 'none';
+
                     const formData = new FormData();
                     formData.append('image', file);
+
                     try {
                         const response = await fetch('/upload_image', { method: 'POST', body: formData });
                         if (!response.ok) throw new Error(`Upload failed: ${response.statusText}`);
                         const data = await response.json();
                         stageCard.tempImageName = data.temp_image_name;
-                        uploadInstructions.style.display = 'none';
                         removeImageBtn.style.display = 'flex';
                     } catch (error) {
                         console.error("Image upload error:", error);
@@ -1336,8 +1886,10 @@
                         uploadInstructions.innerHTML = `<i class="fas fa-cloud-upload-alt"></i><p>Kéo & thả ảnh hoặc <strong>nhấn để chọn file</strong></p>`;
                         uploadInstructions.style.display = 'block';
                         removeImageBtn.style.display = 'none';
+                        delete stageCard.tempImageName;
                     }
                 };
+
                 
                 stageCard.querySelector('.remove-image-btn').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); stageCard.querySelector('.stage-input-file').value = ''; const previewImage = stageCard.querySelector('.image-preview'); const uploadInstructions = stageCard.querySelector('.upload-instructions'); const removeImageBtn = stageCard.querySelector('.remove-image-btn'); previewImage.src = ''; previewImage.style.display = 'none'; uploadInstructions.innerHTML = `<i class="fas fa-cloud-upload-alt"></i><p>Kéo & thả ảnh hoặc <strong>nhấn để chọn file</strong></p>`; uploadInstructions.style.display = 'block'; removeImageBtn.style.display = 'none'; delete stageCard.tempImageName; });
                 stageCard.querySelector('.stage-input-file').addEventListener('change', e => handleFileSelect(e.target.files[0]));
@@ -1345,8 +1897,13 @@
                 imageUploadZone.addEventListener('dragleave', e => { e.preventDefault(); imageUploadZone.classList.remove('dragover'); });
                 imageUploadZone.addEventListener('drop', e => { e.preventDefault(); imageUploadZone.classList.remove('dragover'); handleFileSelect(e.dataTransfer.files[0]); });
                 stageCard.querySelector('.delete-stage')?.addEventListener('click', () => { stageCard.remove(); renumberStages(); });
-                stageCard.querySelectorAll('.option-btn').forEach(button => { button.addEventListener('click', () => { button.classList.toggle('active'); }); });
-                
+                stageCard.querySelectorAll('.option-btn').forEach(button => {
+                    if (button.dataset.option !== 'expand') {
+                        button.addEventListener('click', () => {
+                            button.classList.toggle('active');
+                        });
+                    }
+                });
                 return stageCard;
             }
 
@@ -1364,7 +1921,6 @@
 
                 const allStages = Array.from(stagesContainer.querySelectorAll('.stage-card'));
 
-                // ## START: FIX - Clear old processed queries ##
                 allStages.forEach(stage => {
                     const displayWrapper = stage.querySelector('.main-processed-query-wrapper');
                     if (displayWrapper) {
@@ -1372,32 +1928,10 @@
                         displayWrapper.querySelector('.processed-query-display').textContent = '';
                     }
                 });
-                // ## END: FIX ##
                 
                 try {
                     const precomputationPromises = allStages.map(async (stage) => {
                         const genImageBtn = stage.querySelector('.type-btn[data-type="gen_image"]');
-                        if (genImageBtn && genImageBtn.classList.contains('active')) {
-                            const queryText = stage.querySelector('.main-query-input').value.trim();
-                            const imageContainer = stage.querySelector('.generated-image-container');
-                            const imagePreview = stage.querySelector('.generated-image-preview');
-                            const imageStatus = stage.querySelector('.gen-image-status');
-                            if (queryText) {
-                                imageContainer.style.display = 'block';
-                                imageStatus.textContent = 'Generating image...';
-                                try {
-                                    const response = await fetch('/generate_image_from_text', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: queryText, enhance: stage.querySelector('.option-btn[data-option="enhance"]').classList.contains('active'), expand: stage.querySelector('.option-btn[data-option="expand"]').classList.contains('active') }) });
-                                    const data = await response.json();
-                                    stage.generatedImageName = data.temp_image_name;
-                                    imagePreview.src = data.image_url;
-                                    imagePreview.style.display = 'block';
-                                    imageStatus.textContent = '';
-                                } catch (err) {
-                                    imageStatus.textContent = `Error: ${err.message}`;
-                                    imagePreview.style.display = 'none';
-                                }
-                            }
-                        }
                     });
 
                     await Promise.all(precomputationPromises);
@@ -1424,7 +1958,7 @@
 
                         if (firstStage.querySelector('.type-btn[data-type="gen_image"]')?.classList.contains('active')) {
                             const mainInput = firstStage.querySelector('.main-query-input');
-                            searchData.query_text = mainInput.value.trim(); // Lấy query gốc
+                            searchData.query_text = mainInput.value.trim();
                             searchData.generated_image_name = firstStage.generatedImageName;
                             searchData.models = ["unite"];
                             if (searchData.query_text) hasPrimaryQuery = true;
@@ -1432,16 +1966,15 @@
                             const imageTextInput = firstStage.querySelector('.image-search-text-input');
                             if (firstStage.tempImageName) {
                                 searchData.query_image_name = firstStage.tempImageName;
-                                searchData.image_search_text = imageTextInput.value.trim(); // Lấy query gốc
+                                searchData.image_search_text = imageTextInput.value.trim();
                                 searchData.models = ["bge"];
                                 hasPrimaryQuery = true;
                             }
                         } else {
                             const mainInput = firstStage.querySelector('.main-query-input');
-                            searchData.query_text = mainInput.value.trim(); // Lấy query gốc
+                            searchData.query_text = mainInput.value.trim();
                             searchData.models = Array.from(document.querySelectorAll('#modelDropdown input:checked')).map(cb => cb.value);
                             searchData.enhance = firstStage.querySelector('.option-btn[data-option="enhance"]').classList.contains('active');
-                            searchData.expand = firstStage.querySelector('.option-btn[data-option="expand"]').classList.contains('active');
                             if (searchData.query_text) hasPrimaryQuery = true;
                         }
 
@@ -1458,16 +1991,22 @@
                         searchEndpoint = '/temporal_search';
                         const stagesData = allStages.map(stage => {
                             const mainInput = stage.querySelector('.main-query-input');
+                            
+                            // ## BẮT ĐẦU SỬA LỖI TEMPORAL SEARCH ##
+                            // Sử dụng Optional Chaining (?.) để kiểm tra sự tồn tại của element trước khi truy cập classList.
+                            // Điều này ngăn lỗi "Cannot read properties of null" khi querySelector không tìm thấy element (ví dụ: data-option="expand").
                             const stageDatum = {
-                                query: mainInput.value.trim(), // Lấy query gốc
+                                query: mainInput.value.trim(),
                                 query_image_name: stage.tempImageName || null,
                                 generated_image_name: stage.generatedImageName || null,
-                                enhance: stage.querySelector('.option-btn[data-option="enhance"]').classList.contains('active'),
-                                expand: stage.querySelector('.option-btn[data-option="expand"]').classList.contains('active'),
-                                use_unite_fusion: stage.querySelector('.option-btn[data-option="unite_fusion"]').classList.contains('active'),
+                                enhance: stage.querySelector('.option-btn[data-option="enhance"]')?.classList.contains('active') || false,
+                                expand: stage.querySelector('.option-btn[data-option="expand"]')?.classList.contains('active') || false, // Dòng này là nguyên nhân chính gây lỗi
+                                use_unite_fusion: stage.querySelector('.option-btn[data-option="unite_fusion"]')?.classList.contains('active') || false,
                                 ocr_query: stage.querySelector('.type-btn[data-type="ocr"].active') ? stage.querySelector('.ocr-filter-input').value.trim() : null,
                                 asr_query: stage.querySelector('.type-btn[data-type="asr"].active') ? stage.querySelector('.asr-filter-input').value.trim() : null,
                             };
+                            // ## KẾT THÚC SỬA LỖI ##
+
                             return stageDatum;
                         });
                         
@@ -1488,8 +2027,6 @@
                     if (!response.ok) { const err = await response.json(); throw new Error(err.detail || 'Unknown error from server.'); }
                     currentResponse = await response.json();
 
-                    // ## START: FIX - Display processed queries for all stages ##
-                    // For single-stage search
                     if (currentResponse.processed_query) {
                         const firstStage = allStages[0];
                         if (firstStage) {
@@ -1499,7 +2036,6 @@
                             displayWrapper.style.display = 'flex';
                         }
                     }
-                    // For multi-stage search
                     if (currentResponse.processed_queries && Array.isArray(currentResponse.processed_queries)) {
                         allStages.forEach((stage, index) => {
                             const processedQueryText = currentResponse.processed_queries[index];
@@ -1513,7 +2049,6 @@
                             }
                         });
                     }
-                    // ## END: FIX ##
 
                     totalResults = currentResponse.total_results || 0;
                     displayTimingInfo(currentResponse.timing_info, clientStartTime);
@@ -1527,64 +2062,67 @@
                 }
             }
             
-            async function loadMoreResults() {
-                const resultsCount = resultsContainer.querySelectorAll('.result-item, .sequence-result-container').length;
-                if (isLoadingMore || !lastSearchPayload || (totalResults > 0 && resultsCount >= totalResults)) {
-                    return;
-                }
-                isLoadingMore = true;
-                currentPage++;
-
-                const loader = document.createElement('div');
-                loader.id = 'moreLoader';
-                loader.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading more...';
-                loader.style.textAlign = 'center';
-                loader.style.padding = '20px';
-                loader.style.fontSize = '1.2rem';
-                resultsContainer.appendChild(loader);
-
-                try {
-                    let response;
-                    let searchEndpoint;
-                    let requestBody;
-                    lastSearchPayload.page = currentPage;
-
-                    if (lastSearchPayload.stages) { // Temporal search
-                        searchEndpoint = '/temporal_search';
-                        requestBody = JSON.stringify(lastSearchPayload);
-                    } else { // Single stage search
-                        searchEndpoint = '/search';
-                        const formData = new FormData();
-                        formData.append('search_data', JSON.stringify(lastSearchPayload));
-                        requestBody = formData;
-                    }
-                    
-                    const fetchOptions = { method: 'POST' };
-                    if (requestBody instanceof FormData) {
-                        fetchOptions.body = requestBody;
-                    } else {
-                        fetchOptions.headers = { 'Content-Type': 'application/json' };
-                        fetchOptions.body = requestBody;
+            let debounceTimer = null;
+            function loadMoreResults() {
+                if (debounceTimer) clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(async () => {
+                    const resultsCount = resultsContainer.querySelectorAll('.result-item, .sequence-result-container').length;
+                    if (isLoadingMore || !lastSearchPayload || (totalResults > 0 && resultsCount >= totalResults)) {
+                        return;
                     }
 
-                    response = await fetch(searchEndpoint, fetchOptions);
-                    if (!response.ok) {
-                        const err = await response.json();
-                        throw new Error(err.detail || 'Failed to load more results.');
-                    }
-                    const data = await response.json();
-                    displayResults(data.results, true); // Append results
+                    isLoadingMore = true;
+                    currentPage++;
 
-                } catch (error) {
-                    console.error("Error loading more results:", error);
-                    loader.textContent = `Error: ${error.message}`;
-                } finally {
-                    isLoadingMore = false;
-                    const existingLoader = document.getElementById('moreLoader');
-                    if (existingLoader) {
-                        existingLoader.remove();
+                    const loader = document.createElement('div');
+                    loader.id = 'moreLoader';
+                    loader.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading more...';
+                    loader.style.textAlign = 'center';
+                    loader.style.padding = '20px';
+                    loader.style.fontSize = '1.2rem';
+                    resultsContainer.appendChild(loader);
+
+                    try {
+                        let response;
+                        let searchEndpoint;
+                        let requestBody;
+                        lastSearchPayload.page = currentPage;
+
+                        if (lastSearchPayload.stages) {
+                            searchEndpoint = '/temporal_search';
+                            requestBody = JSON.stringify(lastSearchPayload);
+                        } else {
+                            searchEndpoint = '/search';
+                            const formData = new FormData();
+                            formData.append('search_data', JSON.stringify(lastSearchPayload));
+                            requestBody = formData;
+                        }
+
+                        const fetchOptions = { method: 'POST' };
+                        if (requestBody instanceof FormData) {
+                            fetchOptions.body = requestBody;
+                        } else {
+                            fetchOptions.headers = { 'Content-Type': 'application/json' };
+                            fetchOptions.body = requestBody;
+                        }
+
+                        response = await fetch(searchEndpoint, fetchOptions);
+                        if (!response.ok) {
+                            const err = await response.json();
+                            throw new Error(err.detail || 'Failed to load more results.');
+                        }
+                        const data = await response.json();
+                        displayResults(data.results, true);
+                    } catch (error) {
+                        console.error("Error loading more results:", error);
+                        loader.textContent = `Error: ${error.message}`;
+                    } finally {
+                        isLoadingMore = false;
+                        const existingLoader = document.getElementById('moreLoader');
+                        if (existingLoader) existingLoader.remove();
+                        debounceTimer = null;
                     }
-                }
+                }, 300); // debounce 300ms
             }
             
             function getObjectFilterData(){const e={};if(enableCountFilter.checked){const t={};countFilterControls.querySelectorAll(".count-filter-row").forEach(e=>{const o=e.querySelector(".count-checkbox");if(o.checked){const r=e.querySelector(".condition-input").value.trim();if(r){let s=e.classList.contains("custom")?e.querySelector(".custom-object-name").value.trim().toLowerCase():o.dataset.object;s&&(t[s]=r)}}}),Object.keys(t).length>0&&(e.counting={conditions:t})}if(enablePositionFilter.checked&&drawnBoxes.length>0){const o=drawnBoxes.filter(e=>e.label).map(e=>({label:e.label,box:[e.x/posCanvas.width,e.y/posCanvas.height,(e.x+e.w)/posCanvas.width,(e.y+e.h)/posCanvas.height]}));o.length>0&&(e.positioning={boxes:o})}return objectFilterBtn.classList.toggle("active",enableCountFilter.checked||enablePositionFilter.checked),(enableCountFilter.checked||enablePositionFilter.checked)&&Object.keys(e).length>0?e:null}
@@ -1670,12 +2208,11 @@
             closeTemporalModalBtn.addEventListener('click', () => { temporalContextModal.style.display = "none"; });
             temporalContextModal.addEventListener('click', (e) => { if (e.target === temporalContextModal) { temporalContextModal.style.display = "none"; } });
             
-            // ## START: DEFINING AND USING closeVideoModal FUNCTION ##
             function closeVideoModal() {
                 videoPreviewModal.style.display = "none";
                 videoPlayer.pause();
                 videoPlayer.src = "";
-                currentVideoPreviewData = null; // IMPORTANT: Clear context on close
+                currentVideoPreviewData = null;
             }
 
             closeVideoModalBtn.addEventListener('click', closeVideoModal);
@@ -1684,40 +2221,118 @@
                     closeVideoModal(); 
                 } 
             });
-            // ## END: DEFINING AND USING closeVideoModal FUNCTION ##
             modalCloseBtn.addEventListener('click', () => objectFilterModal.style.display = 'none');
-            dresBtn.addEventListener('click', () => dresModal.style.display = 'flex');
+            
             dresModalCloseBtn.addEventListener('click', () => dresModal.style.display = 'none');
+
+            dresBtn.addEventListener('click', () => {
+                if (dresSessionId) {
+                    dresInitialView.style.display = 'none';
+                    dresLoginView.style.display = 'none';
+                    dresEvaluationView.style.display = 'block';
+                    
+                    const selectedOption = dresEvaluationSelect.options[dresEvaluationSelect.selectedIndex];
+                    dresStatus.textContent = selectedOption ? `Ready to submit to: ${selectedOption.text}` : 'Logged in, please select an evaluation.';
+                    dresStatus.style.color = 'var(--accent-blue)';
+                } else {
+                    dresInitialView.style.display = 'block';
+                    dresLoginView.style.display = 'none';
+                    dresEvaluationView.style.display = 'none';
+                    dresStatus.textContent = 'Status: Not logged in.';
+                    dresStatus.style.color = 'var(--text-secondary)';
+                }
+                dresModal.style.display = 'flex';
+            });
+
+            dresShowLoginBtn.addEventListener('click', () => {
+                dresInitialView.style.display = 'none';
+                dresLoginView.style.display = 'flex';
+                dresUsername.focus();
+            });
+
+            dresLoginBtn.addEventListener('click', async () => {
+                const user = dresUsername.value;
+                const pass = dresPassword.value;
+                if (!user || !pass) {
+                    alert('Please enter username and password.');
+                    return;
+                }
+                dresStatus.textContent = 'Logging in...';
+                dresStatus.style.color = 'var(--text-secondary)';
+                try {
+                    const response = await fetch('/dres/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username: user, password: pass })
+                    });
+                    if (!response.ok) {
+                        const err = await response.json();
+                        throw new Error(err.detail || 'Login failed');
+                    }
+                    const data = await response.json();
+                    dresSessionId = data.sessionId;
+                    sessionStorage.setItem('dresSessionId', dresSessionId);
+                    
+                    const evalResponse = await fetch(`/dres/list_evaluations?session=${dresSessionId}`);
+                    if (!evalResponse.ok) throw new Error('Failed to fetch evaluations');
+                    const evaluations = await evalResponse.json();
+                    
+                    dresEvaluationSelect.innerHTML = '';
+                    dresEvaluationSelect.disabled = false;
+                    evaluations.forEach(ev => {
+                        if (ev.status === 'ACTIVE') {
+                            const option = document.createElement('option');
+                            option.value = ev.id;
+                            option.textContent = ev.name;
+                            dresEvaluationSelect.appendChild(option);
+                        }
+                    });
+
+                    if (dresEvaluationSelect.options.length > 0) {
+                        dresEvaluationId = dresEvaluationSelect.value;
+                        sessionStorage.setItem('dresEvaluationId', dresEvaluationId);
+                    }
+                    
+                    alert('Login successful!');
+                    dresModal.style.display = 'none';
+
+                } catch (error) {
+                    dresStatus.textContent = `Error: ${error.message}`;
+                    dresStatus.style.color = '#ef4444';
+                    dresSessionId = null;
+                    sessionStorage.removeItem('dresSessionId');
+                }
+            });
+
+            dresEvaluationSelect.addEventListener('change', () => {
+                dresEvaluationId = dresEvaluationSelect.value;
+                sessionStorage.setItem('dresEvaluationId', dresEvaluationId);
+                dresStatus.textContent = `Ready to submit to: ${dresEvaluationSelect.options[dresEvaluationSelect.selectedIndex].text}`;
+            });
+            
             objectFilterBtn.addEventListener('click', () => {
                 objectFilterModal.style.display = 'flex';
             });
-
-            if (dresSessionId) { dresStatus.textContent = `Logged in. Session ID: ${dresSessionId.substring(0, 8)}...`; dresStatus.style.color = 'var(--accent-blue)'; }
-            dresLoginBtn.addEventListener('click', async () => { const username = document.getElementById('dresUsername').value; const password = document.getElementById('dresPassword').value; if (!username || !password) { alert('Please enter username and password.'); return; } dresStatus.textContent = 'Logging in...'; dresStatus.style.color = 'var(--text-secondary)'; try { const response = await fetch('/dres/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ username, password }) }); if (!response.ok) { const err = await response.json(); throw new Error(err.detail || 'Login failed'); } const data = await response.json(); dresSessionId = data.sessionId; sessionStorage.setItem('dresSessionId', dresSessionId); dresStatus.textContent = `Login successful! Fetching evaluations...`; dresStatus.style.color = 'var(--accent-blue)'; const evalResponse = await fetch(`/dres/list_evaluations?session=${dresSessionId}`); if (!evalResponse.ok) throw new Error('Failed to fetch evaluations'); const evaluations = await evalResponse.json(); dresEvaluationSelect.innerHTML = ''; dresEvaluationSelect.disabled = false; evaluations.forEach(ev => { if (ev.status === 'ACTIVE') { const option = document.createElement('option'); option.value = ev.id; option.textContent = ev.name; dresEvaluationSelect.appendChild(option); } }); if (dresEvaluationSelect.options.length > 0) { dresEvaluationId = dresEvaluationSelect.value; sessionStorage.setItem('dresEvaluationId', dresEvaluationId); dresStatus.textContent = `Ready to submit to: ${dresEvaluationSelect.options[dresEvaluationSelect.selectedIndex].text}`; } else { dresStatus.textContent = 'Login successful, but no active evaluations found.'; dresStatus.style.color = 'var(--warning-gradient)'; } } catch (error) { dresStatus.textContent = `Error: ${error.message}`; dresStatus.style.color = '#ef4444'; dresSessionId = null; sessionStorage.removeItem('dresSessionId'); } });
-            dresEvaluationSelect.addEventListener('change', () => { dresEvaluationId = dresEvaluationSelect.value; sessionStorage.setItem('dresEvaluationId', dresEvaluationId); dresStatus.textContent = `Ready to submit to: ${dresEvaluationSelect.options[dresEvaluationSelect.selectedIndex].text}`; });
+            
 
             window.addEventListener('keydown', (event) => {
                 const activeElement = document.activeElement;
                 const isTyping = activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA');
 
-                // ## START: VIDEO PREVIEW SHORTCUTS ##
                 if (videoPreviewModal.style.display === 'flex' && event.code === 'Space' && (event.ctrlKey || event.metaKey)) {
                     event.preventDefault();
                     if (event.shiftKey) {
-                        // Ctrl + Shift + Space: Submit current frame
                         submitCurrentFrameBtn.click();
                     } else {
-                        // Ctrl + Space: Push current frame
                         pushCurrentFrameBtn.click();
                     }
-                    return; // Stop further processing for this event
+                    return;
                 }
-                // ## END: VIDEO PREVIEW SHORTCUTS ##
 
                 if (event.key === 'Escape') {
                     event.preventDefault();
                     if (isTyping) { activeElement.blur(); return; }
-                    if (videoPreviewModal.style.display === 'flex') { closeVideoModal(); return; } // <-- Uses our new function
+                    if (videoPreviewModal.style.display === 'flex') { closeVideoModal(); return; }
                     if (imageModal.style.display === 'flex') { imageModal.style.display = 'none'; return; }
                     if (temporalContextModal.style.display === 'flex') { temporalContextModal.style.display = 'none'; return; }
                     if (objectFilterModal.style.display === 'flex') { objectFilterModal.style.display = 'none'; return; }
@@ -1798,8 +2413,16 @@
 
                 if (event.key === 'Enter') {
                     if (isTyping && event.shiftKey) { return; }
-                    if (dresModal.style.display === 'flex') { event.preventDefault(); document.getElementById('dresLoginBtn').click(); return; }
-                    if (usernameModal.style.display === 'flex') { event.preventDefault(); document.getElementById('usernameSubmitBtn').click(); return; }
+                    if (dresModal.style.display === 'flex') {
+                        event.preventDefault();
+                        if (dresLoginView.style.display === 'flex') {
+                            dresLoginBtn.click();
+                        } else if (dresInitialView.style.display === 'block') {
+                            dresShowLoginBtn.click();
+                        }
+                        return;
+                    }
+                    if (usernameModal.style.display === 'flex') { event.preventDefault(); usernameSubmitBtn.click(); return; }
                     event.preventDefault();
                     searchBtn.click();
                     return;
@@ -1828,6 +2451,7 @@
                             case 'o': stageToModify.querySelector('.type-btn[data-type="ocr"]')?.click(); break;
                             case 'p': stageToModify.querySelector('.type-btn[data-type="asr"]')?.click(); break;
                             case 'g': stageToModify.querySelector('.type-btn[data-type="gen_image"]')?.click(); break;
+                            case 'm': stageToModify.querySelector('.mic-btn')?.click(); break;
                             default: handled = false;
                         }
                     } else { handled = false; }
@@ -1861,7 +2485,6 @@
                             switch (event.key.toLowerCase()) {
                                 case 'g': clusterBtn.click(); break;
                                 case 'q': stageToModify?.querySelector('.option-btn[data-option="enhance"]')?.click(); break;
-                                case 'e': stageToModify?.querySelector('.option-btn[data-option="expand"]')?.click(); break;
                                 case 'u': stageToModify?.querySelector('.option-btn[data-option="unite_fusion"]')?.click(); break;
                                 default: handled = false;
                             }
