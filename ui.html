@@ -669,6 +669,24 @@
             flex-direction: column;
             align-items: center;
         }
+
+        .video-frame-info-display {
+            position: absolute;
+            bottom: 10px; /* Position it on top of the video player */
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(10, 14, 26, 0.8);
+            backdrop-filter: blur(5px);
+            color: var(--text-secondary);
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            z-index: 2101; /* Make sure it's on top of the video */
+            pointer-events: none; /* Allows clicks to pass through to the video */
+            border: 1px solid var(--border-color);
+        }
+
         /* ## END: NEW CSS FOR VIDEO PREVIEW ENHANCEMENTS ## */
         
         /* === BƯỚC 2: CSS CHO NÚT MICRO === */
@@ -698,6 +716,180 @@
             100% { transform: translate(-50%, -50%) scale(0.9); }
         }
         /* === KẾT THÚC CSS CHO NÚT MICRO === */
+
+        #correctSubmissionPanel {
+            position: fixed; /* Hoặc 'sticky' nếu bạn muốn nó cuộn cùng một chút */
+            top: 90px;
+            right: 20px;
+            width: 250px;
+            background: var(--card-bg);
+            backdrop-filter: blur(25px);
+            border: 2px solid #4ade80; /* Màu xanh lá cây cho thành công */
+            border-radius: var(--radius);
+            box-shadow: 0 0 30px rgba(74, 222, 128, 0.6);
+            z-index: 150;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            animation: fadeInRight 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #correctSubmissionPanel h4 {
+            color: #4ade80;
+            text-align: center;
+            font-size: 1.1rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        #correctSubmissionImageContainer {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        #correctSubmissionImageContainer img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #correctSubmissionPanel .reset-note {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-align: center;
+            margin: 0;
+        }
+
+        @keyframes fadeInRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        /* ## END: CORRECT SUBMISSION PANEL STYLES ## */
+
+        /* ## START: SUBMISSION STATUS STYLES ## */
+        .result-item.submitting {
+            opacity: 0.6;
+            pointer-events: none; /* Vô hiệu hóa click khi đang nộp */
+        }
+
+        .result-item.submitted-wrong .teamwork-item-user-label {
+            background: #ef4444; /* Màu đỏ cho nộp sai */
+            border-left-color: #f87171;
+        }
+
+        .result-item.submitted-wrong {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 12px #ef4444;
+        }
+
+        .result-item.submitted-duplicate .teamwork-item-user-label {
+            background: #f59e0b; /* Màu vàng cho trùng lặp */
+            border-left-color: #fbbf24;
+        }
+
+        .result-item.submitted-duplicate {
+            border-color: #f59e0b !important;
+            box-shadow: 0 0 12px #f59e0b;
+        }
+
+        #correctSubmissionImageContainer .result-item {
+            /* Ép item lấp đầy container cha của nó */
+            width: 100%;
+            height: 100%;
+            
+            /* Ghi đè các thuộc tính có thể gây ra hiển thị sai */
+            margin: 0;
+            border: none; /* Container cha đã có border xanh */
+            box-shadow: none !important; /* Vô hiệu hóa bóng đổ khi hover */
+            transform: none !important; /* Vô hiệu hóa hiệu ứng 'nhấc' lên khi hover */
+            cursor: default; /* Bỏ cursor pointer của chính item */
+        }
+
+        #correctSubmissionImageContainer .result-item img {
+            cursor: pointer; /* Đặt lại cursor pointer cho ảnh bên trong */
+        }
+
+        /* Đảm bảo hiệu ứng hover scale trên ảnh vẫn hoạt động */
+        #correctSubmissionImageContainer .result-item:hover img {
+            transform: scale(1.05);
+        }
+        /* ## END: CSS FIX ## */
+
+        /* ## START: SUBMISSION STATUS OVERLAY STYLES ## */
+        .submission-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 14, 26, 0.7);
+            backdrop-filter: blur(5px);
+            border-radius: inherit; /* Kế thừa bo góc của item cha */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-align: center;
+            color: white;
+            
+            /* Hiệu ứng */
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            z-index: 5;
+            pointer-events: none; /* Cho phép click xuyên qua nếu cần */
+        }
+
+        .submission-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .submission-overlay i {
+            font-size: 2.2rem;
+            margin-bottom: 5px;
+        }
+
+        /* Trạng thái: Đang xử lý */
+        .submission-overlay.status-pending {
+            color: var(--accent-blue);
+        }
+
+        /* Trạng thái: Đúng */
+        .submission-overlay.status-correct {
+            background: rgba(74, 222, 128, 0.7); /* Xanh lá */
+            color: white;
+        }
+
+        /* Trạng thái: Sai */
+        .submission-overlay.status-wrong {
+            background: rgba(244, 63, 94, 0.7); /* Đỏ */
+            color: white;
+        }
+
+        /* Trạng thái: Trùng lặp */
+        .submission-overlay.status-duplicate {
+            background: rgba(245, 158, 11, 0.7); /* Vàng */
+            color: white;
+        }
+        /* ## END: SUBMISSION STATUS OVERLAY STYLES ## */
     </style>
 </head>
 <body>
@@ -751,6 +943,12 @@
             </div>
         </div>
         <div id="right-results-panel">
+            <div id="correctSubmissionPanel" style="display: none;">
+                <h4><i class="fas fa-check-circle"></i> Correct Submission</h4>
+                <div id="correctSubmissionImageContainer">
+                </div>
+                <p class="reset-note">This will be cleared on 'Reset Search'.</p>
+            </div>
             <div id="teamworkPanelContainer" style="display: none;">
                 <h3><i class="fas fa-users"></i> Teamwork Submission Panel</h3>
                 <div id="teamworkGrid"></div>
@@ -825,6 +1023,11 @@
         <span class="image-modal-close" id="closeVideoModalBtn" title="Close (Esc)">&times;</span>
         <div class="video-player-container">
             <video id="videoPlayer" class="image-modal-content" controls autoplay style="background-color: #000;"></video>
+
+            <!-- NEW: Frame and Time Display -->
+            <div id="videoFrameInfo" class="video-frame-info-display">
+                Frame: <span id="currentFrameDisplay">-</span> | Time: <span id="currentTimeDisplay">-</span>s
+            </div>
             
             <!-- Container for the action buttons -->
             <div id="videoActionButtons" style="margin-top: 20px; display: flex; gap: 15px;">
@@ -854,6 +1057,7 @@
         let isLoadingMore = false;
         let lastSearchPayload = null;
         let currentVideoPreviewData = null; // <<< ADD THIS LINE
+        let submittedFrames = new Map(); // Key: filepath, Value: 'CORRECT', 'WRONG', 'DUPLICATE', 'PENDING'
 
         const PAGE_SIZE = 30;
 
@@ -950,6 +1154,63 @@
             const submitCurrentFrameBtn = document.getElementById('submitCurrentFrameBtn');
             const pushCurrentFrameBtn = document.getElementById('pushCurrentFrameBtn');
 
+            const frameInfoDisplay = document.getElementById('videoFrameInfo');
+            const currentFrameSpan = document.getElementById('currentFrameDisplay');
+            const currentTimeSpan = document.getElementById('currentTimeDisplay');
+
+            /**
+             * Updates the on-screen display with the current frame and time.
+             */
+            function updateFrameDisplay() {
+                if (!videoPlayer.paused && document.activeElement !== videoPlayer) {
+                    // Don't update while video is playing normally to save performance,
+                    // unless the video element itself is focused.
+                }
+
+                if (currentVideoPreviewData && currentVideoPreviewData.fps) {
+                    const currentTime = videoPlayer.currentTime;
+                    const currentFrame = Math.round(currentTime * currentVideoPreviewData.fps);
+                    
+                    currentFrameSpan.textContent = currentFrame;
+                    currentTimeSpan.textContent = currentTime.toFixed(3);
+                } else {
+                    currentFrameSpan.textContent = '-';
+                    currentTimeSpan.textContent = '-';
+                }
+            }
+
+            // Listen for the 'wheel' event (mouse scroll) on the video player
+            videoPlayer.addEventListener('wheel', (event) => {
+                // Prevent the default browser action (e.g., scrolling the page)
+                event.preventDefault();
+
+                // Ensure we have the necessary video data (especially FPS)
+                if (!currentVideoPreviewData || !currentVideoPreviewData.fps) {
+                    console.warn("Video data not ready for frame scrolling.");
+                    return;
+                }
+
+                // Always pause the video when scrubbing for frame-by-frame control
+                videoPlayer.pause();
+
+                const FPS = currentVideoPreviewData.fps;
+                const frameTime = 1 / FPS;
+
+                // Determine scroll direction:
+                // event.deltaY < 0 is for scrolling UP (we'll interpret as FORWARD)
+                // event.deltaY > 0 is for scrolling DOWN (we'll interpret as BACKWARD)
+                const direction = event.deltaY < 0 ? 1 : -1;
+                
+                // Calculate the new time and clamp it between 0 and the video's total duration
+                const newTime = videoPlayer.currentTime + (direction * frameTime);
+                videoPlayer.currentTime = Math.max(0, Math.min(videoPlayer.duration, newTime));
+            });
+
+            // Update the display whenever the video time changes
+            // This covers playback, seeking, and our custom scrolling
+            videoPlayer.addEventListener('timeupdate', updateFrameDisplay);
+            videoPlayer.addEventListener('seeked', updateFrameDisplay);
+
             
             const usernameModal = document.getElementById('usernameModal'); const usernameInput = document.getElementById('usernameInput'); const usernameSubmitBtn = document.getElementById('usernameSubmitBtn'); const userInfoDisplay = document.getElementById('userInfo'); const teamworkPanelContainer = document.getElementById('teamworkPanelContainer'); const teamworkGrid = document.getElementById('teamworkGrid');
             let dresSessionId = sessionStorage.getItem('dresSessionId'); let dresEvaluationId = sessionStorage.getItem('dresEvaluationId'); let currentResponse = {}; let drawnBoxes = []; let isDrawing = false; let startX, startY, currentX, currentY; const PREDEFINED_OBJECTS = ['person', 'car', 'truck', 'dog', 'cat', 'cow', 'toaster']; const LABEL_SHORTCUTS = { '1': 'person', '2': 'car', '3': 'truck', '4': 'dog', '5': 'cat', '6': 'toaster'}; let focusedModelIndex = -1;
@@ -1037,17 +1298,31 @@
                 if (videoPreviewModal.style.display === 'flex' && currentVideoPreviewData) {
                     const currentTime = videoPlayer.currentTime;
                     const frameId = Math.round(currentTime * currentVideoPreviewData.fps);
+
+                    // BƯỚC 1: TẠO THUMBNAIL TỪ FRAME HIỆN TẠI (GIỐNG NÚT PUSH)
+                    const canvas = document.createElement('canvas');
+                    canvas.width = videoPlayer.videoWidth;
+                    canvas.height = videoPlayer.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
+                    const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
+
                     console.log("--- [Video Player Submission] ---");
                     console.log(`Video ID: ${currentVideoPreviewData.videoId}`);
-                    console.log(`Current Time: ${currentTime.toFixed(4)}s`);
-                    console.log(`Video FPS: ${currentVideoPreviewData.fps}`);
                     console.log(`Calculated Frame ID: ${frameId}`);
                     console.log("---------------------------------");
+
+                    // BƯỚC 2: TẠO ĐỐI TƯỢNG DỮ LIỆU ĐẦY ĐỦ HƠN
                     const submissionData = {
                         video_id: currentVideoPreviewData.videoId,
                         frame_id: frameId,
-                        filepath: `player_submission_at_${currentTime.toFixed(2)}s`
+                        fps: currentVideoPreviewData.fps,
+                        // Sử dụng một filepath nhất quán và có ý nghĩa
+                        filepath: `dynamic-frame-${currentVideoPreviewData.videoId}-${frameId}`, 
+                        url: thumbnailUrl, // <-- THÔNG TIN QUAN TRỌNG NHẤT ĐƯỢC THÊM VÀO
+                        is_dynamic: true // Đánh dấu đây là frame được tạo động
                     };
+                    
                     handleSubmitToDRES(submissionData, true);
                 } else {
                     alert("No active video context to submit from. Please open a video preview first.");
@@ -1356,77 +1631,232 @@
                 console.log("Pushed to teamwork panel:", shotData.filepath);
             }
 
-            async function handleSubmitToDRES(shot, bypassConfirmation = false) {
-                if (!dresSessionId || !dresEvaluationId) {
-                    alert("Please log in to DRES first!");
-                    dresModal.style.display = 'flex';
-                    return;
-                }
-                
-                if (shot.video_id && shot.video_id !== 'N/A' && shot.filepath) {
-                    lastSuccessfulSubmission = shot;
-                    
-                    try {
-                        const response = await fetch('/dres/submit', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                sessionId: dresSessionId,
-                                evaluationId: dresEvaluationId,
-                                video_id: shot.video_id,
-                                filepath: shot.filepath,
-                                frame_id: shot.frame_id
-                            })
-                        });
-                        
-                        if (!response.ok) {
-                            const err = await response.json();
-                            throw new Error(err.detail || 'Submission failed');
-                        }
-                        
-                        const result = await response.json();
-                        
-                        showToast(`✅ Submitted! ${result.description || 'Success'}`, 1500);
-                        
-                        // ## BẮT ĐẦU SỬA LỖI HIỂN THỊ TEAMWORK ##
-                        // Lỗi cũ: `await manager.broadcast(...)` -> Đây là code server-side, client không thể gọi được.
-                        // Sửa lại: Client gửi một tin nhắn 'clear_panel' đến server thông qua WebSocket (ws).
-                        // Server sẽ nhận tin nhắn này và thực hiện broadcast cho tất cả client khác.
-                        if (ws && ws.readyState === WebSocket.OPEN) {
-                            ws.send(JSON.stringify({"type": "clear_panel", "status": "success"}));
-                        }
-                        // ## KẾT THÚC SỬA LỖI ##
-                        
-                    } catch (error) {
-                        // Hiển thị lỗi cụ thể hơn để dễ debug
-                        showToast(`❌ Error: ${error.message}`, 3000);
-                        console.error("DRES Submission or Broadcast failed:", error); // Thêm log lỗi vào console
-                    }
-                }
+        async function handleSubmitToDRES(shot, bypassConfirmation = false) {
+            // === PHASE 1: PRE-SUBMISSION VALIDATION ===
+
+            // 1. Check DRES login status.
+            if (!dresSessionId || !dresEvaluationId) {
+                showToast("Please log in to DRES first!", 3000, 'error');
+                dresModal.style.display = 'flex';
+                return;
             }
 
-            function showToast(message, duration = 2000) {
+            // 2. Validate the incoming shot data.
+            if (!shot || shot.frame_id === undefined || !shot.video_id || !shot.url) {
+                console.error("Invalid or incomplete shot data for submission.", shot);
+                showToast("Error: Invalid data for submission.", 4000, 'error');
+                return;
+            }
+
+            // 3. Create a reliable, unique key for the frame to track its submission status.
+            const submissionKey = `${shot.video_id}-${shot.frame_id}`;
+
+            // 4. Prevent re-submission if the frame has already been processed.
+            const submissionStatus = submittedFrames.get(submissionKey);
+            if (submissionStatus && submissionStatus !== 'PENDING') {
+                showToast(`Already submitted! Status: ${submissionStatus}`, 3000, 'warning');
+                return;
+            }
+            if (submissionStatus === 'PENDING') {
+                showToast("Submission for this frame is already in progress...", 2000, 'info');
+                return;
+            }
+
+            // === PHASE 2: SUBMISSION EXECUTION & UI FEEDBACK ===
+
+            // Find the corresponding UI element (this will be null for video player submissions, which is expected).
+            const itemElement = document.querySelector(`.result-item[data-filepath="${shot.filepath}"]`);
+
+            try {
+                // Set state to 'PENDING' to prevent race conditions and provide immediate feedback.
+                submittedFrames.set(submissionKey, 'PENDING');
+                showSubmissionStatusOnItem(itemElement, 'pending', 'Submitting...');
+
+                // Perform the API call to the DRES server.
+                const response = await fetch('/dres/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: dresSessionId,
+                        evaluationId: dresEvaluationId,
+                        video_id: shot.video_id,
+                        filepath: shot.filepath,
+                        frame_id: shot.frame_id
+                    })
+                });
+
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.detail || 'Submission request failed');
+                }
+
+                // === PHASE 3: PROCESS RESULT & FINALIZE UI ===
+                
+                const resultText = result.description.toUpperCase();
+                let finalStatus = 'UNKNOWN';
+
+                if (resultText.includes('CORRECT')) {
+                    finalStatus = 'CORRECT';
+                    submittedFrames.set(submissionKey, finalStatus);
+                    
+                    showSubmissionStatusOnItem(itemElement, 'correct', 'CORRECT');
+                    showToast('CORRECT! Great find!', 3000, 'success');
+
+                    // === PHẦN SỬA LỖI LOGIC HIỂN THỊ ===
+                    // 1. Lấy tham chiếu đến cả panel LỚN và container BÊN TRONG
+                    const correctSubmissionPanel = document.getElementById('correctSubmissionPanel');
+                    const correctSubmissionContainer = document.getElementById('correctSubmissionImageContainer');
+                    
+                    // 2. Dọn dẹp container và tạo item ảnh mới
+                    correctSubmissionContainer.innerHTML = '';
+                    const correctItem = createResultItem(shot, 'correct-submission');
+
+                    // 3. Kiểm tra mọi thứ tồn tại trước khi hành động
+                    if (correctItem && correctSubmissionContainer && correctSubmissionPanel) {
+                        // Đặt ảnh vào container
+                        correctSubmissionContainer.appendChild(correctItem);
+                        
+                        // **DÒNG QUAN TRỌNG NHẤT:** Bật hiển thị cho cả panel lớn
+                        correctSubmissionPanel.style.display = 'flex'; 
+                    }
+                    // === KẾT THÚC PHẦN SỬA LỖI ===
+
+                    // Lưu lại lượt nộp thành công để có thể push lại sau khi reset
+                    lastSuccessfulSubmission = shot;
+
+                    // Xóa panel teamwork cho tất cả user
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        // Gửi thông điệp kèm theo trạng thái thành công để server có thể xử lý logic push lại
+                        ws.send(JSON.stringify({"type": "clear_panel", "status": "success"}));
+                    }
+
+                } else if (resultText.includes('WRONG')) {
+                    finalStatus = 'WRONG';
+                    submittedFrames.set(submissionKey, finalStatus);
+                    
+                    showSubmissionStatusOnItem(itemElement, 'wrong', 'WRONG');
+                    showToast('Wrong submission. Keep trying!', 3000, 'error');
+                    if (itemElement) itemElement.classList.add('submitted-wrong');
+
+                } else if (resultText.includes('DUPLICATE')) {
+                    finalStatus = 'DUPLICATE';
+                    submittedFrames.set(submissionKey, finalStatus);
+
+                    showSubmissionStatusOnItem(itemElement, 'duplicate', 'DUPLICATE');
+                    showToast('Duplicate submission. Already noted.', 3000, 'warning');
+                    if (itemElement) itemElement.classList.add('submitted-duplicate');
+                
+                } else {
+                    // Handle any other response from DRES.
+                    finalStatus = result.description;
+                    showToast(`Status: ${result.description}`, 3000, 'info');
+                }
+
+            } catch (error) {
+                // === PHASE 4: ERROR HANDLING ===
+                
+                // Provide clear feedback to the user about the failure.
+                showSubmissionStatusOnItem(itemElement, 'wrong', 'Error');
+                showToast(error.message, 4000, 'error');
+                
+                // CRITICAL: Reset the submission state on failure to allow the user to retry.
+                submittedFrames.delete(submissionKey);
+                
+                console.error("DRES Submission failed:", error);
+
+            } finally {
+                // === PHASE 5: CLEANUP ===
+                
+                // The overlay logic now handles hiding itself, but this class could be used for other effects.
+                if (itemElement) {
+                    itemElement.classList.remove('submitting');
+                }
+            }
+        }
+
+            function showToast(message, duration = 3000, type = 'info') {
                 const toast = document.createElement('div');
+                
+                let backgroundStyle = '';
+                let iconHTML = '';
+
+                switch (type) {
+                    case 'success':
+                        backgroundStyle = 'linear-gradient(135deg, #28a745 0%, #218838 100%)';
+                        iconHTML = '<i class="fas fa-check-circle" style="margin-right: 10px;"></i>';
+                        break;
+                    case 'error':
+                        backgroundStyle = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+                        iconHTML = '<i class="fas fa-times-circle" style="margin-right: 10px;"></i>';
+                        break;
+                    case 'warning':
+                        backgroundStyle = 'linear-gradient(135deg, #ffc107 0%, #e0a800 100%)';
+                        iconHTML = '<i class="fas fa-exclamation-triangle" style="margin-right: 10px;"></i>';
+                        break;
+                    default: // 'info'
+                        backgroundStyle = 'var(--primary-gradient)';
+                        iconHTML = '<i class="fas fa-info-circle" style="margin-right: 10px;"></i>';
+                        break;
+                }
+
                 toast.style.cssText = `
                     position: fixed;
                     top: 20px;
                     right: 20px;
-                    background: var(--success-gradient);
+                    background: ${backgroundStyle};
                     color: white;
-                    padding: 12px 20px;
+                    padding: 14px 22px;
                     border-radius: 8px;
                     box-shadow: var(--shadow-heavy);
                     z-index: 10000;
                     font-weight: 600;
-                    animation: slideIn 0.3s ease;
+                    display: flex;
+                    align-items: center;
+                    animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
                 `;
-                toast.textContent = message;
+                
+                toast.innerHTML = `${iconHTML}<span>${message}</span>`;
                 document.body.appendChild(toast);
                 
                 setTimeout(() => {
-                    toast.style.animation = 'slideOut 0.3s ease';
-                    setTimeout(() => toast.remove(), 300);
+                    toast.style.animation = 'slideOut 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards';
+                    toast.addEventListener('animationend', () => toast.remove());
                 }, duration);
+            }
+
+            function showSubmissionStatusOnItem(itemElement, status, message) {
+                if (!itemElement) return;
+
+                // Tìm hoặc tạo overlay
+                let overlay = itemElement.querySelector('.submission-overlay');
+                if (!overlay) {
+                    overlay = document.createElement('div');
+                    overlay.className = 'submission-overlay';
+                    itemElement.appendChild(overlay);
+                }
+
+                // Thiết lập icon và nội dung dựa trên trạng thái
+                let iconClass = '';
+                switch (status) {
+                    case 'pending':   iconClass = 'fas fa-spinner fa-spin'; break;
+                    case 'correct':   iconClass = 'fas fa-check-circle'; break;
+                    case 'wrong':     iconClass = 'fas fa-times-circle'; break;
+                    case 'duplicate': iconClass = 'fas fa-exclamation-triangle'; break;
+                }
+                
+                overlay.innerHTML = `<i class="${iconClass}"></i><span>${message}</span>`;
+
+                // Cập nhật class để thay đổi màu sắc và hiển thị
+                overlay.className = 'submission-overlay'; // Reset class
+                overlay.classList.add(`status-${status}`);
+                overlay.classList.add('visible');
+
+                // Tự động ẩn đi sau một khoảng thời gian (trừ trạng thái pending)
+                if (status !== 'pending') {
+                    setTimeout(() => {
+                        overlay.classList.remove('visible');
+                    }, 2500); // Overlay sẽ hiển thị trong 2.5 giây
+                }
             }
 
             const style = document.createElement('style');
@@ -1565,6 +1995,8 @@
                         if (isFinite(startTime) && startTime < videoPlayer.duration) {
                             videoPlayer.currentTime = startTime;
                         }
+                        // ADD THIS LINE to update the display as soon as the video is ready
+                        updateFrameDisplay(); 
                     }, { once: true });
 
                     videoPlayer.load();
@@ -2187,6 +2619,8 @@
                     document.getElementById('timingInfoDisplay').style.display = 'none';
                     teamworkGrid.innerHTML = '';
                     pushedFrames.clear();
+                    submittedFrames.clear(); // Xóa lịch sử các lượt nộp
+                    document.getElementById('correctSubmissionPanel').style.display = 'none'; // Ẩn panel nộp đúng
                     googleSearchInput.value = '';
                     googleResultsContainer.innerHTML = '';
                     googleResultsWrapper.style.display = 'none';
@@ -2503,6 +2937,39 @@
                             focusOnStageInput(allStages[currentIndex]);
                         }
                     }
+                }
+
+                if (videoPreviewModal.style.display !== 'flex') {
+                    return;
+                }
+
+                let direction = 0;
+                // Check if the pressed key is ArrowRight or ArrowLeft
+                if (event.key === 'ArrowRight') {
+                    direction = 1; // Move forward
+                } else if (event.key === 'ArrowLeft') {
+                    direction = -1; // Move backward
+                }
+
+                // If one of our target keys was pressed...
+                if (direction !== 0) {
+                    // Prevent the default browser action for arrow keys (like horizontal scrolling).
+                    event.preventDefault();
+
+                    // Ensure we have the necessary FPS data before proceeding.
+                    if (!currentVideoPreviewData || !currentVideoPreviewData.fps) {
+                        return;
+                    }
+                    
+                    // Pause the video for precise control.
+                    videoPlayer.pause();
+                    
+                    // The calculation is the same as for the mouse wheel.
+                    const frameTime = 1 / currentVideoPreviewData.fps;
+                    const newTime = videoPlayer.currentTime + (direction * frameTime);
+                    
+                    // Set the new time, ensuring it stays within the video's bounds.
+                    videoPlayer.currentTime = Math.max(0, Math.min(videoPlayer.duration, newTime));
                 }
             });
         });

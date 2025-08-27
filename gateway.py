@@ -667,7 +667,6 @@ def search_milvus_sync(collection: Collection, collection_name: str, query_vecto
                     frame_name = frame_name[:-5]
                     
                 filepath = os.path.join(IMAGE_BASE_PATH, f"{frame_name}.webp")
-                print(filepath)
                 # ## END: LOGIC SỬA LỖI ##
 
                 final_results.append({
