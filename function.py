@@ -17,7 +17,7 @@ from googletrans import Translator
 from async_lru import alru_cache # Import thư viện cache cho hàm async
 
 import sys
-path_to_api = '/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/DataPreprocessing/Api'
+path_to_api = '/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/DataPreprocessing/Api'
 sys.path.append(path_to_api)
 from Api_key import api_key
 
