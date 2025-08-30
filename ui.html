@@ -1711,7 +1711,6 @@
                 <div id="modelDropdown" class="model-dropdown">
                     <div class="model-dropdown-item"><input type="checkbox" id="model-beit3" value="beit3" checked><label for="model-beit3">BEiT-3</label></div>
                     <div class="model-dropdown-item"><input type="checkbox" id="model-bge" value="bge" checked><label for="model-bge">BGE-VL</label></div>
-                    <div class="model-dropdown-item"><input type="checkbox" id="model-unite" value="unite" checked><label for="model-unite">Unite</label></div>
                     <div class="model-dropdown-item"><input type="checkbox" id="model-ops_mm" value="ops_mm" checked><label for="model-ops_mm">Ops-MM</label></div>
                 </div>
             </div>
@@ -3259,7 +3258,7 @@
                     </div>
                     <div class="stage-options">
                         <button class="option-btn" data-option="enhance" title="Enhance Query (Ctrl+Q)">Enhance</button>
-                        <button class="option-btn" data-option="unite_fusion" title="Use Unite Fusion Search (Ctrl+U)">Fusion</button>
+                        <button class="option-btn" data-option="bge_caption" title="Use BGE Caption Search (Ctrl+U)">Caption</button>
                     </div>`;
 
                 const mainTextInput = stageCard.querySelector('.main-query-input');
@@ -3395,8 +3394,8 @@
                     } else if (allStages.length === 1) {
                         searchEndpoint = '/search';
                         const firstStage = allStages[0];
-                        const useUniteFusion = firstStage.querySelector('.option-btn[data-option="unite_fusion"]').classList.contains('active');
-                        const searchData = { filters: objectFilters, page: 1, page_size: PAGE_SIZE, use_unite_fusion: useUniteFusion };
+                        const useBgeCaption = firstStage.querySelector('.option-btn[data-option="bge_caption"]').classList.contains('active');
+                        const searchData = { filters: objectFilters, page: 1, page_size: PAGE_SIZE, use_bge_caption: useBgeCaption };
                         let hasPrimaryQuery = false;
 
                         if (firstStage.querySelector('.type-btn[data-type="gen_image"]')?.classList.contains('active')) {
@@ -3444,7 +3443,7 @@
                                 generated_image_name: stage.generatedImageName || null,
                                 enhance: stage.querySelector('.option-btn[data-option="enhance"]')?.classList.contains('active') || false,
                                 expand: stage.querySelector('.option-btn[data-option="expand"]')?.classList.contains('active') || false, // Dòng này là nguyên nhân chính gây lỗi
-                                use_unite_fusion: stage.querySelector('.option-btn[data-option="unite_fusion"]')?.classList.contains('active') || false,
+                                use_bge_caption: stage.querySelector('.option-btn[data-option="bge_caption"]')?.classList.contains('active') || false,
                                 ocr_query: stage.querySelector('.type-btn[data-type="ocr"].active') ? stage.querySelector('.ocr-filter-input').value.trim() : null,
                                 asr_query: stage.querySelector('.type-btn[data-type="asr"].active') ? stage.querySelector('.asr-filter-input').value.trim() : null,
                             };
@@ -4297,7 +4296,7 @@
                             switch (event.key.toLowerCase()) {
                                 case 'g': clusterBtn.click(); break;
                                 case 'q': stageToModify?.querySelector('.option-btn[data-option="enhance"]')?.click(); break;
-                                case 'u': stageToModify?.querySelector('.option-btn[data-option="unite_fusion"]')?.click(); break;
+                                case 'u': stageToModify?.querySelector('.option-btn[data-option="bge_caption"]')?.click(); break;
                                 default: handled = false;
                             }
                     }
