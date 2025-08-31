@@ -9,14 +9,13 @@ import json
 import re
 import uuid
 import shutil
-import csv
 from pathlib import Path
 from collections import defaultdict
 import httpx
 from typing import List, Dict, Any, Optional
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Body, WebSocket, WebSocketDisconnect, Header
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, ORJSONResponse, StreamingResponse
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Body, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, ORJSONResponse 
 from pydantic import BaseModel, ValidationError
 from pymilvus import Collection, connections, utility
 import requests
@@ -80,10 +79,9 @@ class DownloadImageRequest(BaseModel):
 # --- Thiết lập & Cấu hình ---
 app = FastAPI(default_response_class=ORJSONResponse)
 
-TEMP_UPLOAD_DIR = Path("/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/temp_uploads")
+TEMP_UPLOAD_DIR = Path("/mlcv2/WorkingSpace/Personal/nguyenmv/temp_uploads")
 TEMP_UPLOAD_DIR.mkdir(exist_ok=True)
-SUBMISSION_DIR = Path("/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/submission") # <--- ADD THIS LINE
-ALLOWED_BASE_DIR = "/workspace/mlcv2"
+ALLOWED_BASE_DIR = "/mlcv2"
 
 # ## START: GOOGLE IMAGE SEARCH API ENDPOINTS ##
 @app.post("/google_image_search")
@@ -151,27 +149,25 @@ except ImportError:
 
 # --- Cấu hình DRES và hệ thống ---
 DRES_BASE_URL = "http://192.168.28.151:5000"
-VIDEO_BASE_DIR = "/workspace/mlcv1/Datasets/HCMAI25/batch1/video"
-IMAGE_BASE_PATH = "/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/Dataset/Retrieval/Keyframes/webp_keyframes"
+VIDEO_BASE_DIR = "/mlcv2/Datasets/HCMAI25/batch1/video"
+IMAGE_BASE_PATH = "/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/Dataset/Retrieval/Keyframes_filtered"
 
-BEIT3_WORKER_URL = "http://model-workers2:8001/embed"
+BEIT3_WORKER_URL = "http://model-workers:8001/embed"
 BGE_WORKER_URL = "http://model-workers:8002/embed"
-OPS_MM_WORKER_URL = "http://model-workers:8004/embed"
+UNITE_WORKER_URL = "http://model-workers:8003/embed"
 IMAGE_GEN_WORKER_URL = "http://localhost:8004/generate"
-BGE_M3_WORKER_URL = "http://model-workers:8003/embed"
 
 ELASTICSEARCH_HOST = "http://elasticsearch2:9200"
 OCR_ASR_INDEX_NAME = "vongsotuyen_batch1"
 MILVUS_HOST = "milvus-standalone"
 MILVUS_PORT = "19530"
 
-BEIT3_COLLECTION_NAME = "beit3_batch1_filter_2"
-BGE_COLLECTION_NAME = "bge_batch1_filter_2"
-BGE_M3_CAPTION_COLLECTION_NAME = "BGE_M3_HCMAIC_captions_batch_1"
-OPS_MM_COLLECTION_NAME = "Mm_embed_Batch1_with_filepath_filter"
+BEIT3_COLLECTION_NAME = "beit3_batch1"
+BGE_COLLECTION_NAME = "bge_batch1"
+UNITE_COLLECTION_NAME = "Unite_Batch1_with_filepath"
+UNITE_FUSION_COLLECTION_NAME = "Unite_Fusion_Batch1_with_filepath"
 
-
-MODEL_WEIGHTS = {"beit3": 0.2, "bge": 0.1, "ops_mm": 0.2, "bge_caption": 0.5}
+MODEL_WEIGHTS = {"beit3": 0.4, "bge": 0.2, "unite": 0.4}
 SEARCH_DEPTH = 1000
 TOP_K_RESULTS = 1000
 MAX_SEQUENCES_TO_RETURN = 500
@@ -188,27 +184,20 @@ SEARCH_PARAMS = {
 }
 # ---------------------------------------------------------------
 
-# ### START: FIX 4 ###
-# Bổ sung collection caption vào dictionary để Milvus dùng đúng tham số
 COLLECTION_TO_INDEX_TYPE = {
     BEIT3_COLLECTION_NAME: "HNSW",
     BGE_COLLECTION_NAME: "HNSW",
-    BGE_M3_CAPTION_COLLECTION_NAME: "HNSW",
-    OPS_MM_COLLECTION_NAME: "HNSW"
+    UNITE_COLLECTION_NAME: "HNSW",
+    UNITE_FUSION_COLLECTION_NAME: "HNSW"
 }
-# ### END: FIX 4 ###
 
 es = None
 OBJECT_COUNTS_DF: Optional[pl.DataFrame] = None
 OBJECT_POSITIONS_DF: Optional[pl.DataFrame] = None
-
 beit3_collection: Optional[Collection] = None
 bge_collection: Optional[Collection] = None
-bge_m3_caption_collection: Optional[Collection] = None
-ops_mm_collection: Optional[Collection] = None
-
-FRAME_CONTEXT_CACHE_FILE = "/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/DataPreprocessing/KF/frame_context_cache.json"
-FRAME_CONTEXT_CACHE: Optional[Dict[str, List[str]]] = None
+unite_collection: Optional[Collection] = None
+unite_collection_fusion: Optional[Collection] = None
 
 # ## TEAMWORK: Connection Manager for WebSockets ##
 class ConnectionManager:
@@ -228,7 +217,6 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 # ## END TEAMWORK ##
-trake_panel_state: List[Dict[str, Any]] = [] 
 
 # --- Pydantic Models ---
 class ObjectCountFilter(BaseModel): conditions: Dict[str, str] = {}
@@ -239,7 +227,7 @@ class StageData(BaseModel):
     query: str
     enhance: bool
     expand: bool
-    use_bge_caption: bool = False
+    use_unite_fusion: bool = False
     ocr_query: Optional[str] = None
     asr_query: Optional[str] = None
     query_image_name: Optional[str] = None
@@ -247,7 +235,7 @@ class StageData(BaseModel):
 
 class TemporalSearchRequest(BaseModel):
     stages: list[StageData]
-    models: List[str] = ["beit3", "bge", "ops_mm"]
+    models: List[str] = ["beit3", "bge", "unite"]
     cluster: bool = False
     filters: Optional[ObjectFilters] = None
     ambiguous: bool = False
@@ -265,11 +253,11 @@ class UnifiedSearchRequest(BaseModel):
     image_search_text: Optional[str] = None
     ocr_query: Optional[str] = None
     asr_query: Optional[str] = None
-    models: List[str] = ["beit3", "bge", "ops_mm"]
+    models: List[str] = ["beit3", "bge", "unite"]
     filters: Optional[ObjectFilters] = None
     enhance: bool = False
     expand: bool = False
-    use_bge_caption: bool = False    
+    use_unite_fusion: bool = False
     generated_image_name: Optional[str] = None
     page: int = 1
     page_size: int = 30
@@ -285,37 +273,10 @@ class DRESSubmitRequest(BaseModel):
 class VideoInfoResponse(BaseModel):
     fps: float
 
-class CreateTaskRequest(BaseModel):
-    task_name: str
-
-class SubmitFrameCSVRequest(BaseModel):
-    task_name: str
-    video_id: str
-    frame_id: int
-    answer: Optional[str] = None
-
-class TrakeShotData(BaseModel):
-    video_id: str
-    frame_id: int
-
-class SubmitTrakeCSVRequest(BaseModel):
-    task_name: str
-    shots: List[TrakeShotData]
-
 @app.on_event("startup")
 def startup_event():
-    global es, OBJECT_COUNTS_DF, OBJECT_POSITIONS_DF, beit3_collection, bge_collection, bge_m3_caption_collection, ops_mm_collection
+    global es, OBJECT_COUNTS_DF, OBJECT_POSITIONS_DF, beit3_collection, bge_collection, unite_collection, unite_collection_fusion
     try:
-        # The only change is adding parents=True
-        SUBMISSION_DIR.mkdir(parents=True, exist_ok=True) # <--- CORRECTED LINE
-        print(f"--- Submission directory ensured at: {SUBMISSION_DIR} ---")
-    except Exception as e:
-        print(f"!!! WARNING: Could not create submission directory. Error: {e} !!!")
-    try:
-        print("--- Loading cache json ---")
-        load_frame_context_cache_from_json()
-        print("--- Loading cache json successfully ---")
-    
         connections.connect(alias="default", host=MILVUS_HOST, port=MILVUS_PORT)
         print("--- Milvus connection successful. ---")
         print("--- Loading Milvus collections into memory... ---")
@@ -323,8 +284,8 @@ def startup_event():
         collections_to_load = {
             "BEiT3": (BEIT3_COLLECTION_NAME, "beit3"),
             "BGE": (BGE_COLLECTION_NAME, "bge"),
-            "BGECaption": (BGE_M3_CAPTION_COLLECTION_NAME, "bge_caption"),
-            "OpsMM": (OPS_MM_COLLECTION_NAME, "ops_mm")
+            "Unite": (UNITE_COLLECTION_NAME, "unite"),
+            "UniteFusion": (UNITE_FUSION_COLLECTION_NAME, "unite_fusion")
         }
 
         for name, (col_name, var_name) in collections_to_load.items():
@@ -336,10 +297,10 @@ def startup_event():
                     beit3_collection = collection
                 elif var_name == "bge":
                     bge_collection = collection
-                elif var_name == "bge_caption":
-                    bge_m3_caption_collection = collection
-                elif var_name == "ops_mm": 
-                    ops_mm_collection = collection
+                elif var_name == "unite":
+                    unite_collection = collection
+                elif var_name == "unite_fusion":
+                    unite_collection_fusion = collection
                     
                 print(f"--- Collection '{col_name}' (for {name}) loaded successfully. ---")
             else:
@@ -362,8 +323,8 @@ def startup_event():
         
     try:
         print("--- Loading object detection data... ---")
-        counts_path = "/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/Dataset/Object/object_counts.parquet"
-        positions_path = "/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/Dataset/Object/object_positions.parquet"
+        counts_path = "/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/Dataset/Object/object_counts.parquet"
+        positions_path = "/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/Dataset/Object/object_positions.parquet"
         counts_df = pl.read_parquet(counts_path)
         OBJECT_COUNTS_DF = counts_df.with_columns(pl.col("image_name").str.split(".").list.first().alias("name_stem"))
         positions_df = pl.read_parquet(positions_path)
@@ -375,35 +336,6 @@ def startup_event():
         OBJECT_POSITIONS_DF = None
 
 # --- Helper Functions ---
-
-def load_frame_context_cache_from_json():
-    """
-    Tải cache tra cứu context từ file JSON đã được tính toán trước.
-    """
-    global FRAME_CONTEXT_CACHE
-    if not os.path.exists(FRAME_CONTEXT_CACHE_FILE):
-        print("\n" + "="*80)
-        print(f"!!! CẢNH BÁO QUAN TRỌNG: Không tìm thấy file cache '{FRAME_CONTEXT_CACHE_FILE}'.")
-        print("!!! Tính năng 'Xem Context' sẽ không hoạt động tối ưu.")
-        print(f"!!! Hãy chạy script 'create_context_cache.py' để tạo file này.")
-        print("="*80 + "\n")
-        FRAME_CONTEXT_CACHE = {} # Khởi tạo rỗng để tránh lỗi khi server chạy
-        return
-
-    print(f"--- Đang tải Frame Context Cache từ '{FRAME_CONTEXT_CACHE_FILE}'... ---")
-    start_time = time.time()
-    try:
-        with open(FRAME_CONTEXT_CACHE_FILE, 'r', encoding='utf-8') as f:
-            FRAME_CONTEXT_CACHE = json.load(f)
-        end_time = time.time()
-        print(f"--- Tải Frame Context Cache thành công sau {end_time - start_time:.2f}s. ---")
-        print(f"--- Đã cache context cho {len(FRAME_CONTEXT_CACHE)} frames. ---")
-    except Exception as e:
-        print(f"!!! LỖI NGHIÊM TRỌNG: Không thể đọc hoặc phân tích file cache '{FRAME_CONTEXT_CACHE_FILE}'. Lỗi: {e}")
-        FRAME_CONTEXT_CACHE = {}
-
-# ## END: TỐI ƯU HÓA CONTEXT VIEW ##
-
 def get_video_fps(video_path: str) -> float:
     """Gets the FPS of a video file using OpenCV. Returns a default if it fails."""
     if not os.path.exists(video_path):
@@ -631,11 +563,8 @@ def get_valid_filepaths_for_strict_search(all_filepaths: set, filters: ObjectFil
 
 def search_milvus_sync(collection: Collection, collection_name: str, query_vectors: list, limit: int, expr: str = None):
     try:
-        # print(collection)
         if not collection or not query_vectors:
             return []
-        
-        # --- Phần kiểm tra collection có được load hay chưa ---
         need_load = False
         try:
             state = utility.load_state(collection.name)
@@ -648,13 +577,10 @@ def search_milvus_sync(collection: Collection, collection_name: str, query_vecto
         except Exception as e:
             print(f"Could not determine load state for '{collection.name}' ({e}); will attempt load.")
             need_load = True
-        
         if need_load:
             print(f"--- Collection '{collection.name}' not loaded. Loading... ---")
             collection.load()
             print(f"--- Collection '{collection.name}' loaded. ---")
-
-        # --- Cấu hình và thực hiện search ---
         index_type = COLLECTION_TO_INDEX_TYPE.get(collection_name, "HNSW")
         search_params = SEARCH_PARAMS.get(index_type, SEARCH_PARAMS["HNSW"])
         
@@ -670,30 +596,29 @@ def search_milvus_sync(collection: Collection, collection_name: str, query_vecto
             expr=expr
         )
         
-        print(results)
-        
-        # --- Xử lý kết quả trả về (ĐÃ SỬA LỖI THEO YÊU CẦU MỚI) ---
         final_results = []
-        for one_query_hits in results:
-            for hit in one_query_hits:
+        for one_query in results:
+            for hit in one_query:
                 entity = hit.entity
+                # ## START: SỬA LỖI TẠI ĐÂY ##
+                # Thêm UNITE_FUSION_COLLECTION_NAME vào danh sách này.
+                if collection_name in [BEIT3_COLLECTION_NAME, BGE_COLLECTION_NAME, UNITE_COLLECTION_NAME, UNITE_FUSION_COLLECTION_NAME]:
+                # ## END: SỬA LỖI TẠI ĐÂY ##
+                    frame_name = entity.get("frame_name")
+                    if frame_name is None: # Thêm kiểm tra để tránh lỗi nếu frame_name bị thiếu
+                        continue
+                    if ".webp" in frame_name:
+                        filepath = os.path.join(IMAGE_BASE_PATH, f"{frame_name}")
+                    else: 
+                        filepath = os.path.join(IMAGE_BASE_PATH, f"{frame_name}.webp")
+                else:
+                    filepath = entity.get("filepath")
                 
-                # ## START: LOGIC SỬA LỖI - ÁP DỤNG QUY TẮC NHẤT QUÁN ##
-                frame_name = entity.get("frame_name")
+                print(filepath) # Bây giờ sẽ in ra đường dẫn đúng
                 
-                # Bỏ qua nếu bản ghi không hợp lệ (không có frame_name)
-                if not frame_name:
+                if filepath is None: # Bỏ qua các kết quả không có đường dẫn
                     continue
-
-                # Quy tắc nhất quán: Mọi frame_name từ Milvus đều là TÊN GỐC KHÔNG CÓ ĐUÔI.
-                # Luôn luôn ghép nó với IMAGE_BASE_PATH và thêm đuôi .webp.
-                # Logic này giờ đây áp dụng cho TẤT CẢ các collection.
-                if frame_name.endswith(".webp"):
-                    frame_name = frame_name[:-5]
                     
-                filepath = os.path.join(IMAGE_BASE_PATH, f"{frame_name}.webp")
-                # ## END: LOGIC SỬA LỖI ##
-
                 final_results.append({
                     "filepath": filepath,
                     "score": hit.distance,
@@ -702,7 +627,6 @@ def search_milvus_sync(collection: Collection, collection_name: str, query_vecto
                     "shot_id": str(entity.get("shot_id"))
                 })
         return final_results
-        
     except Exception as e:
         print(f"ERROR during Milvus search on '{collection_name}': {e}")
         traceback.print_exc()
@@ -742,28 +666,18 @@ async def search_asr_on_elasticsearch_async(keyword: str, limit: int = 500):
     return await asyncio.to_thread(search_asr_on_elasticsearch_sync, keyword, limit)
 
 def reciprocal_rank_fusion(results_lists: dict, weights: dict, k_rrf: int = 60):
-    """
-    PHIÊN BẢN NÂNG CẤP: Thêm trường source_scores để gỡ lỗi.
-    """
     master_data = defaultdict(lambda: {"raw_scores": {}})
-    
-    # Gom tất cả kết quả và điểm số thô từ các model
     for model_name, results in results_lists.items():
         if not results:
             continue
-        # Sắp xếp kết quả của từng model để xác định rank
         sorted_results = sorted(results, key=lambda x: x.get('score', 0.0), reverse=True)
         
         for rank, result in enumerate(sorted_results, 1):
             filepath = result.get('filepath')
             if not filepath:
                 continue
-                
-            # Nếu chưa có metadata, lấy từ lần xuất hiện đầu tiên
             if 'metadata' not in master_data[filepath]:
                 master_data[filepath]['metadata'] = result
-                
-            # Lưu lại điểm và rank của model này cho filepath tương ứng
             master_data[filepath]['raw_scores'][model_name] = {
                 "score": result.get('score', 0.0),
                 "rank": rank
@@ -775,23 +689,14 @@ def reciprocal_rank_fusion(results_lists: dict, weights: dict, k_rrf: int = 60):
     final_results = []
     for filepath, data in master_data.items():
         rrf_score = 0.0
-        # Tính điểm RRF tổng hợp
         for model_name, score_info in data['raw_scores'].items():
-            # Áp dụng trọng số của model
-            model_weight = weights.get(model_name, 1.0)
-            rrf_score += model_weight * (1.0 / (k_rrf + score_info['rank']))
+            rrf_score += weights.get(model_name, 1.0) * (1.0 / (k_rrf + score_info['rank']))
         
         final_item = data['metadata']
         final_item['rrf_score'] = rrf_score
-        # **Đây là phần quan trọng nhất được thêm vào**
-        # Gán lại "bảng điểm chi tiết" để có thể debug
-        final_item['source_scores'] = data['raw_scores'] 
-        
-        # Xóa điểm cũ để tránh nhầm lẫn
         final_item.pop('score', None)
         final_results.append(final_item)
         
-    # Sắp xếp theo điểm RRF cuối cùng
     return sorted(final_results, key=lambda x: x['rrf_score'], reverse=True)
 
 def package_response_with_urls(data: List[Dict[str, Any]], base_url: str):
@@ -803,6 +708,8 @@ def package_response_with_urls(data: List[Dict[str, Any]], base_url: str):
                 if current_path:
                     if not current_path.startswith(ALLOWED_BASE_DIR):
                         current_path = os.path.join(IMAGE_BASE_PATH, os.path.basename(current_path))
+                    if current_path.startswith("/workspace"):
+                        current_path = current_path.replace("/workspace", "/mlcv2/WorkingSpace/Personal/nguyenmv", 1)
                     
                     shot_dict['filepath'] = current_path
                     if 'url' not in shot_dict:
@@ -824,36 +731,22 @@ async def get_embeddings_for_query(
     image_content: Optional[bytes],
     models: List[str],
     query_image_info: Optional[Dict] = None,
-    use_bge_caption: bool = False
+    is_fusion: bool = False
 ) -> Dict[str, List[List[float]]]:
-    
-    models_to_call = list(models)
-    
-    if use_bge_caption and "bge-m3" not in models_to_call:
-        models_to_call.append("bge-m3")
+    if image_content:
+        return await get_embeddings_for_query_from_worker(client, text_queries, image_content, models, query_image_info, is_fusion)
 
     global embedding_cache
     if len(embedding_cache) > CACHE_MAX_SIZE:
         embedding_cache.clear()
 
-    cache_key = f"{'|'.join(sorted(models_to_call))}:{'|'.join(text_queries or [])}"
-    if image_content:
-        pass
-    elif cache_key in embedding_cache:
+    cache_key = f"{'|'.join(sorted(models))}:{'|'.join(text_queries)}"
+    if cache_key in embedding_cache:
         print(f"--- EMBEDDING CACHE HIT for key: {cache_key[:80]}... ---")
         return embedding_cache[cache_key]
     
     print(f"--- EMBEDDING CACHE MISS for key: {cache_key[:80]}... ---")
-    
-    results = await get_embeddings_for_query_from_worker(
-        client, text_queries, image_content, models_to_call, query_image_info
-    )
-    
-    # ### START: LOGGING FOR BGE-M3 CAPTION EMBEDDING ###
-    if use_bge_caption and results.get("bge-m3"):
-        print("--- GATEWAY: BGE Caption Mode ON. Successfully retrieved BGE-M3 embeddings. ---")
-    # ### END: LOGGING FOR BGE-M3 CAPTION EMBEDDING ###
-
+    results = await get_embeddings_for_query_from_worker(client, text_queries, image_content, models, query_image_info, is_fusion)
     embedding_cache[cache_key] = results
     return results
 
@@ -866,21 +759,31 @@ async def get_embeddings_for_query_from_worker(
     is_fusion: bool = False
 ) -> Dict[str, List[List[float]]]:
     tasks = []
-    model_url_map = {"beit3": BEIT3_WORKER_URL, "bge": BGE_WORKER_URL, "ops_mm": OPS_MM_WORKER_URL, "bge-m3": BGE_M3_WORKER_URL}
+    model_url_map = {"beit3": BEIT3_WORKER_URL, "bge": BGE_WORKER_URL, "unite": UNITE_WORKER_URL}
     async def get_model_embedding(model_name: str) -> tuple[str, list]:
         url = model_url_map.get(model_name)
         if not url: return model_name, []
         try:
             embeddings = []
-            queries = text_queries or [""]
-            for q in queries:
-                data = {'text_query': q} if q else {}
-                files = None
-                if image_content:
-                    files = {'image_file': (query_image_info['filename'], image_content, query_image_info['content_type'])}
-                resp = await client.post(url, files=files, data=data, timeout=20.0)
+            if model_name == 'unite' and is_fusion and image_content and text_queries:
+                print("--- GATEWAY: Preparing FUSION request for Unite worker ---")
+                data = {'text_query': text_queries[0]}
+                files = {'image_file': (query_image_info['filename'], image_content, query_image_info['content_type'])}
+                resp = await client.post(url, files=files, data=data, timeout=30.0)
                 if resp.status_code == 200:
                     embeddings.extend(resp.json().get('embedding', []))
+                else:
+                    print(f"ERROR: Unite worker returned status {resp.status_code} with text: {resp.text}")
+            else:
+                queries = text_queries or [""]
+                for q in queries:
+                    data = {'text_query': q} if q else {}
+                    files = None
+                    if image_content:
+                         files = {'image_file': (query_image_info['filename'], image_content, query_image_info['content_type'])}
+                    resp = await client.post(url, files=files, data=data, timeout=20.0)
+                    if resp.status_code == 200:
+                        embeddings.extend(resp.json().get('embedding', []))
             return model_name, embeddings
         except Exception as e:
             print(f"Error getting embedding for {model_name}: {e}")
@@ -903,118 +806,48 @@ async def read_root():
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
-    global trake_panel_state # Declare we are using the global variable
-
-    # When a new user connects, send them the current state of the Trake Panel
-    try:
-        await websocket.send_text(json.dumps({
-            "type": "trake_sync",
-            "data": trake_panel_state
-        }))
-    except Exception as e:
-        print(f"Initial sync failed for a client: {e}")
-
     try:
         while True:
-            raw_data = await websocket.receive_text()
-            message = json.loads(raw_data)
-            msg_type = message.get("type")
-
-            if msg_type == "new_frame": # Teamwork Panel Push
-                await manager.broadcast(raw_data)
-
-            elif msg_type == "remove_frame": # Teamwork Panel Remove
-                await manager.broadcast(raw_data)
-
-            elif msg_type == "clear_panel": # Teamwork Panel Clear
-                await manager.broadcast(raw_data)
-            
-            # --- START: NEW TRAKE PANEL LOGIC ---
-            elif msg_type == "trake_add":
-                shot_data = message.get("data", {}).get("shot")
-                if shot_data:
-                    # Prevent duplicates by filepath
-                    if not any(item['filepath'] == shot_data.get('filepath') for item in trake_panel_state):
-                        trake_panel_state.append(shot_data)
-                        await manager.broadcast(json.dumps({
-                            "type": "trake_add",
-                            "data": {"shot": shot_data}
-                        }))
-
-            elif msg_type == "trake_remove":
-                filepath = message.get("data", {}).get("filepath")
-                if filepath:
-                    trake_panel_state = [item for item in trake_panel_state if item.get('filepath') != filepath]
-                    await manager.broadcast(raw_data) # Forward the original remove message
-
-            elif msg_type == "trake_reorder":
-                # The client sends the new order of filepaths
-                new_order_filepaths = message.get("data", {}).get("order")
-                if isinstance(new_order_filepaths, list):
-                    # Create a map for quick lookups
-                    current_items_map = {item['filepath']: item for item in trake_panel_state}
-                    # Rebuild the list based on the new order
-                    new_state = [current_items_map[fp] for fp in new_order_filepaths if fp in current_items_map]
-                    trake_panel_state = new_state
-                    await manager.broadcast(raw_data) # Forward the reorder message
-            
-            elif msg_type == "trake_replace":
-                # Client sends the filepath of the item to replace and the new shot data
-                data = message.get("data", {})
-                filepath_to_replace = data.get("filepath")
-                new_shot_data = data.get("newShot")
-                if filepath_to_replace and new_shot_data:
-                    for i, item in enumerate(trake_panel_state):
-                        if item.get("filepath") == filepath_to_replace:
-                            trake_panel_state[i] = new_shot_data
-                            break
-                    await manager.broadcast(raw_data) # Forward the replace message
-            # --- END: NEW TRAKE PANEL LOGIC ---
-            
+            data = await websocket.receive_text()
+            await manager.broadcast(data)
     except WebSocketDisconnect:
         manager.disconnect(websocket)
     except Exception as e:
         print(f"WebSocket Error: {e}")
-        traceback.print_exc()
         manager.disconnect(websocket)
 
 # ## PERFORMANCE OPTIMIZATION: Asynchronous Query Processing with Cache ##
 @app.post("/process_query")
 async def process_query(request_data: ProcessQueryRequest):
-    """
-    Xử lý một truy vấn văn bản gốc dựa trên các tùy chọn enhance và expand.
-    - enhance=True: Dùng AI để dịch và tối ưu hóa (chất lượng cao).
-    - expand=True: Dùng googletrans dịch rồi expand.
-    - Mặc định: Dùng googletrans chỉ để dịch.
-    """
-    query = request_data.query
-    if not query:
+    if not request_data.query: 
         return {"processed_query": ""}
-
-    cache_key = f"{query}|{request_data.enhance}|{request_data.expand}"
+    
+    global processed_query_cache
+    if len(processed_query_cache) > CACHE_MAX_SIZE:
+        processed_query_cache.clear()
+        
+    cache_key = f"{request_data.query}|{request_data.enhance}|{request_data.expand}"
     if cache_key in processed_query_cache:
-        print(f"--- QUERY CACHE HIT for: {query[:50]}... ---")
+        print(f"--- QUERY CACHE HIT for: {request_data.query[:50]}... ---")
         return {"processed_query": processed_query_cache[cache_key]}
-    print(f"--- QUERY CACHE MISS for: {query[:50]}... ---")
+    
+    print(f"--- QUERY CACHE MISS for: {request_data.query[:50]}... ---")
 
-    processed_query = ""
+    base_query = await translate_query(request_data.query)
     
-    if request_data.enhance:
-        print(f"--- Action: Enhancing '{query[:50]}...' using AI (high quality translate + optimize)")
-        processed_query = await asyncio.to_thread(enhance_query, query)
-    
-    elif request_data.expand:
-        print(f"--- Action: Expanding '{query[:50]}...' using fast translate")
-        translated_query = await translate_query(query)
-        processed_query = await asyncio.to_thread(expand_query_parallel, translated_query)
-    
+    if request_data.expand:
+        queries_to_process = await asyncio.to_thread(expand_query_parallel, base_query)
     else:
-        print(f"--- Action: Translating '{query[:50]}...' using fast translate")
-        processed_query = await translate_query(query)
+        queries_to_process = [base_query]
 
-    if isinstance(processed_query, list):
-        processed_query = "\n".join(processed_query)
-
+    if request_data.enhance:
+        # Use asyncio.gather to run multiple enhancements in parallel if expand created multiple queries
+        enhance_tasks = [asyncio.to_thread(enhance_query, q) for q in queries_to_process]
+        final_queries = await asyncio.gather(*enhance_tasks)
+    else:
+        final_queries = queries_to_process
+    
+    processed_query = " ".join(final_queries)
     processed_query_cache[cache_key] = processed_query
     return {"processed_query": processed_query}
 
@@ -1097,83 +930,6 @@ async def dres_submit(submit_data: DRESSubmitRequest):
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while contacting DRES: {e}")
-def sanitize_filename(name: str) -> str:
-    """Removes potentially unsafe characters from a filename."""
-    return re.sub(r'[^a-zA-Z0-9_.-]', '', name)
-
-@app.get("/tasks")
-async def list_tasks():
-    """Lists all existing CSV task files in the submission directory."""
-    if not SUBMISSION_DIR.exists():
-        return {"tasks": []}
-    tasks = [f.stem for f in SUBMISSION_DIR.glob('*.csv')]
-    return {"tasks": sorted(tasks)}
-
-@app.post("/tasks/create")
-async def create_task(request_data: CreateTaskRequest):
-    """Creates a new, empty CSV file for a task."""
-    task_name = sanitize_filename(request_data.task_name)
-    if not task_name:
-        raise HTTPException(status_code=400, detail="Invalid task name.")
-    
-    task_file = SUBMISSION_DIR / f"{task_name}.csv"
-    if task_file.exists():
-        raise HTTPException(status_code=409, detail=f"Task '{task_name}' already exists.")
-    
-    try:
-        task_file.touch() # Create an empty file
-        return {"message": "Task created successfully", "task_name": task_name}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create task file: {e}")
-
-@app.post("/submit/csv/frame")
-async def submit_frame_to_csv(request_data: SubmitFrameCSVRequest):
-    """Submits a single frame (standard or QA) to a task's CSV file."""
-    task_name = sanitize_filename(request_data.task_name)
-    task_file = SUBMISSION_DIR / f"{task_name}.csv"
-    if not task_file.exists():
-        raise HTTPException(status_code=404, detail="Task not found.")
-
-    is_qa = "qa" in task_name.lower()
-    
-    try:
-        with open(task_file, 'a', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            if is_qa:
-                if request_data.answer is None:
-                    raise HTTPException(status_code=400, detail="Answer is required for a QA task.")
-                writer.writerow([request_data.video_id, request_data.frame_id, request_data.answer])
-            else:
-                writer.writerow([request_data.video_id, request_data.frame_id])
-        return {"message": "Frame submitted successfully."}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to write to task file: {e}")
-
-@app.post("/submit/csv/trake")
-async def submit_trake_to_csv(request_data: SubmitTrakeCSVRequest):
-    """Submits all frames from the Trake panel to a task's CSV, grouped by video."""
-    task_name = sanitize_filename(request_data.task_name)
-    task_file = SUBMISSION_DIR / f"{task_name}.csv"
-    if not task_file.exists():
-        raise HTTPException(status_code=404, detail="Task not found.")
-
-    if not request_data.shots:
-        return {"message": "No frames to submit."}
-
-    # Group shots by video_id
-    shots_by_video = defaultdict(list)
-    for shot in request_data.shots:
-        shots_by_video[shot.video_id].append(shot.frame_id)
-
-    try:
-        with open(task_file, 'a', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            for video_id, frame_ids in shots_by_video.items():
-                # Format: {video_id}, {frame1_id}, {frame2_id}, ...
-                writer.writerow([video_id] + sorted(frame_ids))
-        return {"message": f"Submitted {len(request_data.shots)} frames from Trake panel."}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to write Trake submission to file: {e}")
 
 class ImageGenTextRequest(BaseModel):
     query: str
@@ -1236,7 +992,7 @@ async def search_unified(request: Request, search_data: str = Form(...), query_i
             response_content.update({"processed_query": "", "total_results": 0, "timing_info": {**timings, "total_request_s": time.time() - start_total_time}})
             return ORJSONResponse(content=response_content)
         
-        candidate_frame_names = [os.path.splitext(os.path.basename(res['filepath']))[0] for res in es_results_for_standalone_search]
+        candidate_frame_names = [os.path.basename(res['filepath']) for res in es_results_for_standalone_search]
         if candidate_frame_names:
             formatted_names = [f'"{name}"' for name in candidate_frame_names]
             milvus_expr = f'frame_name in [{",".join(formatted_names)}]'
@@ -1289,49 +1045,29 @@ async def search_unified(request: Request, search_data: str = Form(...), query_i
         else:
             start_embed = time.time()
             async with httpx.AsyncClient() as client:
-                results_by_model = await get_embeddings_for_query(
-                    client, final_queries_to_embed, image_content, models_to_use, 
-                    query_image_info, use_bge_caption=search_data_model.use_bge_caption
-                )
+                results_by_model = await get_embeddings_for_query(client, final_queries_to_embed, image_content, models_to_use, query_image_info, is_fusion=is_gen_image_search )
             timings["embedding_generation_s"] = time.time() - start_embed
             if any(results_by_model.values()):
                 start_milvus = time.time()
                 milvus_tasks = []
+                milvus_tasks.append(search_milvus_async(beit3_collection, BEIT3_COLLECTION_NAME, results_by_model.get("beit3", []), SEARCH_DEPTH, expr=milvus_expr) if "beit3" in models_to_use and results_by_model.get("beit3") else asyncio.sleep(0, result=[]))
+                milvus_tasks.append(search_milvus_async(bge_collection, BGE_COLLECTION_NAME, results_by_model.get("bge", []), SEARCH_DEPTH, expr=milvus_expr) if "bge" in models_to_use and results_by_model.get("bge") else asyncio.sleep(0, result=[]))
                 
-                # ### START: FIX 3 - Cải tiến logic RRF ###
-                models_in_task_order = []
-
-                if "beit3" in models_to_use and results_by_model.get("beit3"):
-                    milvus_tasks.append(search_milvus_async(beit3_collection, BEIT3_COLLECTION_NAME, results_by_model["beit3"], SEARCH_DEPTH, expr=milvus_expr))
-                    models_in_task_order.append("beit3")
-
-                if "bge" in models_to_use and results_by_model.get("bge"):
-                    milvus_tasks.append(search_milvus_async(bge_collection, BGE_COLLECTION_NAME, results_by_model["bge"], SEARCH_DEPTH, expr=milvus_expr))
-                    models_in_task_order.append("bge")
-                    
-                # ### START: FIX 1 - Thêm logic tìm kiếm caption ###
-                if search_data_model.use_bge_caption and results_by_model.get("bge-m3"):
-                    print("--- GATEWAY: Performing BGE Caption Search ---")
-                    milvus_tasks.append(search_milvus_async(bge_m3_caption_collection, BGE_M3_CAPTION_COLLECTION_NAME, results_by_model["bge-m3"], SEARCH_DEPTH, expr=milvus_expr))
-                    models_in_task_order.append("bge_caption")
-                # ### END: FIX 1 ###
-
-                if "ops_mm" in models_to_use and results_by_model.get("ops_mm"):
-                    milvus_tasks.append(search_milvus_async(ops_mm_collection, OPS_MM_COLLECTION_NAME, results_by_model["ops_mm"], SEARCH_DEPTH, expr=milvus_expr))
-                    models_in_task_order.append("ops_mm")
-
-                milvus_results_list = await asyncio.gather(*milvus_tasks)
+                if "unite" in models_to_use and results_by_model.get("unite"):
+                    is_fusion = search_data_model.use_unite_fusion
+                    unite_col = unite_collection_fusion if is_fusion else unite_collection
+                    unite_name = UNITE_FUSION_COLLECTION_NAME if is_fusion else UNITE_COLLECTION_NAME
+                    milvus_tasks.append(search_milvus_async(unite_col, unite_name, results_by_model.get("unite", []), SEARCH_DEPTH, expr=milvus_expr))
+                else:
+                    milvus_tasks.append(asyncio.sleep(0, result=[]))
+                
+                beit3_res, bge_res, unite_res = await asyncio.gather(*milvus_tasks)
                 timings["vector_search_s"] = time.time() - start_milvus
                 
                 start_post_proc = time.time()
-                
-                results_for_rrf = {model_name: result for model_name, result in zip(models_in_task_order, milvus_results_list)}
-                # ### END: FIX 3 ###
-                
-                milvus_weights = {m: w for m, w in MODEL_WEIGHTS.items() if m in models_to_use or (m == "bge_caption" and search_data_model.use_bge_caption)}
-                final_fused_results = reciprocal_rank_fusion(results_for_rrf, milvus_weights)
+                milvus_weights = {m: w for m, w in MODEL_WEIGHTS.items() if m in models_to_use}
+                final_fused_results = reciprocal_rank_fusion({"beit3": beit3_res, "bge": bge_res, "unite": unite_res}, milvus_weights)
                 timings["post_processing_s"] = time.time() - start_post_proc
-                
     elif is_filter_search:
         start_post_proc = time.time()
         for res in es_results_for_standalone_search:
@@ -1429,9 +1165,7 @@ async def temporal_search(request_data: TemporalSearchRequest, request: Request)
                 processed_query_response = await process_query(ProcessQueryRequest(query=stage.query, enhance=stage.enhance, expand=stage.expand))
                 processed_query = processed_query_response["processed_query"]
                 processed_queries_for_ui.append(processed_query)
-                results_by_model = await get_embeddings_for_query(
-                    client, [processed_query], None, models, use_bge_caption=stage.use_bge_caption
-                )
+                results_by_model = await get_embeddings_for_query(client, [processed_query], None, models, is_fusion=False)
             
             if has_ocr_asr_filter and not milvus_expr: return []
             if not any(results_by_model.values()): return []
@@ -1439,33 +1173,13 @@ async def temporal_search(request_data: TemporalSearchRequest, request: Request)
             milvus_tasks = []
             if "beit3" in models and results_by_model.get("beit3"): milvus_tasks.append(search_milvus_async(beit3_collection, BEIT3_COLLECTION_NAME, results_by_model["beit3"], SEARCH_DEPTH_PER_STAGE, expr=milvus_expr))
             if "bge" in models and results_by_model.get("bge"): milvus_tasks.append(search_milvus_async(bge_collection, BGE_COLLECTION_NAME, results_by_model["bge"], SEARCH_DEPTH_PER_STAGE, expr=milvus_expr))
-            
-            # ### START: FIX 2 - Thêm logic tìm kiếm caption cho temporal ###
-            if stage.use_bge_caption and results_by_model.get("bge-m3"):
-                print(f"--- TEMPORAL STAGE: Performing BGE Caption Search ---")
-                milvus_tasks.append(search_milvus_async(bge_m3_caption_collection, BGE_M3_CAPTION_COLLECTION_NAME, results_by_model["bge-m3"], SEARCH_DEPTH_PER_STAGE, expr=milvus_expr))
-            # ### END: FIX 2 ###
-
-            if "ops_mm" in models and results_by_model.get("ops_mm"):
-                milvus_tasks.append(search_milvus_async(ops_mm_collection, OPS_MM_COLLECTION_NAME, results_by_model["ops_mm"], SEARCH_DEPTH_PER_STAGE, expr=milvus_expr))
+            if "unite" in models and results_by_model.get("unite"):
+                unite_col = unite_collection_fusion if stage.use_unite_fusion else unite_collection
+                unite_name = UNITE_FUSION_COLLECTION_NAME if stage.use_unite_fusion else UNITE_COLLECTION_NAME
+                milvus_tasks.append(search_milvus_async(unite_col, unite_name, results_by_model["unite"], SEARCH_DEPTH_PER_STAGE, expr=milvus_expr))
             
             milvus_results = await asyncio.gather(*milvus_tasks)
-            # Logic gán kết quả cho RRF ở đây đơn giản hơn và đã đúng, không cần sửa
-            results_dict = {}
-            model_idx = 0
-            if "beit3" in models:
-                results_dict["beit3"] = milvus_results[model_idx]
-                model_idx += 1
-            if "bge" in models:
-                results_dict["bge"] = milvus_results[model_idx]
-                model_idx += 1
-            if stage.use_bge_caption: # Gán kết quả cho bge_caption
-                 results_dict["bge_caption"] = milvus_results[model_idx]
-                 model_idx += 1
-            if "ops_mm" in models:
-                results_dict["ops_mm"] = milvus_results[model_idx]
-                model_idx += 1
-            
+            results_dict = {"beit3": milvus_results[0] if len(milvus_results) > 0 else [], "bge": milvus_results[1] if len(milvus_results) > 1 else [], "unite": milvus_results[2] if len(milvus_results) > 2 else []}
             return reciprocal_rank_fusion(results_dict, MODEL_WEIGHTS)
         elif has_ocr_asr_filter:
             processed_queries_for_ui.append(f"OCR/ASR: {stage.ocr_query or ''} / {stage.asr_query or ''}")
@@ -1605,86 +1319,38 @@ async def temporal_search(request_data: TemporalSearchRequest, request: Request)
     content["timing_info"] = timings
     return ORJSONResponse(content=content)
 
-@app.post("/get_frame_at_timestamp")
-async def get_frame_at_timestamp(video_id: str = Form(...), timestamp: float = Form(...)):
-    if "/" in video_id or ".." in video_id:
-        raise HTTPException(status_code=400, detail="Invalid video ID format.")
-    
-    video_path_str = os.path.join(VIDEO_BASE_DIR, video_id)
-    if not os.path.isfile(video_path_str) and not video_id.lower().endswith('.mp4'):
-        video_path_str += '.mp4'
-
-    if not os.path.isfile(video_path_str):
-        raise HTTPException(status_code=404, detail=f"Video not found: {video_id}")
-
-    try:
-        cap = cv2.VideoCapture(video_path_str)
-        if not cap.isOpened():
-            raise HTTPException(status_code=500, detail="Could not open video file.")
-        
-        # Convert timestamp (seconds) to milliseconds for OpenCV
-        time_ms = timestamp * 1000
-        cap.set(cv2.CAP_PROP_POS_MSEC, time_ms)
-        
-        ret, frame = cap.read()
-        cap.release()
-        
-        if not ret:
-            raise HTTPException(status_code=404, detail=f"Could not read frame at timestamp {timestamp}s.")
-            
-        # Convert the frame to a JPEG image in memory
-        is_success, buffer = cv2.imencode(".jpg", frame)
-        if not is_success:
-            raise HTTPException(status_code=500, detail="Failed to encode frame.")
-        
-        # Encode the image bytes to a base64 string
-        img_base64 = base64.b64encode(buffer).decode("utf-8")
-        
-        return {"image_data": f"data:image/jpeg;base64,{img_base64}"}
-
-    except Exception as e:
-        # It's good practice to release the capture object in case of an error
-        if 'cap' in locals() and cap.isOpened():
-            cap.release()
-        print(f"Error getting frame at timestamp: {e}")
-        raise HTTPException(status_code=500, detail=f"An error occurred while processing the video frame: {e}")
-
 @app.post("/check_temporal_frames")
 async def check_temporal_frames(request_data: CheckFramesRequest) -> List[str]:
-    """
-    Phiên bản siêu tối ưu: Sử dụng cache đã tính toán trước từ file JSON.
-    1. Lấy tên file từ đường dẫn đầy đủ.
-    2. Dùng tên file làm key để tra cứu trong cache.
-    3. Ghép lại đường dẫn đầy đủ cho các file xung quanh và trả về.
-    """
     base_filepath = request_data.base_filepath
-    
-    # Nếu cache không được tải vì lý do nào đó, trả về chính file đó để không bị lỗi
-    print(base_filepath)
-    if not FRAME_CONTEXT_CACHE:
-        return [base_filepath]
-    
-    # 1. Lấy tên file (key) từ đường dẫn đầy đủ mà frontend gửi lên
-    # Ví dụ: từ "/path/to/L26_V462_0001_000000.webp" -> "L26_V462_0001_000000.webp"
-    key_filename = os.path.basename(base_filepath)
-    
-    # 2. Tra cứu danh sách các tên file xung quanh từ cache
-    # Nếu không tìm thấy, trả về một danh sách chỉ chứa file gốc
-    neighbor_filenames = FRAME_CONTEXT_CACHE.get(key_filename)
-    
-    if not neighbor_filenames:
-        return [base_filepath]
-
-    # 3. Ghép lại đường dẫn đầy đủ và trả về cho frontend
-    # Frontend cần đường dẫn đầy đủ để có thể hiển thị ảnh
-    # Ví dụ: từ "L26_V462_0001_000016.webp" -> "/.../Keyframes/webp_keyframes/L26_V462_0001_000016.webp"
-    full_neighbor_paths = [os.path.join(IMAGE_BASE_PATH, fname) for fname in neighbor_filenames]
-    
-    return full_neighbor_paths
-
+    if not base_filepath or not os.path.isfile(base_filepath):
+        raise HTTPException(status_code=404, detail="Base filepath not found or does not exist.")
+    try:
+        def find_frames():
+            directory = os.path.dirname(base_filepath)
+            target_filename = os.path.basename(base_filepath)
+            video_match = re.match(r'^(L\d+_V\d+)', target_filename)
+            if not video_match: return [base_filepath]
+            video_prefix = video_match.group(1)
+            all_frames_in_video = []
+            for filename in os.listdir(directory):
+                if filename.startswith(video_prefix):
+                    frame_num_match = re.search(r'_(\d+)\.[^.]+$', filename)
+                    if frame_num_match:
+                        all_frames_in_video.append({'num': int(frame_num_match.group(1)), 'path': os.path.join(directory, filename)})
+            all_frames_in_video.sort(key=lambda x: x['num'])
+            sorted_paths = [frame['path'] for frame in all_frames_in_video]
+            try: target_index = sorted_paths.index(base_filepath)
+            except ValueError: return [base_filepath]
+            start_index = max(0, target_index - 10)
+            end_index = min(len(sorted_paths), target_index + 11)
+            return sorted_paths[start_index:end_index]
+        return await asyncio.to_thread(find_frames)
+    except Exception as e:
+        print(f"ERROR in check_temporal_frames: {e}"); traceback.print_exc()
+        return []
 
 @app.get("/videos/{video_id}")
-async def get_video(video_id: str, range: str = Header(None)):
+async def get_video(video_id: str):
     if "/" in video_id or ".." in video_id:
         raise HTTPException(status_code=400, detail="Invalid video ID format.")
     
@@ -1695,47 +1361,7 @@ async def get_video(video_id: str, range: str = Header(None)):
     if not os.path.isfile(video_path):
          raise HTTPException(status_code=404, detail=f"Video not found at path: {video_path}")
 
-    video_size = os.path.getsize(video_path)
-    
-    start, end = 0, video_size - 1
-    status_code = 200
-    headers = {
-        'Content-Length': str(video_size),
-        'Accept-Ranges': 'bytes',
-        'Content-Type': 'video/mp4'
-    }
-
-    if range is not None:
-        range_match = re.match(r'bytes=(\d+)-(\d*)', range)
-        if range_match:
-            start_str, end_str = range_match.groups()
-            start = int(start_str)
-            if end_str:
-                end = int(end_str)
-            else:
-                end = start + 1024 * 1024 * 2 # Gửi 2MB mỗi lần
-            end = min(end, video_size - 1)
-            
-            if start >= video_size or end < start:
-                 raise HTTPException(status_code=416, detail="Requested range not satisfiable")
-
-            status_code = 206 # Partial Content
-            headers['Content-Length'] = str(end - start + 1)
-            headers['Content-Range'] = f'bytes {start}-{end}/{video_size}'
-    
-    async def video_iterator(start_pos, end_pos):
-        with open(video_path, "rb") as video_file:
-            video_file.seek(start_pos)
-            bytes_to_read = end_pos - start_pos + 1
-            chunk_size = 8192
-            while bytes_to_read > 0:
-                chunk = video_file.read(min(chunk_size, bytes_to_read))
-                if not chunk:
-                    break
-                bytes_to_read -= len(chunk)
-                yield chunk
-
-    return StreamingResponse(video_iterator(start, end), status_code=status_code, headers=headers, media_type="video/mp4")
+    return FileResponse(video_path, media_type="video/mp4")
 
 @app.get("/images/{encoded_path}")
 async def get_image(encoded_path: str):
@@ -1744,8 +1370,9 @@ async def get_image(encoded_path: str):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid base64 path.")
     
+    remapped_path = original_path.replace("/workspace", "/mlcv2/WorkingSpace/Personal/nguyenmv", 1) if original_path.startswith("/workspace") else original_path
     safe_base = os.path.realpath(ALLOWED_BASE_DIR)
-    safe_path = os.path.realpath(original_path)
+    safe_path = os.path.realpath(remapped_path)
     
     if not safe_path.startswith(safe_base) or not os.path.isfile(safe_path):
         raise HTTPException(status_code=404, detail="File not found or access denied.")
