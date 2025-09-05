@@ -24,7 +24,7 @@ from Api_key import api_key
 # =========================
 # Config
 # =========================
-MODEL_ENHANCE = "gemini-2.5-flash-lite"
+MODEL_ENHANCE = "gemini-2.5-flash"
 MODEL_EXPAND = "gemini-2.5-flash"
 NUM_EXPAND_WORKERS = 10
 MAX_ATTEMPT = len(api_key)
@@ -104,7 +104,8 @@ async def translate_query(query: str, dest: str = 'en') -> str:
 
     try:
         # 1. Tối ưu: Sử dụng instance LANG_DETECTOR đã được khởi tạo sẵn
-        if LANG_DETECTOR.detect(query) == 'en':
+        if LANG_DETECTOR.detect(query)['lang'] == 'en':
+            print("cc")
             # print(f"'{query}' is already English. Skipping translation.")
             return query
         
@@ -169,8 +170,9 @@ def expand_query_parallel(short_query: str, num_requests: int = NUM_EXPAND_WORKE
 # =========================
 # Main test (Cập nhật để thấy rõ hiệu quả cache)
 # =========================
+async def main():
+    result = await translate_query("a men is holding something")
+    print(result)
+
 if __name__ == "__main__":
-    async def main_test():
-        print(enhance_query("con chó"))
-    asyncio.run(main_test())
-    
+    asyncio.run(main())

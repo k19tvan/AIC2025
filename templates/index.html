@@ -62,7 +62,7 @@
             </div>
             <button class="toolbar-btn" id="objectFilterBtn" title="Object Filters (Ctrl+F)"><div class="btn-hover-bg"></div><span><i class="fas fa-shapes"></i> Filters</span></button>
             <button class="toolbar-btn" id="clusterBtn" title="Toggle Clustering (Ctrl+G)"><div class="btn-hover-bg"></div><span><i class="fas fa-object-group"></i> Cluster</span></button>
-            <button class="toolbar-btn" id="ambiguousBtn" title="Toggle Ambiguous Temporal Search (Ctrl+Shift+G)"><div class="btn-hover-bg"></div><span><i class="fas fa-random"></i> Ambiguous</span></button>
+            <button class="toolbar-btn" id="historyBtn" title="Search History (Ctrl+Shift+H)"><div class="btn-hover-bg"></div><span><i class="fas fa-history"></i> History</span></button>            <button class="toolbar-btn" id="ambiguousBtn" title="Toggle Ambiguous Temporal Search (Ctrl+Shift+G)"><div class="btn-hover-bg"></div><span><i class="fas fa-random"></i> Ambiguous</span></button>
             <button class="toolbar-btn" id="resetBtn" title="Reset Search (Ctrl+Shift+R)"><div class="btn-hover-bg"></div><span><i class="fas fa-redo"></i> Reset Search</span></button>
         </div>
     </div>
@@ -198,5 +198,23 @@
     </div>
 
     <script src="static/script.js"></script>
+
+    <div id="historyModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2 class="modal-title"><i class="fas fa-history"></i> Search History</h2>
+                <span class="modal-close" id="historyModalCloseBtn">&times;</span>
+            </div>
+            <div class="modal-body" style="flex-direction: column; gap: 15px;">
+                <div id="historyListContainer" class="history-list-container">
+                    <!-- Các mục lịch sử sẽ được JavaScript chèn vào đây -->
+                </div>
+                <button id="clearHistoryBtn" class="toolbar-btn" style="align-self: flex-end; background: rgba(239, 68, 68, 0.2); border-color: #ef4444;" title="Clear All History">
+                    <div class="btn-hover-bg"></div>
+                    <span><i class="fas fa-trash"></i> Clear All</span>
+                </button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

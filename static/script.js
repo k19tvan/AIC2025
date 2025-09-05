@@ -175,6 +175,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const videoTimelineContainer = document.getElementById('videoTimelineContainer');
     const videoThumbnailsStrip = document.getElementById('videoThumbnailsStrip');
     // *** END: VIDEO TIMELINE ELEMENT REFERENCES ***
+    
+    // *** START: HISTORY ELEMENTS ***
+    const historyBtn = document.getElementById('historyBtn');
+    const historyModal = document.getElementById('historyModal');
+    const historyModalCloseBtn = document.getElementById('historyModalCloseBtn');
+    const historyListContainer = document.getElementById('historyListContainer');
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+    const MAX_HISTORY_ITEMS = 30; // Giới hạn số lượng mục lịch sử
+    // *** END: HISTORY ELEMENTS ***
+
 
     function scrubUpdateLoop() {
         if (!isScrubbing) {
@@ -1547,6 +1557,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 requestBody = JSON.stringify(payload);
             }
             
+            // *** INTEGRATION POINT FOR HISTORY ***
+            if (lastSearchPayload) {
+                saveSearchToHistory(lastSearchPayload);
+            }
+            // ************************************
+
             const fetchOptions = { method: 'POST' };
             if (requestBody instanceof FormData) { fetchOptions.body = requestBody; } 
             else { fetchOptions.headers = { 'Content-Type': 'application/json' }; fetchOptions.body = requestBody; }
@@ -1658,6 +1674,184 @@ document.addEventListener('DOMContentLoaded', () => {
     function removeStageFromEnd() { if (stagesContainer.children.length > 1) { stagesContainer.lastChild.remove(); renumberStages(); focusOnStageInput(stagesContainer.lastChild); } }
     function removeStageFromStart() { if (stagesContainer.children.length > 1) { stagesContainer.firstChild.remove(); renumberStages(); focusOnStageInput(stagesContainer.firstChild); } }
     
+    // ===============================================
+    // START: SEARCH HISTORY FUNCTIONS
+    // ===============================================
+
+    /**
+     * Lấy danh sách lịch sử từ localStorage và parse nó.
+     * @returns {Array} Mảng các mục lịch sử.
+     */
+    function getSearchHistory() {
+        try {
+            const historyJSON = localStorage.getItem('searchHistory');
+            return historyJSON ? JSON.parse(historyJSON) : [];
+        } catch (e) {
+            console.error("Could not read search history from localStorage", e);
+            return [];
+        }
+    }
+
+    /**
+     * Lưu một payload tìm kiếm vào lịch sử.
+     * @param {object} searchPayload - Đối tượng chứa thông tin tìm kiếm.
+     */
+    function saveSearchToHistory(searchPayload) {
+        if (!searchPayload) return;
+
+        // Tạo một tên đại diện dễ đọc cho mục lịch sử
+        let name = "Untitled Search";
+        if (searchPayload.stages) { // Temporal search
+            name = searchPayload.stages.map(s => s.query || "Image Query").join(' ➡️ ');
+        } else { // Single search
+            name = searchPayload.query_text || searchPayload.image_search_text || "Filter-Only Search";
+        }
+        if (name.trim() === "") name = "Filter-Only Search";
+        if (name.length > 100) name = name.substring(0, 97) + '...';
+
+        const history = getSearchHistory();
+        const newEntry = {
+            id: Date.now(),
+            name: name,
+            timestamp: new Date().toLocaleString(),
+            payload: searchPayload
+        };
+
+        // Thêm mục mới vào đầu, loại bỏ các mục cũ nếu vượt quá giới hạn
+        const updatedHistory = [newEntry, ...history].slice(0, MAX_HISTORY_ITEMS);
+
+        try {
+            localStorage.setItem('searchHistory', JSON.stringify(updatedHistory));
+        } catch (e) {
+            console.error("Could not save search history to localStorage. It might be full.", e);
+        }
+    }
+
+    /**
+     * Render danh sách lịch sử ra modal.
+     */
+    function renderHistoryList() {
+        const history = getSearchHistory();
+        historyListContainer.innerHTML = ''; // Xóa danh sách cũ
+
+        if (history.length === 0) {
+            historyListContainer.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">Your search history is empty.</p>';
+            return;
+        }
+
+        history.forEach(item => {
+            const itemEl = document.createElement('div');
+            itemEl.className = 'history-item';
+            itemEl.dataset.historyId = item.id;
+            itemEl.innerHTML = `
+                <div class="history-item-content">
+                    <div class="history-item-query">${item.name}</div>
+                    <div class="history-item-details">${item.timestamp}</div>
+                </div>
+                <div class="history-item-actions">
+                    <button class="delete-history-item" title="Delete this entry"><i class="fas fa-trash-alt"></i></button>
+                </div>
+            `;
+
+            // Sự kiện khi click vào mục lịch sử để tải lại
+            itemEl.querySelector('.history-item-content').addEventListener('click', () => {
+                loadSearchFromHistory(item.id);
+                historyModal.style.display = 'none';
+            });
+
+            // Sự kiện khi click nút xóa
+            itemEl.querySelector('.delete-history-item').addEventListener('click', (e) => {
+                e.stopPropagation(); // Ngăn không cho sự kiện click tải lại bị kích hoạt
+                deleteHistoryItem(item.id);
+            });
+
+            historyListContainer.appendChild(itemEl);
+        });
+    }
+    
+    /**
+     * Xóa một mục cụ thể khỏi lịch sử.
+     * @param {number} id - ID của mục cần xóa.
+     */
+    function deleteHistoryItem(id) {
+        let history = getSearchHistory();
+        const updatedHistory = history.filter(item => item.id !== id);
+        localStorage.setItem('searchHistory', JSON.stringify(updatedHistory));
+        renderHistoryList(); // Cập nhật lại giao diện ngay lập tức
+    }
+    
+    /**
+     * Tải lại trạng thái tìm kiếm từ một mục lịch sử.
+     * @param {number} id - ID của mục cần tải.
+     */
+    function loadSearchFromHistory(id) {
+        const history = getSearchHistory();
+        const itemToLoad = history.find(h => h.id === id);
+        if (!itemToLoad) {
+            showToast("Could not find that history item.", 3000, 'error');
+            return;
+        }
+        
+        const payload = itemToLoad.payload;
+        
+        // Reset giao diện trước khi tải
+        stagesContainer.innerHTML = '';
+        
+        const stagesData = payload.stages || [payload]; // Hỗ trợ cả single và temporal search
+        
+        stagesData.forEach((stageData, index) => {
+            const stageCard = createStageCard(index + 1);
+            
+            // Set query text/image
+            if (stageData.query_image_name) {
+                stageCard.querySelector('.type-btn[data-type="image"]').click();
+                const imageSearchText = stageCard.querySelector('.image-search-text-input');
+                imageSearchText.value = stageData.image_search_text || '';
+                // Lưu ý: Chúng ta không thể tải lại file ảnh đã upload.
+                // Vì vậy, chỉ cần thông báo cho người dùng.
+                const uploadInstructions = stageCard.querySelector('.upload-instructions p');
+                uploadInstructions.innerHTML = `<strong>Please re-upload image for this search.</strong>`;
+            } else {
+                stageCard.querySelector('.main-query-input').value = stageData.query_text || '';
+            }
+            
+            // Set filters OCR/ASR
+            if (stageData.ocr_query) {
+                stageCard.querySelector('.type-btn[data-type="ocr"]').click();
+                stageCard.querySelector('.ocr-filter-input').value = stageData.ocr_query;
+            }
+            if (stageData.asr_query) {
+                stageCard.querySelector('.type-btn[data-type="asr"]').click();
+                stageCard.querySelector('.asr-filter-input').value = stageData.asr_query;
+            }
+            
+            // Set options (enhance, caption)
+            if (stageData.enhance) stageCard.querySelector('.option-btn[data-option="enhance"]').classList.add('active');
+            if (stageData.use_bge_caption) stageCard.querySelector('.option-btn[data-option="bge_caption"]').classList.add('active');
+            
+            stagesContainer.appendChild(stageCard);
+        });
+        renumberStages();
+        
+        // Set lại các tùy chọn global (models, cluster, ambiguous, filters)
+        document.querySelectorAll('#modelDropdown input[type="checkbox"]').forEach(cb => {
+            cb.checked = (payload.models || ['beit3', 'bge', 'ops_mm']).includes(cb.value);
+        });
+        
+        clusterBtn.classList.toggle('active', payload.cluster === true);
+        ambiguousBtn.classList.toggle('active', payload.ambiguous === true);
+        
+        // TODO: Tải lại object filters (phần này phức tạp hơn, có thể làm sau)
+        // Ví dụ: set lại trạng thái của các checkbox và vẽ lại các box
+        
+        showToast("Search loaded from history. Press Search to run.", 3000, 'info');
+    }
+
+    // ===============================================
+    // END: SEARCH HISTORY FUNCTIONS
+    // ===============================================
+
+
     setupImageObserver();
     setupUser();
     initializeDresState();
@@ -2042,6 +2236,28 @@ document.addEventListener('DOMContentLoaded', () => {
     dresEvaluationSelect.addEventListener('change', () => { dresEvaluationId = dresEvaluationSelect.value; sessionStorage.setItem('dresEvaluationId', dresEvaluationId); dresStatus.textContent = `Ready to submit to: ${dresEvaluationSelect.options[dresEvaluationSelect.selectedIndex].text}`; });
     objectFilterBtn.addEventListener('click', () => { objectFilterModal.style.display = 'flex'; });
 
+    // *** HISTORY EVENT LISTENERS ***
+    historyBtn.addEventListener('click', () => {
+        renderHistoryList(); // Luôn render lại để lấy dữ liệu mới nhất
+        historyModal.style.display = 'flex';
+    });
+    historyModalCloseBtn.addEventListener('click', () => {
+        historyModal.style.display = 'none';
+    });
+    historyModal.addEventListener('click', (e) => {
+        if (e.target === historyModal) {
+            historyModal.style.display = 'none';
+        }
+    });
+    clearHistoryBtn.addEventListener('click', () => {
+        if (confirm("Are you sure you want to clear ALL search history? This cannot be undone.")) {
+            localStorage.removeItem('searchHistory');
+            renderHistoryList(); // Cập nhật lại UI trống
+        }
+    });
+    // *******************************
+
+
     window.addEventListener('keydown', (event) => {
         const activeElement = document.activeElement;
         const isTyping = activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA');
@@ -2060,12 +2276,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (temporalContextModal.style.display === 'flex') { temporalContextModal.style.display = 'none'; return; }
             if (objectFilterModal.style.display === 'flex') { objectFilterModal.style.display = 'none'; return; }
             if (dresModal.style.display === 'flex') { dresModal.style.display = 'none'; return; }
+            if (historyModal.style.display === 'flex') { historyModal.style.display = 'none'; return; } // Close history modal
             if (modelDropdown.style.display === 'block') { modelDropdown.style.display = 'none'; clearModelFocus(); return; }
         }
         
         const isModalVisible = Array.from(document.querySelectorAll('.modal-overlay')).some(m => m.style.display === 'flex' || m.style.display === 'block');
         
         if ((event.ctrlKey || event.metaKey)) {
+            if (event.key.toLowerCase() === 'h' && !event.shiftKey && !event.altKey && !isTyping) { // History shortcut
+                event.preventDefault();
+                historyBtn.click();
+                return;
+            }
             if (event.key.toLowerCase() === 'f' && !event.shiftKey && !event.altKey) {
                 event.preventDefault();
                 if (objectFilterModal.style.display === 'flex') { objectFilterModal.style.display = 'none'; } 

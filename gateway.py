@@ -16,6 +16,8 @@ from typing import List, Dict, Any, Optional
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Body, WebSocket, WebSocketDisconnect, Header
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, ORJSONResponse, StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
+
 from pydantic import BaseModel, ValidationError
 from pymilvus import Collection, connections, utility
 import requests
@@ -78,6 +80,14 @@ class DownloadImageRequest(BaseModel):
 
 # --- Thiết lập & Cấu hình ---
 app = FastAPI(default_response_class=ORJSONResponse)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Trong môi trường production, hãy giới hạn lại domain cụ thể
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 TEMP_UPLOAD_DIR = Path("/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/temp_uploads")
 TEMP_UPLOAD_DIR.mkdir(exist_ok=True)

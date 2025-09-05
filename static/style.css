@@ -1205,3 +1205,80 @@ body.video-modal-active.theme-akira-red {
     opacity: 1;
 }
 /* --- END: VIDEO TIMELINE SCRUBBER STYLES --- */
+
+.history-list-container {
+    width: 100%;
+    max-height: 60vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-right: 10px; /* Thêm khoảng trống cho thanh cuộn */
+}
+
+.history-item {
+    background: var(--glass-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.history-item:hover {
+    border-color: var(--accent-blue);
+    background: rgba(79, 172, 254, 0.1);
+    transform: translateY(-2px);
+}
+
+.history-item-content {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    overflow: hidden; /* Quan trọng để text-overflow hoạt động */
+    flex-grow: 1; /* Cho phép co giãn */
+}
+
+.history-item-query {
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 1rem;
+}
+
+.history-item-details {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.history-item-actions {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0; /* Ngăn không cho co lại */
+}
+
+.history-item-actions button {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-left: 10px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.history-item-actions button:hover {
+    border-color: #ef4444;
+    color: #ef4444;
+    background-color: rgba(239, 68, 68, 0.1);
+}
