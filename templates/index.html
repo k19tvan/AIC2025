@@ -163,6 +163,10 @@
         <span class="image-modal-close" id="closeVideoModalBtn" title="Close (Esc)">&times;</span>
         <div class="video-player-container">
             <video id="videoPlayer" class="image-modal-content" controls autoplay style="background-color: #000;"></video>
+            <div id="videoTimelineContainer" class="timeline-container">
+                <div class="playhead"></div>
+                <div id="videoThumbnailsStrip" class="thumbnails-strip"></div>
+            </div>
             <div id="videoFrameInfo" class="video-frame-info-display">
                 Frame: <span id="currentFrameDisplay">-</span> | Time: <span id="currentTimeDisplay">-</span>s
             </div>

@@ -9,7 +9,7 @@ let currentPage = 1;
 let totalResults = 0;
 let isLoadingMore = false;
 let lastSearchPayload = null;
-let currentVideoPreviewData = null; // <<< ADD THIS LINE
+let currentVideoPreviewData = null;
 let submittedFrames = new Map(); // Key: filepath, Value: 'CORRECT', 'WRONG', 'DUPLICATE', 'PENDING'
 let isMouseOverTrakePanel = false; // For bulk submission shortcut
 const THEMES = {
@@ -89,9 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let recognition;
     let activeSpeechInput = null;
     let isRecording = false;
-    // ### FIX START: Thêm biến để lưu trữ văn bản đã được xác nhận ###
     let currentTranscriptBase = ''; 
-    // ### FIX END ###
 
     if (!SpeechRecognition) {
         console.warn("Trình duyệt không hỗ trợ nhận dạng giọng nói.");
@@ -103,9 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         recognition.onstart = () => {
             isRecording = true;
-            // ### FIX START: Reset transcript base khi bắt đầu ###
             currentTranscriptBase = ''; 
-            // ### FIX END ###
             if (activeSpeechInput) {
                 const stageCard = activeSpeechInput.closest('.stage-card');
                 stageCard.querySelector('.mic-btn')?.classList.add('recording');
@@ -114,34 +110,24 @@ document.addEventListener('DOMContentLoaded', () => {
         
         recognition.onend = () => {
             isRecording = false;
-            // ### FIX START: Dọn dẹp state khi kết thúc ###
             activeSpeechInput = null; 
             currentTranscriptBase = ''; 
-            // ### FIX END ###
             document.querySelectorAll('.mic-btn.recording').forEach(btn => btn.classList.remove('recording'));
         };
         
-        // ### FIX START: Sửa toàn bộ logic onresult ###
         recognition.onresult = (event) => {
             if (!activeSpeechInput) return;
-
             let interimTranscript = '';
-            // Lặp qua tất cả các kết quả từ lần cuối cùng
             for (let i = event.resultIndex; i < event.results.length; ++i) {
-                // Nếu kết quả là final, nối nó vào chuỗi base đã xác nhận
                 if (event.results[i].isFinal) {
                     currentTranscriptBase += event.results[i][0].transcript.trim() + ' ';
                 } else {
-                // Nếu không, nó là kết quả tạm thời
                     interimTranscript += event.results[i][0].transcript;
                 }
             }
-            // Cập nhật giá trị của input bằng chuỗi base + chuỗi tạm thời
             activeSpeechInput.value = (currentTranscriptBase + interimTranscript).trim();
         };
-        // ### FIX END ###
     }
-    // --- KẾT THÚC KHỞI TẠO ---
     
     const stagesContainer = document.getElementById('stagesContainer'); const addStageBtn = document.getElementById('addStageBtn'); const removeStageBtn = document.getElementById('removeStageBtn'); const searchBtn = document.getElementById('searchBtn'); const resultsContainer = document.getElementById('resultsContainer'); const loadingIndicator = document.getElementById('loadingIndicator'); const modelSelectBtn = document.getElementById('modelSelectBtn'); const modelDropdown = document.getElementById('modelDropdown'); const clusterBtn = document.getElementById('clusterBtn'); const ambiguousBtn = document.getElementById('ambiguousBtn'); const objectFilterBtn = document.getElementById('objectFilterBtn'); const objectFilterModal = document.getElementById('objectFilterModal'); const modalCloseBtn = document.getElementById('modalCloseBtn'); const imageModal = document.getElementById('imageModal'); const zoomedImage = document.getElementById('zoomedImage'); const closeImageModalBtn = document.querySelector('#imageModal .image-modal-close'); const temporalContextModal = document.getElementById('temporalContextModal'); const temporalGrid = document.getElementById('temporalGrid'); const temporalModalTitle = document.getElementById('temporalModalTitle'); const closeTemporalModalBtn = document.getElementById('closeTemporalModalBtn'); const enableCountFilter = document.getElementById('enableCountFilter'); const enablePositionFilter = document.getElementById('enablePositionFilter'); const countFilterControls = document.getElementById('countFilterControls'); const addCustomCountBtn = document.getElementById('addCustomCountBtn'); const posCanvas = document.getElementById('positioningCanvas'); const drawnBoxesList = document.getElementById('drawnBoxesList'); const posCtx = posCanvas.getContext('2d');
     
@@ -183,60 +169,47 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebarGrid = document.getElementById('sidebarGrid');
     const sidebarOverlay = document.querySelector('.sidebar-overlay');
     const sidebarTitle = document.getElementById('sidebarTitle');
-    let activeTrakeItemForSidebar = null; // To track which trake item is being edited
+    let activeTrakeItemForSidebar = null;
 
-    /**
-     * Updates the on-screen display with the current frame and time.
-     */
+    // *** START: VIDEO TIMELINE ELEMENT REFERENCES ***
+    const videoTimelineContainer = document.getElementById('videoTimelineContainer');
+    const videoThumbnailsStrip = document.getElementById('videoThumbnailsStrip');
+    // *** END: VIDEO TIMELINE ELEMENT REFERENCES ***
+
     function scrubUpdateLoop() {
         if (!isScrubbing) {
             cancelAnimationFrame(scrubAnimationId);
             scrubAnimationId = null;
             return;
         }
-        // Chỉ gửi lệnh seek nếu có sự chênh lệch đáng kể
         if (Math.abs(videoPlayer.currentTime - targetFrameTime) > 0.01) {
             videoPlayer.currentTime = targetFrameTime;
         }
         scrubAnimationId = requestAnimationFrame(scrubUpdateLoop);
     }
 
-    // Hàm điều khiển việc tua phim
     function handleScrub(direction) {
         if (!currentVideoPreviewData || !currentVideoPreviewData.fps) return;
-
         videoPlayer.pause();
         const frameTime = 1 / currentVideoPreviewData.fps;
-        
-        // Cập nhật thời gian mục tiêu
         targetFrameTime += direction * frameTime;
         targetFrameTime = Math.max(0, Math.min(videoPlayer.duration, targetFrameTime));
-
-        // Bắt đầu vòng lặp nếu chưa chạy
         if (!isScrubbing) {
             isScrubbing = true;
             if (!scrubAnimationId) {
                 scrubAnimationId = requestAnimationFrame(scrubUpdateLoop);
             }
         }
-
-        // Dọn dẹp và đặt hẹn giờ để dừng vòng lặp khi người dùng không tua nữa
         clearTimeout(scrubbingTimeout);
         scrubbingTimeout = setTimeout(() => {
             isScrubbing = false;
-        }, 250); // Dừng sau 250ms không hoạt động
+        }, 250);
     }
 
     function updateFrameDisplay() {
-        if (!videoPlayer.paused && document.activeElement !== videoPlayer) {
-            // Don't update while video is playing normally to save performance,
-            // unless the video element itself is focused.
-        }
-
         if (currentVideoPreviewData && currentVideoPreviewData.fps) {
             const currentTime = videoPlayer.currentTime;
             const currentFrame = Math.round(currentTime * currentVideoPreviewData.fps);
-            
             currentFrameSpan.textContent = currentFrame;
             currentTimeSpan.textContent = currentTime.toFixed(3);
         } else {
@@ -245,21 +218,218 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Listen for the 'wheel' event (mouse scroll) on the video player
-    videoPlayer.addEventListener('wheel', (event) => {
-        event.preventDefault();
-        const direction = event.deltaY < 0 ? 1 : -1;
-        handleScrub(direction);
-    });
-
-    // Update the display whenever the video time changes
-    // This covers playback, seeking, and our custom scrolling
     videoPlayer.addEventListener('timeupdate', updateFrameDisplay);
     videoPlayer.addEventListener('seeked', updateFrameDisplay);
-
     
     const usernameModal = document.getElementById('usernameModal'); const usernameInput = document.getElementById('usernameInput'); const usernameSubmitBtn = document.getElementById('usernameSubmitBtn'); const userInfoDisplay = document.getElementById('userInfo'); const teamworkPanelContainer = document.getElementById('teamworkPanelContainer'); const teamworkGrid = document.getElementById('teamworkGrid');
     let dresSessionId = sessionStorage.getItem('dresSessionId'); let dresEvaluationId = sessionStorage.getItem('dresEvaluationId'); let currentResponse = {}; let drawnBoxes = []; let isDrawing = false; let startX, startY, currentX, currentY; const PREDEFINED_OBJECTS = ['person', 'car', 'truck', 'dog', 'cat', 'cow', 'toaster']; const LABEL_SHORTCUTS = { '1': 'person', '2': 'car', '3': 'truck', '4': 'dog', '5': 'cat', '6': 'toaster'}; let focusedModelIndex = -1;
+
+    // --- START: VIDEO TIMELINE SCRUBBER LOGIC ---
+
+    // Configuration
+    const THUMBNAIL_INTERVAL = 2; // seconds
+    const THUMB_WIDTH = 100; // pixels
+    const THUMB_GAP = 2; // pixels
+    const thumbTotalWidth = THUMB_WIDTH + THUMB_GAP;
+
+    // State and Cache
+    const thumbnailCache = new Map();
+    let animationFrameId_timeline = null;
+    let timelineObserver = null;
+    const thumbnailQueue = [];
+    let isGenerating = false;
+
+    // Elements for background thumbnail generation
+    const tempVideo = document.createElement('video');
+    const tempCanvas = document.createElement("canvas");
+    tempVideo.crossOrigin = "anonymous";
+    tempVideo.muted = true;
+    let isTempVideoReady = false;
+
+    // Functions for thumbnail generation
+    async function processThumbnailQueue() {
+        if (isGenerating || thumbnailQueue.length === 0 || !isTempVideoReady) return;
+        isGenerating = true;
+        const { time, placeholder } = thumbnailQueue.shift();
+        
+        try {
+            const dataUrl = await captureFrame(time);
+            const img = placeholder.querySelector('img');
+            if (img) {
+                img.src = dataUrl;
+                img.onload = () => img.classList.add('loaded');
+            }
+        } catch (error) {
+            console.error(`Failed to generate thumbnail for time ${time}:`, error);
+        }
+        isGenerating = false;
+        requestAnimationFrame(processThumbnailQueue);
+    }
+
+    async function captureFrame(time) {
+        if (thumbnailCache.has(time)) return thumbnailCache.get(time);
+        return new Promise((resolve, reject) => {
+            tempVideo.currentTime = time;
+            tempVideo.addEventListener('seeked', () => {
+            const ctx = tempCanvas.getContext("2d");
+            tempCanvas.width = 160;
+            tempCanvas.height = 90;
+            ctx.drawImage(tempVideo, 0, 0, tempCanvas.width, tempCanvas.height);
+            const dataUrl = tempCanvas.toDataURL("image/jpeg", 0.6);
+            thumbnailCache.set(time, dataUrl);
+            resolve(dataUrl);
+            }, { once: true });
+            tempVideo.addEventListener('error', (e) => reject(e), { once: true });
+        });
+    }
+
+    // Function to set up the timeline
+    function initializeTimeline() {
+        if (!isFinite(videoPlayer.duration)) return;
+
+        if (tempVideo.src !== videoPlayer.src) {
+            isTempVideoReady = false;
+            tempVideo.src = videoPlayer.src;
+            tempVideo.addEventListener('loadeddata', () => {
+                isTempVideoReady = true;
+                processThumbnailQueue();
+            }, { once: true });
+        }
+        
+        const totalThumbnails = Math.floor(videoPlayer.duration / THUMBNAIL_INTERVAL);
+        videoThumbnailsStrip.innerHTML = '';
+        const stripWidth = totalThumbnails * thumbTotalWidth;
+        videoThumbnailsStrip.style.width = `${stripWidth}px`;
+        
+        if (timelineObserver) timelineObserver.disconnect();
+        timelineObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const placeholder = entry.target;
+                    const time = parseFloat(placeholder.dataset.time);
+                    timelineObserver.unobserve(placeholder);
+                    thumbnailQueue.push({ time, placeholder });
+                    processThumbnailQueue();
+                }
+            });
+        }, { root: videoTimelineContainer, rootMargin: "0px 400px 0px 400px" });
+
+        for (let i = 0; i < totalThumbnails; i++) {
+            const time = i * THUMBNAIL_INTERVAL;
+            const placeholder = document.createElement('div');
+            placeholder.className = 'thumbnail-placeholder';
+            placeholder.dataset.time = time;
+            placeholder.innerHTML = `<img data-time="${time}" />`;
+            videoThumbnailsStrip.appendChild(placeholder);
+            timelineObserver.observe(placeholder);
+        }
+        updateStripPosition();
+    }
+
+    // Timeline interaction functions
+    function getTranslateX() {
+        const style = window.getComputedStyle(videoThumbnailsStrip);
+        const matrix = new DOMMatrix(style.transform);
+        return matrix.m41;
+    }
+
+    function updateVideoTimeFromTranslate() {
+        const currentTranslateX = getTranslateX();
+        const containerWidth = videoTimelineContainer.offsetWidth;
+        const positionInStrip = (containerWidth / 2) - currentTranslateX;
+        const thumbIndex = positionInStrip / thumbTotalWidth;
+        const currentTime = thumbIndex * THUMBNAIL_INTERVAL;
+
+        if (isFinite(currentTime) && !videoPlayer.seeking) {
+            const clampedTime = Math.max(0, Math.min(currentTime, videoPlayer.duration));
+            if (Math.abs(videoPlayer.currentTime - clampedTime) > 0.01) {
+                videoPlayer.currentTime = clampedTime;
+            }
+        }
+    }
+
+    function updateStripPosition() {
+        if (isDragging_timeline) return;
+        const currentTime = videoPlayer.currentTime;
+        const containerWidth = videoTimelineContainer.offsetWidth;
+        const thumbIndex = currentTime / THUMBNAIL_INTERVAL;
+        const targetTranslateX = (containerWidth / 2) - (thumbIndex * thumbTotalWidth);
+        videoThumbnailsStrip.style.transform = `translateX(${targetTranslateX}px)`;
+    }
+
+    function animationLoop_timeline() {
+        if (!isDragging_timeline && !videoPlayer.paused) {
+            updateStripPosition();
+        }
+        animationFrameId_timeline = requestAnimationFrame(animationLoop_timeline);
+    }
+
+    // Interaction State
+    let isDragging_timeline = false;
+    let startX_timeline;
+    let startTranslateX_timeline;
+
+    // Pointer (Mouse/Touch) Drag Events
+    videoTimelineContainer.addEventListener('pointerdown', (e) => {
+        isDragging_timeline = true;
+        videoPlayer.pause();
+        startX_timeline = e.pageX;
+        videoThumbnailsStrip.style.transition = 'none';
+        startTranslateX_timeline = getTranslateX();
+        videoTimelineContainer.setPointerCapture(e.pointerId);
+    });
+
+    videoTimelineContainer.addEventListener('pointermove', (e) => {
+        if (!isDragging_timeline) return;
+        e.preventDefault();
+        const walk = e.pageX - startX_timeline;
+        const newTranslateX = startTranslateX_timeline + walk;
+        videoThumbnailsStrip.style.transform = `translateX(${newTranslateX}px)`;
+        updateVideoTimeFromTranslate();
+    });
+
+    const stopDragging_timeline = (e) => {
+        if (!isDragging_timeline) return;
+        isDragging_timeline = false;
+        videoTimelineContainer.releasePointerCapture(e.pointerId);
+    };
+    videoTimelineContainer.addEventListener('pointerup', stopDragging_timeline);
+    videoTimelineContainer.addEventListener('pointerleave', stopDragging_timeline);
+
+    // Wheel (Touchpad/Mouse Wheel) Events
+    let wheelTimeout;
+    videoTimelineContainer.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        videoPlayer.pause();
+        videoThumbnailsStrip.style.transition = 'none';
+        const delta = e.deltaX !== 0 ? e.deltaX : e.deltaY;
+        const currentTranslateX = getTranslateX();
+        const newTranslateX = currentTranslateX - delta * 1.5;
+        videoThumbnailsStrip.style.transform = `translateX(${newTranslateX}px)`;
+        updateVideoTimeFromTranslate();
+        
+        clearTimeout(wheelTimeout);
+        wheelTimeout = setTimeout(() => {
+            videoThumbnailsStrip.style.transition = 'transform 0.1s linear';
+        }, 150);
+    }, { passive: false });
+
+    // Attach events to the main video player
+    videoPlayer.addEventListener('loadedmetadata', initializeTimeline);
+    videoPlayer.addEventListener('durationchange', initializeTimeline);
+
+    videoPlayer.addEventListener('play', () => {
+        videoThumbnailsStrip.style.transition = 'transform 0.1s linear';
+        if (animationFrameId_timeline === null) animationLoop_timeline();
+    });
+
+    videoPlayer.addEventListener('pause', () => {
+        if (animationFrameId_timeline !== null) {
+            cancelAnimationFrame(animationFrameId_timeline);
+            animationFrameId_timeline = null;
+        }
+    });
+    // --- END: VIDEO TIMELINE SCRUBBER LOGIC ---
 
     function setupImageObserver() {
         if (imageObserver) {
@@ -284,68 +454,41 @@ document.addEventListener('DOMContentLoaded', () => {
         }, options);
     }
     
-    // --- BƯỚC 4: THÊM EVENT DELEGATION CHO NÚT MICRO ---
     stagesContainer.addEventListener('click', (e) => {
         const micBtn = e.target.closest('.mic-btn');
         if (micBtn && recognition) {
             e.preventDefault();
             e.stopPropagation();
-            
             const stageCard = micBtn.closest('.stage-card');
-            
-            // ## BẮT ĐẦU SỬA ĐIỀU 2: LOGIC NHẬP LIỆU GIỌNG NÓI ##
-
-            // 1. Xác định ô input mục tiêu một cách thông minh.
-            // Ưu tiên ô đang được focus trong stage hiện tại.
-            let targetInput = stageCard.querySelector('.main-query-input'); // Mặc định
+            let targetInput = stageCard.querySelector('.main-query-input');
             const activeEl = document.activeElement;
-            // Kiểm tra xem có phần tử nào đang được focus không, và nó có nằm trong stage card này không
             if (activeEl && stageCard.contains(activeEl) && (activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'INPUT')) {
-                targetInput = activeEl; // Nếu có, đó chính là mục tiêu của chúng ta
+                targetInput = activeEl;
             }
-
-            // 2. Xóa bỏ logic cũ tự động chuyển sang tab "Text".
-            // Điều này cho phép ghi âm vào các ô filter như OCR, ASR.
-            /* 
-            // ĐOẠN CODE CŨ BỊ XÓA:
-            const textTypeBtn = stageCard.querySelector('.type-btn[data-type="text"]');
-            if (!textTypeBtn.classList.contains('active')) {
-                textTypeBtn.click();
-            }
-            */
-
-            // 3. Sử dụng `targetInput` đã được xác định chính xác để xử lý ghi âm.
             if (isRecording) {
                 if (activeSpeechInput === targetInput) {
-                    // Nếu đang ghi âm đúng ô này thì dừng lại
                     recognition.stop();
                 } else { 
-                    // Nếu đang ghi âm ở ô khác, dừng cái cũ và bắt đầu cái mới
                     recognition.stop();
                     setTimeout(() => {
                         activeSpeechInput = targetInput;
-                        targetInput.value = ''; // Xóa sạch ô input khi chuyển đổi
+                        targetInput.value = '';
                         recognition.start();
-                    }, 250); // Đợi một chút để recognition dừng hẳn
+                    }, 250);
                 }
             } else {
-                // Nếu chưa ghi âm, bắt đầu ghi âm vào ô mục tiêu
                 activeSpeechInput = targetInput;
                 targetInput.value = ''; 
                 targetInput.focus();
                 recognition.start();
             }
-            // ## KẾT THÚC SỬA ĐIỀU 2 ##
         }
     });
-    // --- KẾT THÚC EVENT DELEGATION ---
     
     submitCurrentFrameBtn.addEventListener('click', () => {
         if (videoPreviewModal.style.display === 'flex' && currentVideoPreviewData) {
             const currentTime = videoPlayer.currentTime;
             const frameId = Math.round(currentTime * currentVideoPreviewData.fps);
-
-            // BƯỚC 1: TẠO THUMBNAIL TỪ FRAME HIỆN TẠI (GIỐNG NÚT PUSH)
             const canvas = document.createElement('canvas');
             canvas.width = videoPlayer.videoWidth;
             canvas.height = videoPlayer.videoHeight;
@@ -353,20 +496,13 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
             const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
 
-            console.log("--- [Video Player Submission] ---");
-            console.log(`Video ID: ${currentVideoPreviewData.videoId}`);
-            console.log(`Calculated Frame ID: ${frameId}`);
-            console.log("---------------------------------");
-
-            // BƯỚC 2: TẠO ĐỐI TƯỢNG DỮ LIỆU ĐẦY ĐỦ HƠN
             const submissionData = {
                 video_id: currentVideoPreviewData.videoId,
                 frame_id: frameId,
                 fps: currentVideoPreviewData.fps,
-                // Sử dụng một filepath nhất quán và có ý nghĩa
                 filepath: `dynamic-frame-${currentVideoPreviewData.videoId}-${frameId}`, 
-                url: thumbnailUrl, // <-- THÔNG TIN QUAN TRỌNG NHẤT ĐƯỢC THÊM VÀO
-                is_dynamic: true // Đánh dấu đây là frame được tạo động
+                url: thumbnailUrl,
+                is_dynamic: true
             };
             
             handleSubmitToDRES(submissionData, true);
@@ -394,13 +530,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 url: thumbnailUrl,
                 is_dynamic: true
             };
-            console.log("--- [Video Player Push to Teamwork] ---");
-            console.log(`Video ID: ${shotData.video_id}`);
-            console.log(`Current Time: ${currentTime.toFixed(4)}s`);
-            console.log(`Video FPS: ${shotData.fps}`);
-            console.log(`Calculated Frame ID: ${shotData.frame_id}`);
-            console.log("Pushing shotData object:", shotData);
-            console.log("---------------------------------------");
             pushToTeamworkPanel(shotData);
         } else {
             alert("No active video context to push from. Please open a video preview first.");
@@ -583,7 +712,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="trake-action-btn nearby-frames-btn" title="Show Nearby Frames"><i class="fas fa-layer-group"></i></button>
                     <button class="trake-action-btn remove-trake-btn" title="Remove from Trake"><i class="fas fa-times"></i></button>
                 </div>`;
-        } else { // This 'else' now ONLY applies to 'main' results
+        } else {
             title = `Click: Zoom\nRight-Click: Video Preview\nCtrl+Click: View Context`;
             const score = shot.rrf_score || shot.cluster_score || shot.score || shot.average_rff_score || shot.combined_score;
             if (score) title += `\nScore: ${score.toFixed(4)}`;
@@ -628,22 +757,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return item;
     }
     function createContextItem(shotData) {
-        // This function is ONLY for the context view.
-        // It creates the simple, original HTML structure with NO buttons.
         const item = document.createElement('div');
-        item.className = 'result-item temporal-grid-item'; // Add both classes for correct styling
+        item.className = 'result-item temporal-grid-item';
         
         item.dataset.filepath = shotData.filepath;
         item.dataset.videoId = shotData.video_id;
-        item.dataset.shotId = shotData.shot_id; // Added for consistency
+        item.dataset.shotId = shotData.shot_id;
         item.dataset.frameId = shotData.frame_id;
 
-        // The original simple HTML structure.
         item.innerHTML = `<img class="loaded" src="${shotData.url}" alt="Context Frame" loading="lazy" decoding="async" />`;
         
-        // --- THIS IS THE KEY ---
-        // We re-add the standard event listeners that make the shortcuts work.
-        // These were missing or incorrectly implemented in my previous attempts.
         item.addEventListener("mouseenter", () => {
             currentlyHoveredItemData = shotData;
             currentlyHoveredItemElement = item;
@@ -653,7 +776,6 @@ document.addEventListener('DOMContentLoaded', () => {
             currentlyHoveredItemElement = null;
         });
 
-        // Attach the original event handlers for zoom and video preview
         item.addEventListener("click", e => handleBaseItemClick(e, shotData, 'context'));
         item.addEventListener("contextmenu", e => handleBaseItemClick(e, shotData, 'context'));
 
@@ -669,7 +791,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ws.onopen = () => {
             console.log('WebSocket connection established.');
             teamworkPanelContainer.style.display = 'block';
-            reconnectDelay = 1000; // Reset delay on success
+            reconnectDelay = 1000;
         };
 
         ws.onmessage = (event) => {
@@ -677,7 +799,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const type = message.type;
             const data = message.data;
 
-            // --- Teamwork Panel ---
             if (type === 'new_frame') {
                 const newItem = createResultItem(data, 'teamwork');
                 if (newItem) teamworkGrid.prepend(newItem);
@@ -692,7 +813,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     lastSuccessfulSubmission = null;
                 }
             }
-            // --- Trake Panel ---
             else if (type === 'trake_sync') {
                 trakeGrid.innerHTML = '';
                 data.forEach(shot => {
@@ -700,7 +820,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (trakeItem) trakeGrid.appendChild(trakeItem);
                 });
             } else if (type === 'trake_add') {
-                // Avoid adding duplicates if message arrives
                 if (!trakeGrid.querySelector(`.result-item[data-filepath="${data.shot.filepath}"]`)) {
                     const trakeItem = createResultItem(data.shot, 'trake');
                     if (trakeItem) trakeGrid.appendChild(trakeItem);
@@ -710,12 +829,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (itemToRemove) itemToRemove.remove();
             } else if (type === 'trake_reorder') {
                 const orderedElements = data.order.map(filepath => trakeGrid.querySelector(`.result-item[data-filepath="${filepath}"]`)).filter(Boolean);
-                trakeGrid.innerHTML = ''; // Clear and re-append in the new order
+                trakeGrid.innerHTML = '';
                 orderedElements.forEach(el => trakeGrid.appendChild(el));
             } else if (type === 'trake_replace') {
                 const itemToReplace = trakeGrid.querySelector(`.result-item[data-filepath="${data.filepath}"]`);
                 if (itemToReplace) {
-                   // Update the DOM element directly
                    itemToReplace.shotData = data.newShot;
                    itemToReplace.dataset.frameId = data.newShot.frame_id;
                    itemToReplace.querySelector('img').src = data.newShot.url;
@@ -726,7 +844,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ws.onclose = () => {
             console.log('WebSocket connection closed. Retrying in', reconnectDelay, 'ms');
             setTimeout(() => {
-                reconnectDelay = Math.min(reconnectDelay * 2, 30000); // Exponential backoff
+                reconnectDelay = Math.min(reconnectDelay * 2, 30000);
                 initWebSocket();
             }, reconnectDelay);
         };
@@ -761,193 +879,127 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Pushed to teamwork panel:", shotData.filepath);
     }
 
-async function handleSubmitToDRES(shot, bypassConfirmation = false) {
-    // === PHASE 1: PRE-SUBMISSION VALIDATION ===
-
-    // 1. Check DRES login status.
-    if (!dresSessionId || !dresEvaluationId) {
-        showToast("Please log in to DRES first!", 3000, 'error');
-        dresModal.style.display = 'flex';
-        return;
-    }
-
-    // 2. Validate the incoming shot data.
-    if (!shot || shot.frame_id === undefined || !shot.video_id || !shot.url) {
-        console.error("Invalid or incomplete shot data for submission.", shot);
-        showToast("Error: Invalid data for submission.", 4000, 'error');
-        return;
-    }
-
-    // 3. Create a reliable, unique key for the frame to track its submission status.
-    const submissionKey = `${shot.video_id}-${shot.frame_id}`;
-
-    // 4. Prevent re-submission if the frame has already been processed.
-    const submissionStatus = submittedFrames.get(submissionKey);
-    if (submissionStatus && submissionStatus !== 'PENDING') {
-        showToast(`Already submitted! Status: ${submissionStatus}`, 3000, 'warning');
-        return;
-    }
-    if (submissionStatus === 'PENDING') {
-        showToast("Submission for this frame is already in progress...", 2000, 'info');
-        return;
-    }
-
-    // === PHASE 2: SUBMISSION EXECUTION & UI FEEDBACK ===
-
-    // Find the corresponding UI element (this will be null for video player submissions, which is expected).
-    const itemElement = document.querySelector(`.result-item[data-filepath="${shot.filepath}"]`);
-
-    try {
-        // Set state to 'PENDING' to prevent race conditions and provide immediate feedback.
-        submittedFrames.set(submissionKey, 'PENDING');
-        showSubmissionStatusOnItem(itemElement, 'pending', 'Submitting...');
-
-        // Perform the API call to the DRES server.
-        const response = await fetch('/dres/submit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                sessionId: dresSessionId,
-                evaluationId: dresEvaluationId,
-                video_id: shot.video_id,
-                filepath: shot.filepath,
-                frame_id: shot.frame_id
-            })
-        });
-
-        const result = await response.json();
-        if (!response.ok) {
-            throw new Error(result.detail || 'Submission request failed');
+    async function handleSubmitToDRES(shot, bypassConfirmation = false) {
+        if (!dresSessionId || !dresEvaluationId) {
+            showToast("Please log in to DRES first!", 3000, 'error');
+            dresModal.style.display = 'flex';
+            return;
         }
 
-        // === PHASE 3: PROCESS RESULT & FINALIZE UI ===
-        
-        const resultText = result.description.toUpperCase();
-        let finalStatus = 'UNKNOWN';
+        if (!shot || shot.frame_id === undefined || !shot.video_id || !shot.url) {
+            console.error("Invalid or incomplete shot data for submission.", shot);
+            showToast("Error: Invalid data for submission.", 4000, 'error');
+            return;
+        }
 
-        if (resultText.includes('CORRECT')) {
-            finalStatus = 'CORRECT';
-            submittedFrames.set(submissionKey, finalStatus);
+        const submissionKey = `${shot.video_id}-${shot.frame_id}`;
+        const submissionStatus = submittedFrames.get(submissionKey);
+        if (submissionStatus && submissionStatus !== 'PENDING') {
+            showToast(`Already submitted! Status: ${submissionStatus}`, 3000, 'warning');
+            return;
+        }
+        if (submissionStatus === 'PENDING') {
+            showToast("Submission for this frame is already in progress...", 2000, 'info');
+            return;
+        }
+
+        const itemElement = document.querySelector(`.result-item[data-filepath="${shot.filepath}"]`);
+
+        try {
+            submittedFrames.set(submissionKey, 'PENDING');
+            showSubmissionStatusOnItem(itemElement, 'pending', 'Submitting...');
+
+            const response = await fetch('/dres/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sessionId: dresSessionId,
+                    evaluationId: dresEvaluationId,
+                    video_id: shot.video_id,
+                    filepath: shot.filepath,
+                    frame_id: shot.frame_id
+                })
+            });
+
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.detail || 'Submission request failed');
+            }
             
-            showSubmissionStatusOnItem(itemElement, 'correct', 'CORRECT');
-            showToast('CORRECT! Great find!', 3000, 'success');
+            const resultText = result.description.toUpperCase();
+            let finalStatus = 'UNKNOWN';
 
-            // === PHẦN SỬA LỖI LOGIC HIỂN THỊ ===
-            // 1. Lấy tham chiếu đến cả panel LỚN và container BÊN TRONG
-            const correctSubmissionPanel = document.getElementById('correctSubmissionPanel');
-            const correctSubmissionContainer = document.getElementById('correctSubmissionImageContainer');
-            
-            // 2. Dọn dẹp container và tạo item ảnh mới
-            correctSubmissionContainer.innerHTML = '';
-            const correctItem = createResultItem(shot, 'correct-submission');
-
-            // 3. Kiểm tra mọi thứ tồn tại trước khi hành động
-            if (correctItem && correctSubmissionContainer && correctSubmissionPanel) {
-                // Đặt ảnh vào container
-                correctSubmissionContainer.appendChild(correctItem);
+            if (resultText.includes('CORRECT')) {
+                finalStatus = 'CORRECT';
+                submittedFrames.set(submissionKey, finalStatus);
                 
-                // **DÒNG QUAN TRỌNG NHẤT:** Bật hiển thị cho cả panel lớn
-                correctSubmissionPanel.style.display = 'flex'; 
-            }
-            // === KẾT THÚC PHẦN SỬA LỖI ===
+                showSubmissionStatusOnItem(itemElement, 'correct', 'CORRECT');
+                showToast('CORRECT! Great find!', 3000, 'success');
 
-            // Lưu lại lượt nộp thành công để có thể push lại sau khi reset
-            lastSuccessfulSubmission = shot;
+                const correctSubmissionPanel = document.getElementById('correctSubmissionPanel');
+                const correctSubmissionContainer = document.getElementById('correctSubmissionImageContainer');
+                
+                correctSubmissionContainer.innerHTML = '';
+                const correctItem = createResultItem(shot, 'correct-submission');
 
-            // Xóa panel teamwork cho tất cả user
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                // Gửi thông điệp kèm theo trạng thái thành công để server có thể xử lý logic push lại
-                ws.send(JSON.stringify({"type": "clear_panel", "status": "success"}));
-            }
+                if (correctItem && correctSubmissionContainer && correctSubmissionPanel) {
+                    correctSubmissionContainer.appendChild(correctItem);
+                    correctSubmissionPanel.style.display = 'flex'; 
+                }
 
-        } else if (resultText.includes('WRONG')) {
-            finalStatus = 'WRONG';
-            submittedFrames.set(submissionKey, finalStatus);
+                lastSuccessfulSubmission = shot;
+
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({"type": "clear_panel", "status": "success"}));
+                }
+
+            } else if (resultText.includes('WRONG')) {
+                finalStatus = 'WRONG';
+                submittedFrames.set(submissionKey, finalStatus);
+                
+                showSubmissionStatusOnItem(itemElement, 'wrong', 'WRONG');
+                showToast('Wrong submission. Keep trying!', 3000, 'error');
+                if (itemElement) itemElement.classList.add('submitted-wrong');
+
+            } else if (resultText.includes('DUPLICATE')) {
+                finalStatus = 'DUPLICATE';
+                submittedFrames.set(submissionKey, finalStatus);
+
+                showSubmissionStatusOnItem(itemElement, 'duplicate', 'DUPLICATE');
+                showToast('Duplicate submission. Already noted.', 3000, 'warning');
+                if (itemElement) itemElement.classList.add('submitted-duplicate');
             
-            showSubmissionStatusOnItem(itemElement, 'wrong', 'WRONG');
-            showToast('Wrong submission. Keep trying!', 3000, 'error');
-            if (itemElement) itemElement.classList.add('submitted-wrong');
+            } else {
+                finalStatus = result.description;
+                showToast(`Status: ${result.description}`, 3000, 'info');
+            }
 
-        } else if (resultText.includes('DUPLICATE')) {
-            finalStatus = 'DUPLICATE';
-            submittedFrames.set(submissionKey, finalStatus);
+        } catch (error) {
+            showSubmissionStatusOnItem(itemElement, 'wrong', 'Error');
+            showToast(error.message, 4000, 'error');
+            submittedFrames.delete(submissionKey);
+            console.error("DRES Submission failed:", error);
 
-            showSubmissionStatusOnItem(itemElement, 'duplicate', 'DUPLICATE');
-            showToast('Duplicate submission. Already noted.', 3000, 'warning');
-            if (itemElement) itemElement.classList.add('submitted-duplicate');
-        
-        } else {
-            // Handle any other response from DRES.
-            finalStatus = result.description;
-            showToast(`Status: ${result.description}`, 3000, 'info');
-        }
-
-    } catch (error) {
-        // === PHASE 4: ERROR HANDLING ===
-        
-        // Provide clear feedback to the user about the failure.
-        showSubmissionStatusOnItem(itemElement, 'wrong', 'Error');
-        showToast(error.message, 4000, 'error');
-        
-        // CRITICAL: Reset the submission state on failure to allow the user to retry.
-        submittedFrames.delete(submissionKey);
-        
-        console.error("DRES Submission failed:", error);
-
-    } finally {
-        // === PHASE 5: CLEANUP ===
-        
-        // The overlay logic now handles hiding itself, but this class could be used for other effects.
-        if (itemElement) {
-            itemElement.classList.remove('submitting');
+        } finally {
+            if (itemElement) {
+                itemElement.classList.remove('submitting');
+            }
         }
     }
-}
 
     function showToast(message, duration = 3000, type = 'info') {
         const toast = document.createElement('div');
-        
         let backgroundStyle = '';
         let iconHTML = '';
-
         switch (type) {
-            case 'success':
-                backgroundStyle = 'linear-gradient(135deg, #28a745 0%, #218838 100%)';
-                iconHTML = '<i class="fas fa-check-circle" style="margin-right: 10px;"></i>';
-                break;
-            case 'error':
-                backgroundStyle = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
-                iconHTML = '<i class="fas fa-times-circle" style="margin-right: 10px;"></i>';
-                break;
-            case 'warning':
-                backgroundStyle = 'linear-gradient(135deg, #ffc107 0%, #e0a800 100%)';
-                iconHTML = '<i class="fas fa-exclamation-triangle" style="margin-right: 10px;"></i>';
-                break;
-            default: // 'info'
-                backgroundStyle = 'var(--primary-gradient)';
-                iconHTML = '<i class="fas fa-info-circle" style="margin-right: 10px;"></i>';
-                break;
+            case 'success': backgroundStyle = 'linear-gradient(135deg, #28a745 0%, #218838 100%)'; iconHTML = '<i class="fas fa-check-circle" style="margin-right: 10px;"></i>'; break;
+            case 'error': backgroundStyle = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)'; iconHTML = '<i class="fas fa-times-circle" style="margin-right: 10px;"></i>'; break;
+            case 'warning': backgroundStyle = 'linear-gradient(135deg, #ffc107 0%, #e0a800 100%)'; iconHTML = '<i class="fas fa-exclamation-triangle" style="margin-right: 10px;"></i>'; break;
+            default: backgroundStyle = 'var(--primary-gradient)'; iconHTML = '<i class="fas fa-info-circle" style="margin-right: 10px;"></i>'; break;
         }
-
-        toast.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: ${backgroundStyle};
-            color: white;
-            padding: 14px 22px;
-            border-radius: 8px;
-            box-shadow: var(--shadow-heavy);
-            z-index: 10000;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        `;
-        
+        toast.style.cssText = `position: fixed; top: 20px; right: 20px; background: ${backgroundStyle}; color: white; padding: 14px 22px; border-radius: 8px; box-shadow: var(--shadow-heavy); z-index: 10000; font-weight: 600; display: flex; align-items: center; animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);`;
         toast.innerHTML = `${iconHTML}<span>${message}</span>`;
         document.body.appendChild(toast);
-        
         setTimeout(() => {
             toast.style.animation = 'slideOut 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards';
             toast.addEventListener('animationend', () => toast.remove());
@@ -956,16 +1008,12 @@ async function handleSubmitToDRES(shot, bypassConfirmation = false) {
 
     function showSubmissionStatusOnItem(itemElement, status, message) {
         if (!itemElement) return;
-
-        // Tìm hoặc tạo overlay
         let overlay = itemElement.querySelector('.submission-overlay');
         if (!overlay) {
             overlay = document.createElement('div');
             overlay.className = 'submission-overlay';
             itemElement.appendChild(overlay);
         }
-
-        // Thiết lập icon và nội dung dựa trên trạng thái
         let iconClass = '';
         switch (status) {
             case 'pending':   iconClass = 'fas fa-spinner fa-spin'; break;
@@ -973,65 +1021,37 @@ async function handleSubmitToDRES(shot, bypassConfirmation = false) {
             case 'wrong':     iconClass = 'fas fa-times-circle'; break;
             case 'duplicate': iconClass = 'fas fa-exclamation-triangle'; break;
         }
-        
         overlay.innerHTML = `<i class="${iconClass}"></i><span>${message}</span>`;
-
-        // Cập nhật class để thay đổi màu sắc và hiển thị
-        overlay.className = 'submission-overlay'; // Reset class
+        overlay.className = 'submission-overlay';
         overlay.classList.add(`status-${status}`);
         overlay.classList.add('visible');
-
-        // Tự động ẩn đi sau một khoảng thời gian (trừ trạng thái pending)
         if (status !== 'pending') {
             setTimeout(() => {
                 overlay.classList.remove('visible');
-            }, 2500); // Overlay sẽ hiển thị trong 2.5 giây
+            }, 2500);
         }
     }
 
     const style = document.createElement('style');
-    style.textContent = `
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        @keyframes slideOut {
-            from { transform: translateX(0); opacity: 1; }
-            to { transform: translateX(100%); opacity: 0; }
-        }
-    `;
+    style.textContent = `@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } } @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }`;
     document.head.appendChild(style);
 
     async function handleGoogleImageAction(url, action, element) {
         if (!url || !action) return;
-
         if (action === 'zoom') {
             imageModal.style.display = "flex";
             zoomedImage.src = url;
             return;
         }
-        
         element.style.cursor = 'wait';
         try {
-            const downloadResponse = await fetch('/download_external_image', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ url })
-            });
+            const downloadResponse = await fetch('/download_external_image', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ url }) });
             if (!downloadResponse.ok) {
                 const err = await downloadResponse.json();
                 throw new Error(err.detail || 'Failed to prepare image');
             }
             const imageData = await downloadResponse.json();
-            
-            const shotData = {
-                filepath: imageData.filepath,
-                url: imageData.url,
-                video_id: 'N/A',
-                shot_id: 'N/A',
-                frame_id: 'N/A',
-                external_url: url
-            };
+            const shotData = { filepath: imageData.filepath, url: imageData.url, video_id: 'N/A', shot_id: 'N/A', frame_id: 'N/A', external_url: url };
 
             if (action === 'search') {
                 addStageToStart();
@@ -1072,20 +1092,10 @@ async function handleSubmitToDRES(shot, bypassConfirmation = false) {
     function handleBaseItemClick(event, shotData, source) {
         event.preventDefault();
         event.stopPropagation();
-        
-        if (event.ctrlKey && event.shiftKey) {
-            performImageSearchFromClick(shotData);
-        } 
-        else if (event.type === 'contextmenu') {
-            openVideoPreview(shotData); 
-        } 
-        else if (event.ctrlKey || event.metaKey) {
-            openTemporalContextView(shotData);
-        }
-        else {
-            imageModal.style.display = "flex";
-            zoomedImage.src = shotData.url;
-        }
+        if (event.ctrlKey && event.shiftKey) { performImageSearchFromClick(shotData); } 
+        else if (event.type === 'contextmenu') { openVideoPreview(shotData); } 
+        else if (event.ctrlKey || event.metaKey) { openTemporalContextView(shotData); }
+        else { imageModal.style.display = "flex"; zoomedImage.src = shotData.url; }
     }
     let fpsCache = new Map(); 
 
@@ -1100,13 +1110,12 @@ async function handleSubmitToDRES(shot, bypassConfirmation = false) {
             return;
         }
         
-        document.body.classList.add('video-modal-active'); // THÊM DÒNG NÀY
+        document.body.classList.add('video-modal-active');
 
         videoPreviewModal.style.display = "flex";
         videoPlayer.pause();
         videoPlayer.src = "";
         currentVideoPreviewData = null;
-        //... (phần còn lại của hàm giữ nguyên)
         try {
             let fps = fpsCache.get(shotData.video_id);
             if (!fps) {
@@ -1151,13 +1160,7 @@ async function handleSubmitToDRES(shot, bypassConfirmation = false) {
             const r=e.filepath.match(/_(\d+)\./),s=r?parseInt(r[1],10):null;
             o.forEach(t=>{
                 const frame_id_match = t.match(/_(\d+)\.[^.]+$/);
-                const temporalShotItem = createContextItem({
-                    url: `/images/${urlSafeB64Encode(t)}`,
-                    filepath: t,
-                    video_id: e.video_id,
-                    shot_id: e.shot_id,
-                    frame_id: frame_id_match ? parseInt(frame_id_match[1], 10) : null
-                }, 'context');
+                const temporalShotItem = createContextItem({ url: `/images/${urlSafeB64Encode(t)}`, filepath: t, video_id: e.video_id, shot_id: e.shot_id, frame_id: frame_id_match ? parseInt(frame_id_match[1], 10) : null }, 'context');
                 if(temporalShotItem) {
                     temporalShotItem.classList.add('temporal-grid-item');
                     const label = document.createElement('div');
@@ -1177,21 +1180,17 @@ async function handleSubmitToDRES(shot, bypassConfirmation = false) {
     
     function displayResults(data, append = false) {
         const fragment = document.createDocumentFragment();
-
         if (!append) {
             resultsContainer.innerHTML = "";
             if (imageObserver) imageObserver.disconnect();
             setupImageObserver();
         }
-
         const moreLoader = document.getElementById('moreLoader');
         if (moreLoader) moreLoader.remove();
-
         if (!Array.isArray(data) || data.length === 0) {
             if (!append) resultsContainer.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Không tìm thấy kết quả.</p>';
             return;
         }
-
         const isClusteredMode = clusterBtn.classList.contains("active");
         const createGridWithItems = (items) => {
             const gridFragment = document.createDocumentFragment();
@@ -1207,10 +1206,8 @@ async function handleSubmitToDRES(shot, bypassConfirmation = false) {
             gridFragment.appendChild(grid);
             return gridFragment;
         };
-
         const isTemporalSearch = currentResponse.is_temporal_search;
         const isAmbiguousSearch = currentResponse.is_ambiguous_search;
-
         if (isTemporalSearch || isAmbiguousSearch) {
             data.forEach((sequence, seqIndex) => {
                 const sequenceContainer = document.createElement('div');
@@ -1219,7 +1216,6 @@ async function handleSubmitToDRES(shot, bypassConfirmation = false) {
                 const headerText = isAmbiguousSearch ? `Ambiguous Match in Video: ${sequence.video_id || "N/A"}` : `Sequence ${seqIndex + 1 + ((currentPage - 1) * PAGE_SIZE)} (Video: ${sequence.video_id || "N/A"})`;
                 sequenceHeader.innerHTML = `<i class="fas fa-stream"></i> ${headerText}`;
                 sequenceContainer.appendChild(sequenceHeader);
-
                 if (isClusteredMode) {
                     (sequence.clusters || []).forEach((cluster) => {
                         const stageContainer = document.createElement('div');
@@ -1280,54 +1276,47 @@ async function handleSubmitToDRES(shot, bypassConfirmation = false) {
         resultsContainer.appendChild(fragment);
     }
 
-async function performImageSearchFromClick(shot) {
-    if (!shot || !shot.url || !shot.filepath) {
-        alert("Dữ liệu không hợp lệ để tìm kiếm bằng hình ảnh.");
-        return;
-    }
-    if (temporalContextModal.style.display === "flex") { temporalContextModal.style.display = "none"; }
-    if (imageModal.style.display === "flex") { imageModal.style.display = "none"; }
-
-    loadingIndicator.style.display = 'block';
-    resultsContainer.innerHTML = '';
-    
-    try {
-        let imageBlob;
-        
-        if (shot.is_external) {
-            const downloadResponse = await fetch('/download_external_image', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ url: shot.url })
-            });
-            if (!downloadResponse.ok) {
-                const err = await downloadResponse.json();
-                throw new Error(err.detail || 'Failed to prepare external image');
-            }
-            const imageData = await downloadResponse.json();
-            const localImageResponse = await fetch(imageData.url);
-            if (!localImageResponse.ok) {
-                throw new Error(`Không thể tải ảnh đã xử lý: ${localImageResponse.statusText}`);
-            }
-            imageBlob = await localImageResponse.blob();
-        } else {
-            const response = await fetch(shot.url);
-            if (!response.ok) {
-                throw new Error(`Không thể tải ảnh: ${response.statusText}`);
-            }
-            imageBlob = await response.blob();
+    async function performImageSearchFromClick(shot) {
+        if (!shot || !shot.url || !shot.filepath) {
+            alert("Dữ liệu không hợp lệ để tìm kiếm bằng hình ảnh.");
+            return;
         }
+        if (temporalContextModal.style.display === "flex") { temporalContextModal.style.display = "none"; }
+        if (imageModal.style.display === "flex") { imageModal.style.display = "none"; }
 
-        const filename = shot.filepath.split("/").pop() || "clicked-image.jpg";
-        const imageFile = new File([imageBlob], filename, { type: imageBlob.type });
-        await handleSearch(imageFile);
-
-    } catch (error) {
-        console.error("Lỗi khi tìm kiếm bằng ảnh từ click:", error);
-        alert(`Đã xảy ra lỗi: ${error.message}`);
-        loadingIndicator.style.display = 'none';
+        loadingIndicator.style.display = 'block';
+        resultsContainer.innerHTML = '';
+        
+        try {
+            let imageBlob;
+            if (shot.is_external) {
+                const downloadResponse = await fetch('/download_external_image', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ url: shot.url }) });
+                if (!downloadResponse.ok) {
+                    const err = await downloadResponse.json();
+                    throw new Error(err.detail || 'Failed to prepare external image');
+                }
+                const imageData = await downloadResponse.json();
+                const localImageResponse = await fetch(imageData.url);
+                if (!localImageResponse.ok) {
+                    throw new Error(`Không thể tải ảnh đã xử lý: ${localImageResponse.statusText}`);
+                }
+                imageBlob = await localImageResponse.blob();
+            } else {
+                const response = await fetch(shot.url);
+                if (!response.ok) {
+                    throw new Error(`Không thể tải ảnh: ${response.statusText}`);
+                }
+                imageBlob = await response.blob();
+            }
+            const filename = shot.filepath.split("/").pop() || "clicked-image.jpg";
+            const imageFile = new File([imageBlob], filename, { type: imageBlob.type });
+            await handleSearch(imageFile);
+        } catch (error) {
+            console.error("Lỗi khi tìm kiếm bằng ảnh từ click:", error);
+            alert(`Đã xảy ra lỗi: ${error.message}`);
+            loadingIndicator.style.display = 'none';
+        }
     }
-}
     function clearModelFocus() { modelDropdown.querySelectorAll('.model-dropdown-item').forEach(item => item.classList.remove('focused')); focusedModelIndex = -1; }
     function updateModelFocus() { const items = modelDropdown.querySelectorAll('.model-dropdown-item'); items.forEach((item, index) => { item.classList.toggle('focused', index === focusedModelIndex); }); }
     function focusOnStageInput(stageElement) { if (!stageElement) return; const input = stageElement.querySelector('.main-query-input'); if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); } }
@@ -1338,11 +1327,8 @@ async function performImageSearchFromClick(shot) {
         stageCard.dataset.stageNumber = number;
         const queryTypes = [{ id: 'text', icon: 'fas fa-font', label: 'Text (Ctrl+Alt+U)', type: 'primary' }, { id: 'image', icon: 'fas fa-image', label: 'Image (Ctrl+Alt+I)', type: 'primary' }, { id: 'ocr', icon: 'fas fa-text-height', label: 'OCR Filter (Ctrl+Alt+O)', type: 'filter' }, { id: 'asr', icon: 'fas fa-microphone', label: 'ASR Filter (Ctrl+Alt+P)', type: 'filter' }];
         
-        // ## BẮT ĐẦU SỬA ĐIỀU 1: ĐỔI ICON ##
-        // Đã đổi icon từ "fa-microphone" thành "fa-microphone-lines" để trực quan hơn.
         let typesHTML = queryTypes.map(type => `<button class="type-btn ${type.id === 'text' ? 'active' : ''}" data-type="${type.id}" data-basetype="${type.type}" title="${type.label}"><i class="${type.icon}"></i></button>`).join('') +
                         `<button class="type-btn mic-btn" title="Ghi âm giọng nói (Ctrl+Alt+M)"><i class="fas fa-headphones"></i></button>`;
-        // ## KẾT THÚC SỬA ĐIỀU 1 ##
         
         stageCard.innerHTML = `
             <div class="stage-number">${number}</div>
@@ -1389,17 +1375,14 @@ async function performImageSearchFromClick(shot) {
             button.addEventListener('click', () => {
                 const type = button.dataset.type;
                 const baseType = button.dataset.basetype;
-
                 if (baseType === 'primary') {
                     stageCard.querySelectorAll('.type-btn[data-basetype="primary"]').forEach(btn => { if (btn !== button) btn.classList.remove('active'); });
                     button.classList.add('active');
-                    
                     const isTextMode = type === 'text';
                     mainTextInput.style.display = isTextMode ? 'block' : 'none';
                     mainProcessedWrapper.style.display = isTextMode ? 'flex' : 'none';
                     imageSearchContainer.style.display = isTextMode ? 'none' : 'block';
                     stageOptions.style.display = isTextMode ? 'flex' : 'none';
-
                 } else {
                     button.classList.toggle('active');
                     const filterWrapper = stageCard.querySelector(`.filter-input-wrapper[data-filter-type="${type}"]`);
@@ -1408,7 +1391,6 @@ async function performImageSearchFromClick(shot) {
                         if (button.classList.contains('active')) { filterWrapper.querySelector('input').focus(); }
                     }
                 }
-                
                 const genImageBtn = stageCard.querySelector('.type-btn[data-type="gen_image"]');
                 if (genImageBtn && genImageBtn.classList.contains('active')) {
                     const textBtn = stageCard.querySelector('.type-btn[data-type="text"]');
@@ -1424,15 +1406,12 @@ async function performImageSearchFromClick(shot) {
             const previewImage = stageCard.querySelector('.image-preview');
             const uploadInstructions = stageCard.querySelector('.upload-instructions');
             const removeImageBtn = stageCard.querySelector('.remove-image-btn');
-
             previewImage.src = URL.createObjectURL(file);
             previewImage.style.display = 'block';
             uploadInstructions.style.display = 'none';
             removeImageBtn.style.display = 'none';
-
             const formData = new FormData();
             formData.append('image', file);
-
             try {
                 const response = await fetch('/upload_image', { method: 'POST', body: formData });
                 if (!response.ok) throw new Error(`Upload failed: ${response.statusText}`);
@@ -1449,7 +1428,6 @@ async function performImageSearchFromClick(shot) {
                 delete stageCard.tempImageName;
             }
         };
-
         
         stageCard.querySelector('.remove-image-btn').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); stageCard.querySelector('.stage-input-file').value = ''; const previewImage = stageCard.querySelector('.image-preview'); const uploadInstructions = stageCard.querySelector('.upload-instructions'); const removeImageBtn = stageCard.querySelector('.remove-image-btn'); previewImage.src = ''; previewImage.style.display = 'none'; uploadInstructions.innerHTML = `<i class="fas fa-cloud-upload-alt"></i><p>Kéo & thả ảnh hoặc <strong>nhấn để chọn file</strong></p>`; uploadInstructions.style.display = 'block'; removeImageBtn.style.display = 'none'; delete stageCard.tempImageName; });
         stageCard.querySelector('.stage-input-file').addEventListener('change', e => handleFileSelect(e.target.files[0]));
@@ -1551,22 +1529,16 @@ async function performImageSearchFromClick(shot) {
                 searchEndpoint = '/temporal_search';
                 const stagesData = allStages.map(stage => {
                     const mainInput = stage.querySelector('.main-query-input');
-                    
-                    // ## BẮT ĐẦU SỬA LỖI TEMPORAL SEARCH ##
-                    // Sử dụng Optional Chaining (?.) để kiểm tra sự tồn tại của element trước khi truy cập classList.
-                    // Điều này ngăn lỗi "Cannot read properties of null" khi querySelector không tìm thấy element (ví dụ: data-option="expand").
                     const stageDatum = {
                         query: mainInput.value.trim(),
                         query_image_name: stage.tempImageName || null,
                         generated_image_name: stage.generatedImageName || null,
                         enhance: stage.querySelector('.option-btn[data-option="enhance"]')?.classList.contains('active') || false,
-                        expand: stage.querySelector('.option-btn[data-option="expand"]')?.classList.contains('active') || false, // Dòng này là nguyên nhân chính gây lỗi
+                        expand: stage.querySelector('.option-btn[data-option="expand"]')?.classList.contains('active') || false,
                         use_bge_caption: stage.querySelector('.option-btn[data-option="bge_caption"]')?.classList.contains('active') || false,
                         ocr_query: stage.querySelector('.type-btn[data-type="ocr"].active') ? stage.querySelector('.ocr-filter-input').value.trim() : null,
                         asr_query: stage.querySelector('.type-btn[data-type="asr"].active') ? stage.querySelector('.asr-filter-input').value.trim() : null,
                     };
-                    // ## KẾT THÚC SỬA LỖI ##
-
                     return stageDatum;
                 });
                 
@@ -1576,12 +1548,8 @@ async function performImageSearchFromClick(shot) {
             }
             
             const fetchOptions = { method: 'POST' };
-            if (requestBody instanceof FormData) {
-                fetchOptions.body = requestBody;
-            } else {
-                fetchOptions.headers = { 'Content-Type': 'application/json' };
-                fetchOptions.body = requestBody;
-            }
+            if (requestBody instanceof FormData) { fetchOptions.body = requestBody; } 
+            else { fetchOptions.headers = { 'Content-Type': 'application/json' }; fetchOptions.body = requestBody; }
             
             response = await fetch(searchEndpoint, fetchOptions);
             if (!response.ok) { const err = await response.json(); throw new Error(err.detail || 'Unknown error from server.'); }
@@ -1627,9 +1595,7 @@ async function performImageSearchFromClick(shot) {
         if (debounceTimer) clearTimeout(debounceTimer);
         debounceTimer = setTimeout(async () => {
             const resultsCount = resultsContainer.querySelectorAll('.result-item, .sequence-result-container').length;
-            if (isLoadingMore || !lastSearchPayload || (totalResults > 0 && resultsCount >= totalResults)) {
-                return;
-            }
+            if (isLoadingMore || !lastSearchPayload || (totalResults > 0 && resultsCount >= totalResults)) { return; }
 
             isLoadingMore = true;
             currentPage++;
@@ -1659,12 +1625,8 @@ async function performImageSearchFromClick(shot) {
                 }
 
                 const fetchOptions = { method: 'POST' };
-                if (requestBody instanceof FormData) {
-                    fetchOptions.body = requestBody;
-                } else {
-                    fetchOptions.headers = { 'Content-Type': 'application/json' };
-                    fetchOptions.body = requestBody;
-                }
+                if (requestBody instanceof FormData) { fetchOptions.body = requestBody; } 
+                else { fetchOptions.headers = { 'Content-Type': 'application/json' }; fetchOptions.body = requestBody; }
 
                 response = await fetch(searchEndpoint, fetchOptions);
                 if (!response.ok) {
@@ -1682,52 +1644,19 @@ async function performImageSearchFromClick(shot) {
                 if (existingLoader) existingLoader.remove();
                 debounceTimer = null;
             }
-        }, 300); // debounce 300ms
+        }, 300);
     }
     
     function getObjectFilterData(){const e={};if(enableCountFilter.checked){const t={};countFilterControls.querySelectorAll(".count-filter-row").forEach(e=>{const o=e.querySelector(".count-checkbox");if(o.checked){const r=e.querySelector(".condition-input").value.trim();if(r){let s=e.classList.contains("custom")?e.querySelector(".custom-object-name").value.trim().toLowerCase():o.dataset.object;s&&(t[s]=r)}}}),Object.keys(t).length>0&&(e.counting={conditions:t})}if(enablePositionFilter.checked&&drawnBoxes.length>0){const o=drawnBoxes.filter(e=>e.label).map(e=>({label:e.label,box:[e.x/posCanvas.width,e.y/posCanvas.height,(e.x+e.w)/posCanvas.width,(e.y+e.h)/posCanvas.height]}));o.length>0&&(e.positioning={boxes:o})}return objectFilterBtn.classList.toggle("active",enableCountFilter.checked||enablePositionFilter.checked),(enableCountFilter.checked||enablePositionFilter.checked)&&Object.keys(e).length>0?e:null}
-
     function createCountRow(e = "", t = !1) { const o = document.createElement("div"); o.className = "count-filter-row" + (t ? " custom" : ""); const r = `<input type="checkbox" class="count-checkbox" data-object="${e || "custom"}">`, s = t ? `<input type="text" class="filter-input custom-object-name" placeholder="object name">` : `<label>${e}</label>`, n = `<input type="text" class="filter-input condition-input" placeholder="e.g., >=1">`, i = t ? `<button class="remove-custom-btn">&times;</button>` : ""; o.innerHTML = `${r}${s}${n}${i}`; const a = o.querySelector(".count-checkbox"); const l = () => o.classList.toggle("active-row", a.checked); o.addEventListener("click", e => { e.target.tagName !== "INPUT" && e.target.tagName !== "BUTTON" && (a.checked = !a.checked, l()) }); a.addEventListener("change", l); const conditionInput = o.querySelector('.condition-input'); conditionInput.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); if (conditionInput.value.trim() !== '') { a.checked = true; l(); } conditionInput.blur(); } }); t && o.querySelector(".remove-custom-btn").addEventListener("click", () => o.remove()); l(); return o; }
     PREDEFINED_OBJECTS.forEach(e=>countFilterControls.appendChild(createCountRow(e))),addCustomCountBtn.addEventListener("click",()=>countFilterControls.appendChild(createCountRow("",!0)));
     function redrawCanvas(){if(!posCtx)return;posCtx.clearRect(0,0,posCanvas.width,posCanvas.height),posCtx.strokeStyle="#FFD700",posCtx.lineWidth=2,drawnBoxes.forEach((e,t)=>{posCtx.strokeRect(e.x,e.y,e.w,e.h),posCtx.font="14px 'Poppins'",posCtx.fillStyle="#FFD700",posCtx.fillText(`${t+1}: ${e.label||"no label"}`,e.x+5,e.y+16)}),isDrawing&&(posCtx.strokeStyle="var(--accent-pink)",posCtx.strokeRect(startX,startY,currentX-startX,currentY-startY))}
     function updateDrawnBoxesList(){drawnBoxesList.innerHTML="",drawnBoxes.forEach((e,t)=>{const o=document.createElement("div");o.className="drawn-box-item",o.textContent=`Box ${t+1}: ${e.label||"(unlabeled)"}`,drawnBoxesList.appendChild(o)})}posCanvas.addEventListener("pointerdown",e=>{isDrawing=!0,startX=e.offsetX,startY=e.offsetY}),posCanvas.addEventListener("pointermove",e=>{isDrawing&&(currentX=e.offsetX,currentY=e.offsetY,redrawCanvas())}),posCanvas.addEventListener("pointerup",e=>{if(!isDrawing)return;isDrawing=!1;const t=e.offsetX,o=e.offsetY,r={x:Math.min(startX,t),y:Math.min(startY,o),w:Math.abs(t-startX),h:Math.abs(o-startY),label:""};r.w>5&&r.h>5&&drawnBoxes.push(r),redrawCanvas(),updateDrawnBoxesList()});
-
-    function renumberStages() {
-        stagesContainer.querySelectorAll('.stage-card').forEach((card, index) => {
-            const stageNumberEl = card.querySelector('.stage-number');
-            if (stageNumberEl) stageNumberEl.textContent = index + 1;
-            const deleteBtn = card.querySelector('.delete-stage');
-            if (deleteBtn) {
-                deleteBtn.style.display = stagesContainer.children.length > 1 ? 'flex' : 'none';
-            }
-        });
-    }
-    function addStageToEnd() {
-        const newStage = createStageCard(0);
-        stagesContainer.appendChild(newStage);
-        renumberStages();
-        focusOnStageInput(newStage);
-    }
-    function addStageToStart() {
-        const newStage = createStageCard(0);
-        stagesContainer.insertAdjacentElement('afterbegin', newStage);
-        renumberStages();
-        focusOnStageInput(newStage);
-    }
-    function removeStageFromEnd() {
-        if (stagesContainer.children.length > 1) {
-            stagesContainer.lastChild.remove();
-            renumberStages();
-            focusOnStageInput(stagesContainer.lastChild);
-        }
-    }
-    function removeStageFromStart() {
-        if (stagesContainer.children.length > 1) {
-            stagesContainer.firstChild.remove();
-            renumberStages();
-            focusOnStageInput(stagesContainer.firstChild);
-        }
-    }
+    function renumberStages() { stagesContainer.querySelectorAll('.stage-card').forEach((card, index) => { const stageNumberEl = card.querySelector('.stage-number'); if (stageNumberEl) stageNumberEl.textContent = index + 1; const deleteBtn = card.querySelector('.delete-stage'); if (deleteBtn) { deleteBtn.style.display = stagesContainer.children.length > 1 ? 'flex' : 'none'; } }); }
+    function addStageToEnd() { const newStage = createStageCard(0); stagesContainer.appendChild(newStage); renumberStages(); focusOnStageInput(newStage); }
+    function addStageToStart() { const newStage = createStageCard(0); stagesContainer.insertAdjacentElement('afterbegin', newStage); renumberStages(); focusOnStageInput(newStage); }
+    function removeStageFromEnd() { if (stagesContainer.children.length > 1) { stagesContainer.lastChild.remove(); renumberStages(); focusOnStageInput(stagesContainer.lastChild); } }
+    function removeStageFromStart() { if (stagesContainer.children.length > 1) { stagesContainer.firstChild.remove(); renumberStages(); focusOnStageInput(stagesContainer.firstChild); } }
     
     setupImageObserver();
     setupUser();
@@ -1735,25 +1664,18 @@ async function performImageSearchFromClick(shot) {
     function applyTheme(themeName) {
         document.body.className = themeName === 'default' ? '' : themeName;
         localStorage.setItem('videoSearchTheme', themeName);
-        
         const themeLabel = THEMES[themeName] || 'Default Dark';
         themeSwitcherBtn.querySelector('span').innerHTML = `<i class="fas fa-palette"></i> ${themeLabel}`;
-
-        // --- Logic bật/tắt hiệu ứng đặc biệt ---
-
-        // Digital Rain
         if (themeName === 'theme-gits-rain') {
-            cursedDomainVideo.style.display = 'none'; // Tắt video JJK
+            cursedDomainVideo.style.display = 'none';
             cursedDomainVideo.pause();
             startDigitalRain();
         } 
-        // Cursed Domain Video
         else if (themeName === 'theme-jujutsu-domain') {
-            stopDigitalRain(); // Tắt Digital Rain
+            stopDigitalRain();
             cursedDomainVideo.style.display = 'block';
             cursedDomainVideo.play().catch(e => console.error("Video autoplay failed:", e));
         } 
-        // Các theme khác
         else {
             stopDigitalRain();
             cursedDomainVideo.style.display = 'none';
@@ -1762,7 +1684,6 @@ async function performImageSearchFromClick(shot) {
     }
 
     function initTheme() {
-        // Populate dropdown
         const fragment = document.createDocumentFragment();
         for (const [className, name] of Object.entries(THEMES)) {
             const item = document.createElement('div');
@@ -1770,8 +1691,6 @@ async function performImageSearchFromClick(shot) {
             item.dataset.theme = className;
             const swatch = document.createElement('div');
             swatch.className = 'theme-color-swatch';
-            
-            // Create a dummy div to get theme colors
             const dummy = document.createElement('div');
             dummy.style.display = 'none';
             document.body.appendChild(dummy);
@@ -1781,7 +1700,6 @@ async function performImageSearchFromClick(shot) {
             swatch.style.background = primaryGradient;
             document.body.className = originalClass;
             dummy.remove();
-            
             item.appendChild(swatch);
             item.append(name);
             item.addEventListener('click', () => {
@@ -1791,8 +1709,6 @@ async function performImageSearchFromClick(shot) {
             fragment.appendChild(item);
         }
         themeDropdown.appendChild(fragment);
-
-        // Apply saved theme
         const savedTheme = localStorage.getItem('videoSearchTheme') || 'default';
         applyTheme(savedTheme);
     }
@@ -1809,36 +1725,18 @@ async function performImageSearchFromClick(shot) {
         e.stopPropagation();
         themeDropdown.style.display = themeDropdown.style.display === 'block' ? 'none' : 'block';
     });
-    // ############ END: THEME SWITCHER LOGIC ############
 
-
-    // ############ START: TRAKE PANEL LOGIC ############
     trakeBtn.addEventListener('click', () => {
         const isActive = trakeBtn.classList.toggle('active');
         trakePanelContainer.style.display = isActive ? 'block' : 'none';
     });
 
     function pushToTrakePanel(shotData) {
-        if (!ws || ws.readyState !== WebSocket.OPEN) {
-            showToast("Real-time connection not active.", 3000, 'error');
-            return;
-        }
+        if (!ws || ws.readyState !== WebSocket.OPEN) { showToast("Real-time connection not active.", 3000, 'error'); return; }
         if (!shotData || !shotData.filepath) return;
-
-        // The server will handle duplicate prevention, but a local check is still good for UI responsiveness
-        if (trakeGrid.querySelector(`.result-item[data-filepath="${shotData.filepath}"]`)) {
-            showToast("Frame is already in the Trake Panel.", 2000, 'warning');
-            return;
-        }
-
-        ws.send(JSON.stringify({
-            type: 'trake_add',
-            data: { shot: shotData }
-        }));
-
-        if (!trakeBtn.classList.contains('active')) {
-            trakeBtn.click();
-        }
+        if (trakeGrid.querySelector(`.result-item[data-filepath="${shotData.filepath}"]`)) { showToast("Frame is already in the Trake Panel.", 2000, 'warning'); return; }
+        ws.send(JSON.stringify({ type: 'trake_add', data: { shot: shotData } }));
+        if (!trakeBtn.classList.contains('active')) { trakeBtn.click(); }
     }
 
     pushToTrakeBtn.addEventListener('click', () => {
@@ -1851,38 +1749,23 @@ async function performImageSearchFromClick(shot) {
             const ctx = canvas.getContext('2d');
             ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
             const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
-            const shotData = {
-                video_id: currentVideoPreviewData.videoId,
-                frame_id: frameId,
-                fps: currentVideoPreviewData.fps,
-                filepath: `dynamic-frame-${currentVideoPreviewData.videoId}-${frameId}`,
-                url: thumbnailUrl,
-                is_dynamic: true
-            };
+            const shotData = { video_id: currentVideoPreviewData.videoId, frame_id: frameId, fps: currentVideoPreviewData.fps, filepath: `dynamic-frame-${currentVideoPreviewData.videoId}-${frameId}`, url: thumbnailUrl, is_dynamic: true };
             pushToTrakePanel(shotData);
         }
     });
 
-    // --- Drag & Drop for Trake Panel ---
     let draggedItem = null;
     trakeGrid.addEventListener('dragstart', e => {
         draggedItem = e.target.closest('.result-item');
-        setTimeout(() => {
-            if(draggedItem) draggedItem.classList.add('ghost');
-        }, 0);
+        setTimeout(() => { if(draggedItem) draggedItem.classList.add('ghost'); }, 0);
     });
     trakeGrid.addEventListener('dragend', e => {
         if(draggedItem) {
             draggedItem.classList.remove('ghost');
             draggedItem = null;
-
-            // After dropping, get the new order and send it to the server
             const newOrder = [...trakeGrid.querySelectorAll('.result-item')].map(item => item.dataset.filepath);
             if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({
-                    type: 'trake_reorder',
-                    data: { order: newOrder }
-                }));
+                ws.send(JSON.stringify({ type: 'trake_reorder', data: { order: newOrder } }));
             }
         }
     });
@@ -1891,11 +1774,8 @@ async function performImageSearchFromClick(shot) {
         const afterElement = getDragAfterElement(trakeGrid, e.clientX);
         const dragging = document.querySelector('.ghost');
         if (dragging) {
-            if (afterElement == null) {
-                trakeGrid.appendChild(dragging);
-            } else {
-                trakeGrid.insertBefore(dragging, afterElement);
-            }
+            if (afterElement == null) { trakeGrid.appendChild(dragging); } 
+            else { trakeGrid.insertBefore(dragging, afterElement); }
         }
     });
 
@@ -1922,14 +1802,11 @@ async function performImageSearchFromClick(shot) {
         }
     }
 
-    // --- Nearby Frames Logic ---
     async function toggleNearbyFrames(trakeItemElement, shotData) {
-        // This function now opens the sidebar
         activeTrakeItemForSidebar = trakeItemElement;
         sidebarGrid.innerHTML = '<div class="sidebar-item loading" style="justify-content: center;"><i class="fas fa-spinner fa-spin"></i></div>';
         sidebarTitle.textContent = `Nearby: V${shotData.video_id}, F${shotData.frame_id}`;
         nearbyFramesSidebar.style.display = 'flex';
-
         let currentShotData = { ...shotData };
 
         if (!currentShotData.fps) {
@@ -1939,7 +1816,7 @@ async function performImageSearchFromClick(shot) {
                 if (!infoResponse.ok) throw new Error(`Server error ${infoResponse.status}`);
                 const videoInfo = await infoResponse.json();
                 currentShotData.fps = videoInfo.fps;
-                trakeItemElement.shotData.fps = videoInfo.fps; // Persist it
+                trakeItemElement.shotData.fps = videoInfo.fps;
             } catch (error) {
                 sidebarGrid.innerHTML = `<div style="color: #ef4444;">Error: ${error.message}</div>`;
                 return;
@@ -1952,16 +1829,13 @@ async function performImageSearchFromClick(shot) {
             const framePromises = timeOffsets.map(offset => fetchFrameAtTime(currentShotData.video_id, originalTime + offset));
             const frameResults = await Promise.all(framePromises);
             
-            sidebarGrid.innerHTML = ''; // Clear loading spinner
+            sidebarGrid.innerHTML = '';
             frameResults.forEach((result, index) => {
                 if (result.success) {
                     const offset = timeOffsets[index];
                     const newItem = document.createElement('div');
                     newItem.className = 'sidebar-item';
-                    newItem.innerHTML = `
-                        <img src="${result.imageData}" />
-                        <span class="time-offset">${offset === 0 ? 'Original' : (offset > 0 ? `+${offset.toFixed(1)}s` : `${offset.toFixed(1)}s`)}</span>
-                    `;
+                    newItem.innerHTML = `<img src="${result.imageData}" /><span class="time-offset">${offset === 0 ? 'Original' : (offset > 0 ? `+${offset.toFixed(1)}s` : `${offset.toFixed(1)}s`)}</span>`;
                     
                     newItem.addEventListener('click', () => {
                         const newFrameId = Math.round((originalTime + offset) * currentShotData.fps);
@@ -1970,10 +1844,7 @@ async function performImageSearchFromClick(shot) {
                         if (activeTrakeItemForSidebar && ws && ws.readyState === WebSocket.OPEN) {
                             ws.send(JSON.stringify({
                                 type: 'trake_replace',
-                                data: {
-                                    filepath: activeTrakeItemForSidebar.dataset.filepath, // The original filepath to identify the item
-                                    newShot: newShotData // The complete new shot data
-                                }
+                                data: { filepath: activeTrakeItemForSidebar.dataset.filepath, newShot: newShotData }
                             }));
                         }
                         closeSidebar();
@@ -1991,7 +1862,6 @@ async function performImageSearchFromClick(shot) {
             const formData = new FormData();
             formData.append('video_id', videoId);
             formData.append('timestamp', timestamp);
-
             const response = await fetch('/get_frame_at_timestamp', { method: 'POST', body: formData });
             if (!response.ok) {
                 const err = await response.json();
@@ -2005,35 +1875,22 @@ async function performImageSearchFromClick(shot) {
         }
     }
 
-    // --- Bulk Submission Logic ---
     trakePanelContainer.addEventListener('mouseenter', () => { isMouseOverTrakePanel = true; });
     trakePanelContainer.addEventListener('mouseleave', () => { isMouseOverTrakePanel = false; });
     
     async function submitAllTrakeFrames() {
         if (!isMouseOverTrakePanel) return;
-
         const itemsToSubmit = Array.from(trakeGrid.querySelectorAll('.result-item'));
         if (itemsToSubmit.length === 0) {
             showToast("Trake Panel is empty.", 2000, 'info');
             return;
         }
-        
-        if (!confirm(`Submit all ${itemsToSubmit.length} frames in the Trake Panel to DRES?`)) {
-            return;
-        }
-
+        if (!confirm(`Submit all ${itemsToSubmit.length} frames in the Trake Panel to DRES?`)) { return; }
         showToast(`Submitting ${itemsToSubmit.length} frames...`, 5000, 'info');
-
         const submissionPromises = itemsToSubmit.map(item => {
-            const shotData = {
-                video_id: item.dataset.videoId,
-                frame_id: parseInt(item.dataset.frameId, 10),
-                filepath: item.dataset.filepath,
-                url: item.querySelector('img').src
-            };
+            const shotData = { video_id: item.dataset.videoId, frame_id: parseInt(item.dataset.frameId, 10), filepath: item.dataset.filepath, url: item.querySelector('img').src };
             return handleSubmitToDRES(shotData, true);
         });
-
         await Promise.all(submissionPromises);
         showToast("All submissions from Trake Panel processed.", 3000, 'success');
     }
@@ -2053,8 +1910,8 @@ async function performImageSearchFromClick(shot) {
             document.getElementById('timingInfoDisplay').style.display = 'none';
             teamworkGrid.innerHTML = '';
             pushedFrames.clear();
-            submittedFrames.clear(); // Xóa lịch sử các lượt nộp
-            document.getElementById('correctSubmissionPanel').style.display = 'none'; // Ẩn panel nộp đúng
+            submittedFrames.clear();
+            document.getElementById('correctSubmissionPanel').style.display = 'none';
             googleSearchInput.value = '';
             googleResultsContainer.innerHTML = '';
             googleResultsWrapper.style.display = 'none';
@@ -2077,51 +1934,47 @@ async function performImageSearchFromClick(shot) {
     temporalContextModal.addEventListener('click', (e) => { if (e.target === temporalContextModal) { temporalContextModal.style.display = "none"; } });
     
     function closeVideoModal() {
-        document.body.classList.remove('video-modal-active'); // THÊM DÒNG NÀY
+        document.body.classList.remove('video-modal-active');
         videoPreviewModal.style.display = "none";
         videoPlayer.pause();
         videoPlayer.src = "";
         currentVideoPreviewData = null;
+    
+        // --- TIMELINE CLEANUP ---
+        if (animationFrameId_timeline !== null) {
+            cancelAnimationFrame(animationFrameId_timeline);
+            animationFrameId_timeline = null;
+        }
+        if (timelineObserver) {
+            timelineObserver.disconnect();
+        }
+        thumbnailQueue.length = 0;
+        isGenerating = false;
+        isTempVideoReady = false;
+        tempVideo.src = "";
+        thumbnailCache.clear();
+        videoThumbnailsStrip.innerHTML = "";
     }
 
     closeVideoModalBtn.addEventListener('click', closeVideoModal);
-    videoPreviewModal.addEventListener('click', (e) => { 
-        if (e.target === videoPreviewModal) { 
-            closeVideoModal(); 
-        } 
-    });
+    videoPreviewModal.addEventListener('click', (e) => { if (e.target === videoPreviewModal) { closeVideoModal(); } });
     modalCloseBtn.addEventListener('click', () => objectFilterModal.style.display = 'none');
 
     function resetDresState() {
-        dresSessionId = null;
-        dresEvaluationId = null;
-        sessionStorage.removeItem('dresSessionId');
-        sessionStorage.removeItem('dresEvaluationId');
-        
-        dresStatus.textContent = 'Status: Not logged in.';
-        dresStatus.style.color = 'var(--text-secondary)';
-        dresEvaluationSelect.innerHTML = '';
-        dresEvaluationSelect.disabled = true;
+        dresSessionId = null; dresEvaluationId = null;
+        sessionStorage.removeItem('dresSessionId'); sessionStorage.removeItem('dresEvaluationId');
+        dresStatus.textContent = 'Status: Not logged in.'; dresStatus.style.color = 'var(--text-secondary)';
+        dresEvaluationSelect.innerHTML = ''; dresEvaluationSelect.disabled = true;
     }
 
-    /**
-     * Fetches evaluations for a given session, populates the dropdown,
-     * and updates the UI to the logged-in state.
-     */
     async function revalidateAndFetchEvaluations() {
         if (!dresSessionId) return;
-
         dresStatus.textContent = 'Validating session & fetching evaluations...';
         dresStatus.style.color = 'var(--text-secondary)';
-        
         try {
             const evalResponse = await fetch(`/dres/list_evaluations?session=${dresSessionId}`);
-            if (!evalResponse.ok) {
-                // This likely means the session ID has expired.
-                throw new Error('Session invalid or expired. Please log in again.');
-            }
+            if (!evalResponse.ok) { throw new Error('Session invalid or expired. Please log in again.'); }
             const evaluations = await evalResponse.json();
-            
             dresEvaluationSelect.innerHTML = '';
             evaluations.forEach(ev => {
                 if (ev.status === 'ACTIVE') {
@@ -2131,16 +1984,11 @@ async function performImageSearchFromClick(shot) {
                     dresEvaluationSelect.appendChild(option);
                 }
             });
-
             if (dresEvaluationSelect.options.length > 0) {
-                // Try to restore the previously selected evaluation
                 const storedEvalId = sessionStorage.getItem('dresEvaluationId');
-                if (storedEvalId && dresEvaluationSelect.querySelector(`option[value="${storedEvalId}"]`)) {
-                    dresEvaluationSelect.value = storedEvalId;
-                }
+                if (storedEvalId && dresEvaluationSelect.querySelector(`option[value="${storedEvalId}"]`)) { dresEvaluationSelect.value = storedEvalId; }
                 dresEvaluationId = dresEvaluationSelect.value;
                 sessionStorage.setItem('dresEvaluationId', dresEvaluationId);
-                
                 dresStatus.textContent = `Ready to submit to: ${dresEvaluationSelect.options[dresEvaluationSelect.selectedIndex].text}`;
                 dresStatus.style.color = 'var(--accent-blue)';
             } else {
@@ -2148,97 +1996,51 @@ async function performImageSearchFromClick(shot) {
                 dresStatus.style.color = 'var(--text-secondary)';
             }
             dresEvaluationSelect.disabled = false;
-
         } catch (error) {
             console.error("DRES Re-validation Error:", error.message);
             showToast(error.message, 4000, 'error');
-            resetDresState(); // Critical: Clear bad session data
+            resetDresState();
         }
     }
     
-    /**
-     * Checks sessionStorage on page load to restore DRES login state.
-     */
     function initializeDresState() {
         dresSessionId = sessionStorage.getItem('dresSessionId');
-        if (dresSessionId) {
-            revalidateAndFetchEvaluations();
-        }
+        if (dresSessionId) { revalidateAndFetchEvaluations(); }
     }
     
     dresModalCloseBtn.addEventListener('click', () => dresModal.style.display = 'none');
-
     dresBtn.addEventListener('click', () => {
         if (dresSessionId) {
-            dresInitialView.style.display = 'none';
-            dresLoginView.style.display = 'none';
-            dresEvaluationView.style.display = 'block';
-            
+            dresInitialView.style.display = 'none'; dresLoginView.style.display = 'none'; dresEvaluationView.style.display = 'block';
             const selectedOption = dresEvaluationSelect.options[dresEvaluationSelect.selectedIndex];
             dresStatus.textContent = selectedOption ? `Ready to submit to: ${selectedOption.text}` : 'Logged in, please select an evaluation.';
             dresStatus.style.color = 'var(--accent-blue)';
         } else {
-            dresInitialView.style.display = 'block';
-            dresLoginView.style.display = 'none';
-            dresEvaluationView.style.display = 'none';
-            dresStatus.textContent = 'Status: Not logged in.';
-            dresStatus.style.color = 'var(--text-secondary)';
+            dresInitialView.style.display = 'block'; dresLoginView.style.display = 'none'; dresEvaluationView.style.display = 'none';
+            dresStatus.textContent = 'Status: Not logged in.'; dresStatus.style.color = 'var(--text-secondary)';
         }
         dresModal.style.display = 'flex';
     });
-
-    dresShowLoginBtn.addEventListener('click', () => {
-        dresInitialView.style.display = 'none';
-        dresLoginView.style.display = 'flex';
-        dresUsername.focus();
-    });
-
+    dresShowLoginBtn.addEventListener('click', () => { dresInitialView.style.display = 'none'; dresLoginView.style.display = 'flex'; dresUsername.focus(); });
     dresLoginBtn.addEventListener('click', async () => {
-        const user = dresUsername.value;
-        const pass = dresPassword.value;
-        if (!user || !pass) {
-            alert('Please enter username and password.');
-            return;
-        }
-        dresStatus.textContent = 'Logging in...';
-        dresStatus.style.color = 'var(--text-secondary)';
+        const user = dresUsername.value; const pass = dresPassword.value;
+        if (!user || !pass) { alert('Please enter username and password.'); return; }
+        dresStatus.textContent = 'Logging in...'; dresStatus.style.color = 'var(--text-secondary)';
         try {
-            const response = await fetch('/dres/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: user, password: pass })
-            });
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.detail || 'Login failed');
-            }
+            const response = await fetch('/dres/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: user, password: pass }) });
+            if (!response.ok) { const err = await response.json(); throw new Error(err.detail || 'Login failed'); }
             const data = await response.json();
             dresSessionId = data.sessionId;
             sessionStorage.setItem('dresSessionId', dresSessionId);
-            
-            // Now, just call our reusable function!
             await revalidateAndFetchEvaluations();
-            
             showToast('DRES Login successful!', 3000, 'success');
             dresModal.style.display = 'none';
-
         } catch (error) {
-            dresStatus.textContent = `Error: ${error.message}`;
-            dresStatus.style.color = '#ef4444';
-            resetDresState(); // Reset on login failure
+            dresStatus.textContent = `Error: ${error.message}`; dresStatus.style.color = '#ef4444'; resetDresState();
         }
     });
-
-    dresEvaluationSelect.addEventListener('change', () => {
-        dresEvaluationId = dresEvaluationSelect.value;
-        sessionStorage.setItem('dresEvaluationId', dresEvaluationId);
-        dresStatus.textContent = `Ready to submit to: ${dresEvaluationSelect.options[dresEvaluationSelect.selectedIndex].text}`;
-    });
-    
-    objectFilterBtn.addEventListener('click', () => {
-        objectFilterModal.style.display = 'flex';
-    });
-    
+    dresEvaluationSelect.addEventListener('change', () => { dresEvaluationId = dresEvaluationSelect.value; sessionStorage.setItem('dresEvaluationId', dresEvaluationId); dresStatus.textContent = `Ready to submit to: ${dresEvaluationSelect.options[dresEvaluationSelect.selectedIndex].text}`; });
+    objectFilterBtn.addEventListener('click', () => { objectFilterModal.style.display = 'flex'; });
 
     window.addEventListener('keydown', (event) => {
         const activeElement = document.activeElement;
@@ -2246,14 +2048,10 @@ async function performImageSearchFromClick(shot) {
 
         if (videoPreviewModal.style.display === 'flex' && event.code === 'Space' && (event.ctrlKey || event.metaKey)) {
             event.preventDefault();
-            if (event.shiftKey) {
-                submitCurrentFrameBtn.click();
-            } else {
-                pushCurrentFrameBtn.click();
-            }
+            if (event.shiftKey) { submitCurrentFrameBtn.click(); } 
+            else { pushCurrentFrameBtn.click(); }
             return;
         }
-
         if (event.key === 'Escape') {
             event.preventDefault();
             if (isTyping) { activeElement.blur(); return; }
@@ -2270,11 +2068,8 @@ async function performImageSearchFromClick(shot) {
         if ((event.ctrlKey || event.metaKey)) {
             if (event.key.toLowerCase() === 'f' && !event.shiftKey && !event.altKey) {
                 event.preventDefault();
-                if (objectFilterModal.style.display === 'flex') {
-                    objectFilterModal.style.display = 'none';
-                } else {
-                    objectFilterModal.style.display = 'flex';
-                }
+                if (objectFilterModal.style.display === 'flex') { objectFilterModal.style.display = 'none'; } 
+                else { objectFilterModal.style.display = 'flex'; }
                 return;
             }
             if (event.key.toLowerCase() === 'f' && event.shiftKey && !event.altKey) {
@@ -2285,9 +2080,7 @@ async function performImageSearchFromClick(shot) {
                 return;
             }
             if (event.key.toLowerCase() === 'm' && !event.shiftKey && !event.altKey) {
-                event.preventDefault();
-                modelSelectBtn.click();
-                return;
+                event.preventDefault(); modelSelectBtn.click(); return;
             }
         }
 
@@ -2297,33 +2090,22 @@ async function performImageSearchFromClick(shot) {
                 const itemData = currentlyHoveredItemData;
                 const itemElement = currentlyHoveredItemElement;
                 const source = itemElement.dataset.source;
-
                 if (event.shiftKey) {
-                    console.log(`Direct Submit action on item from source: ${source}`);
-                    if (itemData.external_url) {
-                        handleGoogleImageAction(itemData.external_url, 'submit', itemElement);
-                    } else {
-                        handleSubmitToDRES(itemData, true);
-                    }
+                    if (itemData.external_url) { handleGoogleImageAction(itemData.external_url, 'submit', itemElement); } 
+                    else { handleSubmitToDRES(itemData, true); }
                 } else {
                     if (source === 'teamwork') {
                         if (!ws || ws.readyState !== WebSocket.OPEN) { alert("Teamwork connection is not available."); return; }
-                        console.log(`Requesting to remove frame: ${itemData.filepath}`);
                         ws.send(JSON.stringify({ type: 'remove_frame', data: { filepath: itemData.filepath, user: { name: username } } }));
                     } else {
-                        console.log(`Push action on item from source: ${source}`);
-                        if (itemData.external_url) {
-                            handleGoogleImageAction(itemData.external_url, 'push', itemElement);
-                        } else {
-                            pushToTeamworkPanel(itemData);
-                        }
+                        if (itemData.external_url) { handleGoogleImageAction(itemData.external_url, 'push', itemElement); } 
+                        else { pushToTeamworkPanel(itemData); }
                     }
                 }
                 return;
             }
             else if (isMouseOverTrakePanel && event.shiftKey) {
-                event.preventDefault();
-                submitAllTrakeFrames();
+                event.preventDefault(); submitAllTrakeFrames();
             }
         }
 
@@ -2344,17 +2126,12 @@ async function performImageSearchFromClick(shot) {
             if (isTyping && event.shiftKey) { return; }
             if (dresModal.style.display === 'flex') {
                 event.preventDefault();
-                if (dresLoginView.style.display === 'flex') {
-                    dresLoginBtn.click();
-                } else if (dresInitialView.style.display === 'block') {
-                    dresShowLoginBtn.click();
-                }
+                if (dresLoginView.style.display === 'flex') { dresLoginBtn.click(); } 
+                else if (dresInitialView.style.display === 'block') { dresShowLoginBtn.click(); }
                 return;
             }
             if (usernameModal.style.display === 'flex') { event.preventDefault(); usernameSubmitBtn.click(); return; }
-            event.preventDefault();
-            searchBtn.click();
-            return;
+            event.preventDefault(); searchBtn.click(); return;
         }
         
         if (isModalVisible) {
@@ -2405,7 +2182,6 @@ async function performImageSearchFromClick(shot) {
                 if (targetStageNum <= allStages.length) focusOnStageInput(allStages[targetStageNum - 1]);
                 return;
             }
-
             let handled = true;
             switch (event.code) {
                 case 'BracketRight': addStageToEnd(); break;
@@ -2434,35 +2210,12 @@ async function performImageSearchFromClick(shot) {
             }
         }
 
-        if (videoPreviewModal.style.display !== 'flex') {
-            return;
-        }
+        if (videoPreviewModal.style.display !== 'flex') { return; }
 
         if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
             event.preventDefault();
             const direction = event.key === 'ArrowRight' ? 1 : -1;
             handleScrub(direction);
-        }
-
-        // If one of our target keys was pressed...
-        if (direction !== 0) {
-            // Prevent the default browser action for arrow keys (like horizontal scrolling).
-            event.preventDefault();
-
-            // Ensure we have the necessary FPS data before proceeding.
-            if (!currentVideoPreviewData || !currentVideoPreviewData.fps) {
-                return;
-            }
-            
-            // Pause the video for precise control.
-            videoPlayer.pause();
-            
-            // The calculation is the same as for the mouse wheel.
-            const frameTime = 1 / currentVideoPreviewData.fps;
-            const newTime = videoPlayer.currentTime + (direction * frameTime);
-            
-            // Set the new time, ensuring it stays within the video's bounds.
-            videoPlayer.currentTime = Math.max(0, Math.min(videoPlayer.duration, newTime));
         }
     });
 });

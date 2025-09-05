@@ -165,7 +165,7 @@ MILVUS_PORT = "19530"
 BEIT3_COLLECTION_NAME = "beit3_batch1_2_filter"
 BGE_COLLECTION_NAME = "bge_batch1_2_filter"
 BGE_M3_CAPTION_COLLECTION_NAME = "BGE_M3_HCMAIC_captions_batch_1"
-OPS_MM_COLLECTION_NAME = "MM_EMBED_AIC"
+OPS_MM_COLLECTION_NAME = "MM_EMBED_FINAL"
 
 
 MODEL_WEIGHTS = {"beit3": 0.2, "bge": 0.1, "ops_mm": 0.2, "bge_caption": 0.5}

@@ -1148,3 +1148,60 @@ body.video-modal-active.theme-jujutsu-domain .result-item {
 body.video-modal-active.theme-akira-red {
     animation: none !important;
 }
+
+/* --- START: VIDEO TIMELINE SCRUBBER STYLES --- */
+.timeline-container {
+    width: 100%;
+    max-width: 90vw; /* Match the video player's max-width */
+    margin-top: 24px;
+    position: relative;
+    height: 56px;
+    cursor: grab;
+    -webkit-user-select: none;
+    user-select: none;
+    overflow: hidden;
+    touch-action: pan-y; /* Allow vertical scrolling on touch devices */
+    border-radius: 6px;
+    background-color: #111;
+}
+.timeline-container:active {
+    cursor: grabbing;
+}
+.playhead {
+    position: absolute;
+    left: 50%;
+    top: -6px;
+    bottom: -6px;
+    width: 3px;
+    background: #e53935;
+    transform: translateX(-50%);
+    z-index: 10;
+    pointer-events: none;
+    border-radius: 2px;
+    box-shadow: 0 0 8px rgba(229, 57, 53, 0.7);
+}
+.thumbnails-strip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    display: flex;
+    gap: 2px;
+}
+.thumbnail-placeholder {
+    width: 100px;
+    height: 56px;
+    background-color: #333;
+    flex-shrink: 0;
+}
+.thumbnail-placeholder img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+.thumbnail-placeholder img.loaded {
+    opacity: 1;
+}
+/* --- END: VIDEO TIMELINE SCRUBBER STYLES --- */
