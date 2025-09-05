@@ -979,12 +979,32 @@
         .image-modal-close:hover { color: var(--accent-pink); transform: scale(1.1) rotate(90deg); background: rgba(244, 63, 94, 0.2); }
         #temporalContextModal, #dresModal { z-index: 2000; }
         #imageModal, #videoPreviewModal { z-index: 2100; }
-        #temporalContextModal .temporal-modal-content { background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 16px; width: 95%; max-width: 1600px; height: auto; max-height: 95vh; display: flex; flex-direction: column; box-shadow: var(--shadow-heavy); animation: modalZoom 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        #temporalContextModal .temporal-modal-content {
+            background: var(--dark-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            /* Thay đổi: Sử dụng 95% chiều rộng viewport thay vì giới hạn pixel */
+            width: 95vw; 
+            max-width: none; /* Bỏ giới hạn max-width cũ */
+            height: auto;
+            /* Giữ nguyên: Chiều cao tối đa là 95% chiều cao viewport */
+            max-height: 95vh; 
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-heavy);
+            animation: modalZoom 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
         #temporalContextModal .temporal-modal-header { padding: 16px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
         #temporalContextModal #temporalModalTitle { font-size: 1.2rem; font-weight: 600; color: var(--text-primary); }
         #temporalContextModal .image-modal-close { position: static; width: 36px; height: 36px; font-size: 1.2rem; }
         #temporalContextModal .temporal-modal-body { padding: 24px; overflow-y: auto; flex-grow: 1; }
-        .temporal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+        .temporal-grid {
+            display: grid;
+            /* Thay đổi: Giảm kích thước tối thiểu của mỗi ảnh để chứa được nhiều hơn */
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); 
+            /* Thay đổi: Giảm khoảng cách giữa các ảnh */
+            gap: 12px; 
+        }
         .temporal-grid-item { position: relative; background-color: var(--glass-bg); border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; aspect-ratio: 16 / 9; cursor: pointer; transition: all 0.2s ease-in-out; }
         .temporal-grid-item:hover { transform: scale(1.05); border-color: var(--accent-blue); z-index: 10; }
         .temporal-grid-item.center-frame { border: 2px solid var(--accent-purple); box-shadow: 0 0 15px rgba(102, 126, 234, 0.6); }
@@ -1867,6 +1887,24 @@
 
     <script>
         // ## MERGED & CORRECTED SCRIPT ##
+        // ADD THIS ENTIRE BLOCK
+        const timingLog = {
+            timers: new Map(),
+            start(name) {
+                this.timers.set(name, performance.now());
+            },
+            stop(name) {
+                if (this.timers.has(name)) {
+                    const startTime = this.timers.get(name);
+                    const duration = performance.now() - startTime;
+                    console.log(`⏱️ ${name}: ${duration.toFixed(2)} ms`);
+                    this.timers.delete(name);
+                    return duration;
+                }
+                return 0;
+            }
+        };
+        // END OF BLOCK TO ADD
         let ws;
         let username = '';
         let userColor = '';
@@ -2390,6 +2428,8 @@
             }
 
             async function fetchGoogleImages() {
+                console.groupCollapsed('🖼️ Google Image Search');
+                timingLog.start('Total Google Image Search Duration');
                 const query = googleSearchInput.value.trim();
                 if (!query) return;
 
@@ -2397,22 +2437,34 @@
                 googleResultsContainer.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size: 1.5rem; margin: auto;"></i>';
                 
                 try {
+                    timingLog.start('Google Image API Fetch');
                     const response = await fetch('/google_image_search', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ query })
                     });
+                    timingLog.stop('Google Image API Fetch');
+
                     if (!response.ok) {
                         const err = await response.json();
                         throw new Error(err.detail || 'Search failed');
                     }
+
+                    timingLog.start('Google Image JSON Parsing');
                     const data = await response.json();
+                    timingLog.stop('Google Image JSON Parsing');
+                    
+                    timingLog.start('Google Image DOM Rendering');
                     displayGoogleImages(data.image_urls || []);
+                    timingLog.stop('Google Image DOM Rendering');
+
                 } catch (error) {
                     googleResultsContainer.innerHTML = `<p style="color: #ef4444;">Error: ${error.message}</p>`;
+                } finally {
+                    timingLog.stop('Total Google Image Search Duration');
+                    console.groupEnd();
                 }
             }
-
             googleSearchBtn.addEventListener('click', fetchGoogleImages);
             googleSearchInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
@@ -3303,6 +3355,10 @@
 
                 const handleFileSelect = async (file) => {
                     if (!file || !file.type.startsWith('image/')) return;
+
+                    console.groupCollapsed('📤 Local Image Upload');
+                    timingLog.start('Total Image Upload Duration');
+
                     const previewImage = stageCard.querySelector('.image-preview');
                     const uploadInstructions = stageCard.querySelector('.upload-instructions');
                     const removeImageBtn = stageCard.querySelector('.remove-image-btn');
@@ -3310,25 +3366,36 @@
                     previewImage.src = URL.createObjectURL(file);
                     previewImage.style.display = 'block';
                     uploadInstructions.style.display = 'none';
-                    removeImageBtn.style.display = 'none';
+                    removeImageBtn.style.display = 'none'; // Hide until upload is successful
 
                     const formData = new FormData();
                     formData.append('image', file);
 
                     try {
+                        timingLog.start('Upload API Call');
                         const response = await fetch('/upload_image', { method: 'POST', body: formData });
+                        timingLog.stop('Upload API Call');
+                        
                         if (!response.ok) throw new Error(`Upload failed: ${response.statusText}`);
+                        
+                        timingLog.start('Upload Response Parsing');
                         const data = await response.json();
+                        timingLog.stop('Upload Response Parsing');
+
                         stageCard.tempImageName = data.temp_image_name;
-                        removeImageBtn.style.display = 'flex';
+                        removeImageBtn.style.display = 'flex'; // Show remove button now
                     } catch (error) {
                         console.error("Image upload error:", error);
                         alert("Lỗi upload ảnh. Vui lòng thử lại.");
+                        // Reset UI on failure
                         previewImage.style.display = 'none';
                         uploadInstructions.innerHTML = `<i class="fas fa-cloud-upload-alt"></i><p>Kéo & thả ảnh hoặc <strong>nhấn để chọn file</strong></p>`;
                         uploadInstructions.style.display = 'block';
                         removeImageBtn.style.display = 'none';
                         delete stageCard.tempImageName;
+                    } finally {
+                        timingLog.stop('Total Image Upload Duration');
+                        console.groupEnd();
                     }
                 };
 
@@ -3350,6 +3417,9 @@
             }
 
             async function handleSearch(imageFileFromClick = null) {
+                console.groupCollapsed(`🔍 Search Initiated at ${new Date().toLocaleTimeString()}`);
+                timingLog.start('Total Client-Side Search Duration');
+
                 const clientStartTime = performance.now();
                 currentPage = 1;
                 isLoadingMore = false;
@@ -3434,20 +3504,16 @@
                         const stagesData = allStages.map(stage => {
                             const mainInput = stage.querySelector('.main-query-input');
                             
-                            // ## BẮT ĐẦU SỬA LỖI TEMPORAL SEARCH ##
-                            // Sử dụng Optional Chaining (?.) để kiểm tra sự tồn tại của element trước khi truy cập classList.
-                            // Điều này ngăn lỗi "Cannot read properties of null" khi querySelector không tìm thấy element (ví dụ: data-option="expand").
                             const stageDatum = {
                                 query: mainInput.value.trim(),
                                 query_image_name: stage.tempImageName || null,
                                 generated_image_name: stage.generatedImageName || null,
                                 enhance: stage.querySelector('.option-btn[data-option="enhance"]')?.classList.contains('active') || false,
-                                expand: stage.querySelector('.option-btn[data-option="expand"]')?.classList.contains('active') || false, // Dòng này là nguyên nhân chính gây lỗi
+                                expand: stage.querySelector('.option-btn[data-option="expand"]')?.classList.contains('active') || false, 
                                 use_bge_caption: stage.querySelector('.option-btn[data-option="bge_caption"]')?.classList.contains('active') || false,
                                 ocr_query: stage.querySelector('.type-btn[data-type="ocr"].active') ? stage.querySelector('.ocr-filter-input').value.trim() : null,
                                 asr_query: stage.querySelector('.type-btn[data-type="asr"].active') ? stage.querySelector('.asr-filter-input').value.trim() : null,
                             };
-                            // ## KẾT THÚC SỬA LỖI ##
 
                             return stageDatum;
                         });
@@ -3465,9 +3531,21 @@
                         fetchOptions.body = requestBody;
                     }
                     
+                    timingLog.start('Network Request');
                     response = await fetch(searchEndpoint, fetchOptions);
+                    timingLog.stop('Network Request');
+
                     if (!response.ok) { const err = await response.json(); throw new Error(err.detail || 'Unknown error from server.'); }
+                    
+                    timingLog.start('JSON Parsing');
                     currentResponse = await response.json();
+                    timingLog.stop('JSON Parsing');
+
+                    if (currentResponse.timing_info) {
+                        console.groupCollapsed('📊 Server-Side Timings');
+                        console.table(currentResponse.timing_info);
+                        console.groupEnd();
+                    }
 
                     if (currentResponse.processed_query) {
                         const firstStage = allStages[0];
@@ -3494,13 +3572,18 @@
 
                     totalResults = currentResponse.total_results || 0;
                     displayTimingInfo(currentResponse.timing_info, clientStartTime);
+                    
+                    timingLog.start('DOM Rendering');
                     displayResults(currentResponse.results, false);
+                    timingLog.stop('DOM Rendering');
 
                 } catch (error) {
                     console.error("[ERROR] Search failed:", error);
                     resultsContainer.innerHTML = `<p style="color: #ef4444; font-size: 1.1rem; text-align: center;"><strong>Error:</strong> ${error.message}</p>`;
                 } finally {
                     loadingIndicator.style.display = 'none';
+                    timingLog.stop('Total Client-Side Search Duration');
+                    console.groupEnd();
                 }
             }
             
