@@ -979,12 +979,32 @@
         .image-modal-close:hover { color: var(--accent-pink); transform: scale(1.1) rotate(90deg); background: rgba(244, 63, 94, 0.2); }
         #temporalContextModal, #dresModal { z-index: 2000; }
         #imageModal, #videoPreviewModal { z-index: 2100; }
-        #temporalContextModal .temporal-modal-content { background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 16px; width: 95%; max-width: 1600px; height: auto; max-height: 95vh; display: flex; flex-direction: column; box-shadow: var(--shadow-heavy); animation: modalZoom 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        #temporalContextModal .temporal-modal-content {
+            background: var(--dark-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            /* Thay đổi: Sử dụng 95% chiều rộng viewport thay vì giới hạn pixel */
+            width: 95vw; 
+            max-width: none; /* Bỏ giới hạn max-width cũ */
+            height: auto;
+            /* Giữ nguyên: Chiều cao tối đa là 95% chiều cao viewport */
+            max-height: 95vh; 
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-heavy);
+            animation: modalZoom 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
         #temporalContextModal .temporal-modal-header { padding: 16px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
         #temporalContextModal #temporalModalTitle { font-size: 1.2rem; font-weight: 600; color: var(--text-primary); }
         #temporalContextModal .image-modal-close { position: static; width: 36px; height: 36px; font-size: 1.2rem; }
         #temporalContextModal .temporal-modal-body { padding: 24px; overflow-y: auto; flex-grow: 1; }
-        .temporal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+        .temporal-grid {
+            display: grid;
+            /* Thay đổi: Giảm kích thước tối thiểu của mỗi ảnh để chứa được nhiều hơn */
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); 
+            /* Thay đổi: Giảm khoảng cách giữa các ảnh */
+            gap: 12px; 
+        }
         .temporal-grid-item { position: relative; background-color: var(--glass-bg); border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; aspect-ratio: 16 / 9; cursor: pointer; transition: all 0.2s ease-in-out; }
         .temporal-grid-item:hover { transform: scale(1.05); border-color: var(--accent-blue); z-index: 10; }
         .temporal-grid-item.center-frame { border: 2px solid var(--accent-purple); box-shadow: 0 0 15px rgba(102, 126, 234, 0.6); }

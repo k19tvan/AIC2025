@@ -149,7 +149,7 @@ except ImportError:
 
 # --- Cấu hình DRES và hệ thống ---
 DRES_BASE_URL = "http://192.168.28.151:5000"
-VIDEO_BASE_DIR = "/workspace/mlcv1/Datasets/HCMAI25/batch1/video"
+VIDEO_BASE_DIR = "/workspace/mlcv1/Datasets/HCMAI25/full"
 IMAGE_BASE_PATH = "/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/Dataset/Retrieval/Keyframes/webp_keyframes"
 
 BEIT3_WORKER_URL = "http://model-workers2:8001/embed"
@@ -159,14 +159,14 @@ IMAGE_GEN_WORKER_URL = "http://localhost:8004/generate"
 BGE_M3_WORKER_URL = "http://model-workers:8003/embed"
 
 ELASTICSEARCH_HOST = "http://elasticsearch2:9200"
-OCR_ASR_INDEX_NAME = "vongsotuyen_batch1"
+OCR_ASR_INDEX_NAME = "vongsotuyen_12"
 MILVUS_HOST = "milvus-standalone"
 MILVUS_PORT = "19530"
 
-BEIT3_COLLECTION_NAME = "beit3_batch1_filter_2"
-BGE_COLLECTION_NAME = "bge_batch1_filter_2"
+BEIT3_COLLECTION_NAME = "beit3_batch1_2_filter"
+BGE_COLLECTION_NAME = "bge_batch1_2_filter"
 BGE_M3_CAPTION_COLLECTION_NAME = "BGE_M3_HCMAIC_captions_batch_1"
-OPS_MM_COLLECTION_NAME = "Mm_embed_Batch1_with_filepath_filter"
+OPS_MM_COLLECTION_NAME = "MM_EMBED_AIC"
 
 
 MODEL_WEIGHTS = {"beit3": 0.2, "bge": 0.1, "ops_mm": 0.2, "bge_caption": 0.5}
@@ -205,7 +205,8 @@ bge_collection: Optional[Collection] = None
 bge_m3_caption_collection: Optional[Collection] = None
 ops_mm_collection: Optional[Collection] = None
 
-FRAME_CONTEXT_CACHE_FILE = "/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/DataPreprocessing/KF/frame_context_cache.json"
+FRAME_CONTEXT_CACHE_FILE = "/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/DataPreprocessing/KF/frame_context_cache_4.json"
+CONTEXT_IMAGE_BASE_PATH = "/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/Dataset/Retrieval/Keyframes/webp_keyframes" 
 FRAME_CONTEXT_CACHE: Optional[Dict[str, List[str]]] = None
 
 # ## TEAMWORK: Connection Manager for WebSockets ##
@@ -282,6 +283,9 @@ class DRESSubmitRequest(BaseModel):
 
 class VideoInfoResponse(BaseModel):
     fps: float
+
+class TaskContentRequest(BaseModel):
+    task_name: str
 
 @app.on_event("startup")
 def startup_event():
@@ -1576,7 +1580,7 @@ async def check_temporal_frames(request_data: CheckFramesRequest) -> List[str]:
     # 3. Ghép lại đường dẫn đầy đủ và trả về cho frontend
     # Frontend cần đường dẫn đầy đủ để có thể hiển thị ảnh
     # Ví dụ: từ "L26_V462_0001_000016.webp" -> "/.../Keyframes/webp_keyframes/L26_V462_0001_000016.webp"
-    full_neighbor_paths = [os.path.join(IMAGE_BASE_PATH, fname) for fname in neighbor_filenames]
+    full_neighbor_paths = [os.path.join(CONTEXT_IMAGE_BASE_PATH, fname) for fname in neighbor_filenames]
     
     return full_neighbor_paths
 
