@@ -130,8 +130,7 @@ async def download_external_image(request_data: DownloadImageRequest):
 # ## END: GOOGLE IMAGE SEARCH API ENDPOINTS ##
 
 BASE_DIR = os.path.dirname(__file__)
-app.mount("/static", StaticFiles(directory="."), name="static")
-
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 _CURRENT_DIR_PARENT = os.path.dirname(os.path.abspath(__file__))
 COMMON_PARENT_DIR = os.path.dirname(_CURRENT_DIR_PARENT)
@@ -873,9 +872,10 @@ async def get_embeddings_for_query_from_worker(
 # --- API Endpoints ---
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
-    ui_path = os.path.join(BASE_DIR, "ui.html")
+    # Đường dẫn bây giờ là 'templates/index.html'
+    ui_path = os.path.join(os.path.dirname(__file__), "templates", "index.html")
     if not os.path.exists(ui_path):
-        raise HTTPException(status_code=500, detail="UI file not found")
+        raise HTTPException(status_code=500, detail="UI file (index.html) not found in 'templates' folder.")
     with open(ui_path, "r", encoding="utf-8") as f:
         return HTMLResponse(content=f.read())
 
