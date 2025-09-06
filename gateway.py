@@ -179,8 +179,8 @@ OPS_MM_COLLECTION_NAME = "MM_EMBED_FINAL"
 
 
 MODEL_WEIGHTS = {"beit3": 0.2, "bge": 0.1, "ops_mm": 0.2, "bge_caption": 0.5}
-SEARCH_DEPTH = 1000
-TOP_K_RESULTS = 1000
+SEARCH_DEPTH = 500
+TOP_K_RESULTS = 500
 MAX_SEQUENCES_TO_RETURN = 500
 SEARCH_DEPTH_PER_STAGE = 200
 IMAGE_WIDTH, IMAGE_HEIGHT = 1280, 720
@@ -698,7 +698,7 @@ def search_milvus_sync(collection: Collection, collection_name: str, query_vecto
 
 def search_ocr_on_elasticsearch_sync(keyword: str, limit: int = 500):
     if not es: return []
-    query = {"query": {"multi_match": {"query": keyword, "fields": ["ocr_text"]}}}
+    query = {"_source": ["file_path", "video_id", "shot_id", "frame_id"], "query": {"multi_match": {"query": keyword, "fields": ["ocr_text"]}}}
     try:
         response = es.search(index=OCR_ASR_INDEX_NAME, body=query, size=limit)
         return [{"filepath": hit['_source']['file_path'], "score": hit['_score'], "video_id": hit['_source']['video_id'], "shot_id": str(hit['_source']['shot_id']), "frame_id": hit['_source']['frame_id']} for hit in response["hits"]["hits"] if all(k in hit['_source'] for k in ['file_path', 'video_id', 'shot_id', 'frame_id'])]
@@ -1135,9 +1135,9 @@ async def search_unified(request: Request, search_data: str = Form(...), query_i
         start_es = time.time()
         es_tasks = []
         if search_data_model.ocr_query:
-            es_tasks.append(search_ocr_on_elasticsearch_async(search_data_model.ocr_query, limit=SEARCH_DEPTH * 5))
+            es_tasks.append(search_ocr_on_elasticsearch_async(search_data_model.ocr_query, limit=SEARCH_DEPTH))
         if search_data_model.asr_query:
-            es_tasks.append(search_asr_on_elasticsearch_async(search_data_model.asr_query, limit=SEARCH_DEPTH * 5))
+            es_tasks.append(search_asr_on_elasticsearch_async(search_data_model.asr_query, limit=SEARCH_DEPTH))
         es_results_lists = await asyncio.gather(*es_tasks)
         es_res_map = {res['filepath']: res for res_list in es_results_lists for res in res_list}
         es_results_for_standalone_search = list(es_res_map.values())

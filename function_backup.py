@@ -1,4 +1,3 @@
-
 # utils_query.py
 
 # =========================
@@ -25,32 +24,44 @@ from Api_key import api_key
 # =========================
 # Config
 # =========================
-MODEL_ENHANCE = "gemini-1.5-flash-latest"
-MODEL_EXPAND = "gemini-1.5-flash-latest"
+MODEL_ENHANCE = "gemini-2.5-flash"
+MODEL_EXPAND = "gemini-2.5-flash"
 NUM_EXPAND_WORKERS = 10
 MAX_ATTEMPT = len(api_key)
 
 # =========================
 # Initialization (Khởi tạo một lần)
 # =========================
+# Khởi tạo detector một lần duy nhất để tái sử dụng, tránh load model nhiều lần
+# Chọn "low_mem" để cân bằng giữa tốc độ và bộ nhớ
 LANG_DETECTOR = LangDetector() 
+
+# Khởi tạo translator một lần để tái sử dụng connection pool (nếu có)
 TRANSLATOR = Translator()
 
 # =========================
 # API Key Rotation
 # =========================
-def get_model_for_thread(model_name: str, thread_id: int):
-    key = api_key[thread_id % len(api_key)]
-    genai.configure(api_key=key)
-    return genai.GenerativeModel(model_name)
+def get_client_for_thread(thread_id: int):
+    """
+    Lấy client theo thread_id để phân phối API key đều.
+    """
+    key_idx = thread_id % len(api_key)
+    return genai.Client(api_key=api_key[key_idx])
 
 # =========================
 # Query Enhancement (Hàm đồng bộ)
 # =========================
 def enhance_query(original_query: str) -> str:
+    """
+    Improve a search query for better retrieval accuracy.
+    This function takes a query in any language, translates it to English if necessary,
+    and then enhances it for optimal search performance.
+    """
+    # ... (giữ nguyên code của bạn)
     for attempt in range(MAX_ATTEMPT):
         try:
-            model = get_model_for_thread(MODEL_ENHANCE, attempt)
+            client = genai.Client(api_key=api_key[attempt % len(api_key)])
             prompt = (
                 f"You are an expert in search query optimization for accurate and relevant retrieval.\n"
                 f"Here is the original search query:\n"
@@ -61,41 +72,48 @@ def enhance_query(original_query: str) -> str:
                 "Return ONLY the final, enhanced English query. Do not include the original query, translations, or any explanations in your response."
             )
 
-            resp = model.generate_content(
+            resp = client.models.generate_content(
+                model=MODEL_ENHANCE,
                 contents=prompt,
-                generation_config=genai.GenerationConfig(temperature=0)
+                config=types.GenerateContentConfig(
+                    thinking_config=types.ThinkingConfig(thinking_budget=0),
+                    temperature=0
+                ),
             )
             enhanced_text = resp.text.strip().strip('"')
             return enhanced_text
-        except Exception as e:
-            print(f"Enhance failed on key index {attempt % len(api_key)}, trying next. Error: {e}")
+        except Exception:
+            print("Fail, trying next key")
             continue
     return original_query
     
 # =========================
-# Query Translate Logic (FINAL CORRECTED VERSION)
+# Query Translate Logic (Hàm bất đồng bộ - ĐÃ TỐI ƯU)
 # =========================
+# @alru_cache(maxsize=1024) tự động cache kết quả của hàm.
+# Nếu gọi lại `translate_query` với cùng `query`, kết quả sẽ được trả về ngay lập tức từ cache.
 @alru_cache(maxsize=1024)
 async def translate_query(query: str, dest: str = 'en') -> str:
     """
-    Translates a query using the native async method of the googletrans library.
-    This is the most efficient and correct implementation.
+    Dịch truy vấn sang 'dest' nếu không phải tiếng Anh.
+    Nếu đã là tiếng Anh thì trả nguyên văn.
+    Hàm này được tối ưu bằng caching.
     """
     if not query or not query.strip():
         return ""
 
     try:
-        # Step 1: Use the fast detector to avoid API calls for English text.
-        # This is synchronous and very fast.
+        # 1. Tối ưu: Sử dụng instance LANG_DETECTOR đã được khởi tạo sẵn
         if LANG_DETECTOR.detect(query)['lang'] == 'en':
+            print("cc")
+            # print(f"'{query}' is already English. Skipping translation.")
             return query
         
-        # Step 2: Await the native async translate method directly.
-        # This correctly handles the non-blocking network call.
-        translated = await TRANSLATOR.translate(query, dest=dest)
-        
-        # The result object from the awaited call will have the .text attribute.
-        return translated.text
+        # 2. Tối ưu: Chỉ dịch khi cần thiết. Lệnh gọi API vẫn là điểm chậm nhất
+        # nhưng cache sẽ giúp cho các lần gọi lặp lại.
+        # print(f"Translating '{query}' to English...")
+        result = await TRANSLATOR.translate(query, dest=dest)
+        return result.text
     
     except Exception as e:
         print(f"--- WARNING: Translation/Detection failed for query '{query}'. Error: {e}. Returning original query. ---")
@@ -105,27 +123,31 @@ async def translate_query(query: str, dest: str = 'en') -> str:
 # Query Expansion (Hàm đồng bộ)
 # =========================
 def _expand_once(short_query: str, thread_id: int) -> List[str]:
-    try:
-        model = get_model_for_thread(MODEL_EXPAND, thread_id)
-        prompt_text = f"""Expand the short user query into several distinct, detailed video scene descriptions. 
+    # ... (giữ nguyên code của bạn)
+    client = get_client_for_thread(thread_id)
+    prompt_text = f"""Expand the short user query into several distinct, detailed video scene descriptions. 
 Each description should represent a plausible, specific scenario. 
 Start each scenario on a new line with a hyphen (-).
 
 Query: "{short_query}"
 Scenarios:"""
 
-        resp = model.generate_content(prompt_text)
-        return [
-            line.strip().lstrip('-').strip()
-            for line in resp.text.strip().split('\n')
-            if line.strip()
-        ]
-    except Exception as e:
-        print(f"Expand failed on key index {thread_id % len(api_key)}. Error: {e}")
-        return []
+    resp = client.models.generate_content(
+        model=MODEL_EXPAND,  
+        contents=prompt_text,
+        config=types.GenerateContentConfig(
+            thinking_config=types.ThinkingConfig(thinking_budget=0)
+        ),
+    )
+    return [
+        line.strip().lstrip('-').strip()
+        for line in resp.text.strip().split('\n')
+        if line.strip()
+    ]
 
 
 def expand_query_parallel(short_query: str, num_requests: int = NUM_EXPAND_WORKERS) -> str:
+    # ... (giữ nguyên code của bạn)
     results = []
     with ThreadPoolExecutor(max_workers=num_requests) as executor:
         futures = [
@@ -146,20 +168,11 @@ def expand_query_parallel(short_query: str, num_requests: int = NUM_EXPAND_WORKE
     return "\n".join(final_results)
 
 # =========================
-# Main test 
+# Main test (Cập nhật để thấy rõ hiệu quả cache)
 # =========================
 async def main():
-    print("--- Testing 'một con chó'. This will take as long as the network call. ---")
-    start_time = time.perf_counter()
-    result = await translate_query("một con chó")
-    print(f"Result: '{result}'") # Expected: 'a dog'
-    print(f"Time taken: {time.perf_counter() - start_time:.4f} seconds\n")
-    
-    print("--- Testing again (should be instant from cache) ---")
-    start_time = time.perf_counter()
-    result_cached = await translate_query("một con chó")
-    print(f"Result: '{result_cached}'")
-    print(f"Time taken: {time.perf_counter() - start_time:.4f} seconds\n")
+    result = await translate_query("a men is holding something")
+    print(result)
 
 if __name__ == "__main__":
     asyncio.run(main())
