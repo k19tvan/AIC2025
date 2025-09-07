@@ -73,251 +73,6 @@
                 linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)),
                 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><g fill="%23f00c8b" fill-opacity="0.1"><rect x="0" y="0" width="100" height="1" /><rect x="0" y="0" width="1" height="100" /></g></svg>');
         }
-        /* --- THEME HUYỀN THOẠI #1 (PERFECTED): Doraemon: 4D Pocket --- */
-        @keyframes jingle-bell { 0%, 100% { transform: rotate(0) scale(1); } 25% { transform: rotate(10deg) scale(1.1); } 75% { transform: rotate(-10deg) scale(1.1); } }
-        @keyframes door-open { 50% { transform: perspective(500px) rotateY(5deg); box-shadow: -4px 4px 15px rgba(0,0,0,0.3); } }
-        body.theme-doraemon-pocket {
-            --dora-blue: #00A0E9; --dora-red: #E60012; --dora-yellow: #FCEE0A; --dora-white: #FFFFFF;
-            --primary-gradient: linear-gradient(135deg, var(--dora-blue) 0%, #007bb5 100%); --secondary-gradient: linear-gradient(135deg, var(--dora-yellow) 0%, #e6d609 100%); --dark-bg: #F0F8FF; --card-bg: var(--dora-blue); --border-color: var(--dora-white); --text-primary: #003366; /* Chữ màu xanh đen đậm */ --text-secondary: #FFFFFF; --accent-blue: var(--dora-yellow); --accent-purple: #FF69B4; /* Anywhere Door Pink */ font-family: 'Poppins', sans-serif;
-            background: linear-gradient(to bottom, #87CEEB, #F0F8FF);
-        }
-        /* Đột phá #1: Card hình chữ nhật, nền xanh, viền đỏ */
-        body.theme-doraemon-pocket .stage-card {
-            border: 3px solid var(--dora-red);
-            border-radius: 20px;
-            background-color: var(--dora-blue);
-            position: relative;
-            overflow: hidden;
-        }
-        /* Loại bỏ pseudo-element túi bán nguyệt không cần thiết */
-        body.theme-doraemon-pocket .stage-card::before {
-            content: none;
-        }
-        body.theme-doraemon-pocket .stage-card > * { position: relative; z-index: 1; }
-
-        /* Đột phá #2: Ô nhập liệu biến thành "Túi Thần Kỳ" */
-        body.theme-doraemon-pocket .stage-input {
-            background-color: var(--dora-white);
-            color: #333; /* Chữ bên trong túi màu đen */
-            border: 3px solid #333;
-            border-radius: 20px;
-            /* Dùng clip-path để tạo hình bán nguyệt ở trên */
-            clip-path: polygon(0 15px, 0 100%, 100% 100%, 100% 15px, 90% 15px, 80% 5px, 70% 0, 30% 0, 20% 5px, 10% 15px);
-            padding-top: 25px !important; /* Thêm padding để chữ không bị che */
-        }
-        body.theme-doraemon-pocket .stage-input::placeholder {
-            color: #888;
-        }
-        body.theme-doraemon-pocket .stage-input:focus {
-            box-shadow: 0 0 10px var(--dora-yellow);
-        }
-
-        /* Tinh chỉnh: Chữ và icon màu tối để dễ đọc */
-        body.theme-doraemon-pocket .type-btn,
-        body.theme-doraemon-pocket .option-btn {
-            background: rgba(255, 255, 255, 0.3);
-            color: var(--text-primary);
-            border-color: rgba(255, 255, 255, 0.5);
-        }
-        body.theme-doraemon-pocket .type-btn.active {
-            background: var(--dora-white);
-            color: var(--dora-blue);
-        }
-        body.theme-doraemon-pocket .option-btn.active {
-            background: var(--dora-yellow);
-            color: #333;
-        }
-        body.theme-doraemon-pocket .processed-query-display-wrapper i,
-        body.theme-doraemon-pocket .processed-query-display {
-            color: var(--dora-white);
-        }
-
-
-        /* Chuông Lắc Lư và Nút Cánh Cửa Thần Kỳ giữ nguyên */
-        body.theme-doraemon-pocket .stage-number {
-            background: var(--dora-yellow); width: 40px; height: 40px;
-            border: 3px solid #333;
-            border-bottom: 8px solid var(--dora-red);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            transition: transform 0.3s ease;
-            color: #333; /* Chữ số màu đen */
-        }
-        body.theme-doraemon-pocket .stage-number:hover { animation: jingle-bell 0.5s; }
-        body.theme-doraemon-pocket .stage-number::before {
-            content: ''; position: absolute; top: 50%; left: 10%; right: 10%;
-            height: 2px; background: #333; transform: translateY(-50%);
-        }
-        body.theme-doraemon-pocket .search-btn {
-            background: var(--accent-purple); color: white;
-            border: 3px solid #A020F0; border-radius: 8px;
-            animation: door-open 2s infinite ease-in-out;
-        }
-        body.theme-doraemon-pocket .result-item {
-            border-radius: 15px; border: 3px solid white;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            transition: box-shadow 0.3s, transform 0.3s;
-        }
-        body.theme-doraemon-pocket .result-item:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 20px var(--dora-yellow);
-        }
-        /* --- THEME HUYỀN THOẠI #1: Persona 5: All-Out Attack --- */
-        @keyframes p5-bg-scroll { 0% { background-position: 0 0; } 100% { background-position: -200px -200px; } }
-        body.theme-persona-5 {
-            --p5-red: #E60012; --p5-black: #000000; --p5-white: #FFFFFF;
-            --primary-gradient: linear-gradient(135deg, var(--p5-red) 0%, #a1000c 100%); --secondary-gradient: linear-gradient(135deg, var(--p5-white) 0%, #e0e0e0 100%); --dark-bg: var(--p5-black); --card-bg: var(--p5-black); --border-color: var(--p5-red); --text-primary: var(--p5-white); --text-secondary: #d0d0d0; --accent-blue: var(--p5-red); --accent-purple: var(--p5-red); font-family: 'Anton', sans-serif; letter-spacing: 1px;
-            background-color: var(--dark-bg);
-            /* Đột phá: Nền sao động như menu Persona 5 */
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50"><path d="M25,0 L30,20 L50,25 L30,30 L25,50 L20,30 L0,25 L20,20 Z" fill="%23FFFFFF" fill-opacity="0.1"/></svg>');
-            animation: p5-bg-scroll 10s linear infinite;
-        }
-        body.theme-persona-5 .stage-card, body.theme-persona-5 .modal-content {
-            border: 3px solid var(--p5-white); border-radius: 0;
-            clip-path: polygon(0 15px, 15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%);
-        }
-        /* Đột phá: Hiệu ứng 3D "All-Out Attack" khi hover */
-        body.theme-persona-5 .result-item {
-            border: 3px solid var(--p5-white); border-radius: 0; position: relative;
-            transition: transform 0.3s ease; perspective: 1000px;
-        }
-        body.theme-persona-5 .result-item:hover {
-            transform: translateZ(30px) rotateY(-10deg);
-        }
-        body.theme-persona-5 .result-item::before {
-            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--p5-red); z-index: -1; opacity: 0;
-            clip-path: polygon(0% 100%, 100% 0%, 100% 100%);
-            transition: opacity 0.3s ease;
-        }
-        body.theme-persona-5 .result-item:hover::before { opacity: 1; }
-        /* Đột phá: Nút Search "Take Your Heart" */
-        body.theme-persona-5 .search-btn {
-            background: var(--p5-white); color: var(--p5-black); font-size: 1.3rem !important;
-            border: 3px solid var(--p5-black);
-            clip-path: polygon(0% 0%, 100% 0%, 85% 100%, 15% 100%);
-            transition: all 0.2s ease;
-        }
-        body.theme-persona-5 .search-btn:hover { background: var(--p5-red); color: var(--p5-white); }
-
-
-        /* --- THEME HUYỀN THOẠI #2: JoJo's Bizarre Adventure: MENACING --- */
-        @keyframes menacing-rumble { 0%, 100% { transform: translate(0,0); } 25% { transform: translate(1px, -1px) rotate(1deg); } 50% { transform: translate(-1px, 1px) rotate(-1deg); } 75% { transform: translate(1px, 1px) rotate(1deg); } }
-        @keyframes menacing-fade-in { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
-        body.theme-jojo-menacing {
-            --jojo-purple: #9400D3; --jojo-pink: #FF69B4; --jojo-green: #00FF7F;
-            --primary-gradient: linear-gradient(135deg, var(--jojo-purple) 0%, var(--jojo-pink) 100%); --secondary-gradient: linear-gradient(135deg, var(--jojo-green) 0%, #ADFF2F 100%); --dark-bg: #4B0082; --card-bg: rgba(75, 0, 130, 0.8); --border-color: var(--jojo-green); --text-primary: #FFFF00; --text-secondary: #FFFFFF; --accent-blue: var(--jojo-pink); --accent-purple: var(--jojo-purple); font-family: 'Bangers', cursive;
-            background-color: var(--dark-bg);
-            /* Đột phá: Nền "MENACING" (ゴゴゴ) tinh tế, thay thế cho Rinnegan */
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Ctext x='50%25' y='50%25' font-family='sans-serif' font-size='48' fill='rgba(255,255,255,0.05)' text-anchor='middle' dominant-baseline='middle'%3Eゴ%3C/text%3E%3C/svg%3E");
-        }
-        body.theme-jojo-menacing .stage-card, body.theme-jojo-menacing .modal-content {
-            border: 4px solid black; border-radius: 4px; box-shadow: 4px 4px 0 var(--jojo-green);
-        }
-        body.theme-jojo-menacing .result-item {
-            border: 4px solid black; border-radius: 4px;
-            position: relative;
-        }
-        /* Hiệu ứng "MENACING" (ゴゴゴゴ) khi hover được giữ nguyên từ phiên bản gốc */
-        body.theme-jojo-menacing .result-item::before, body.theme-jojo-menacing .result-item::after {
-            position: absolute; color: white; font-size: 2rem; text-shadow: 2px 2px 0 black;
-            opacity: 0; transition: opacity 0.3s ease;
-            animation: menacing-rumble 0.2s infinite; pointer-events: none;
-        }
-        body.theme-jojo-menacing .result-item::before { content: 'ゴゴ'; top: 10px; left: 10px; animation-delay: 0.1s; }
-        body.theme-jojo-menacing .result-item::after { content: 'ゴゴ'; bottom: 10px; right: 10px; }
-        body.theme-jojo-menacing .result-item:hover::before, body.theme-jojo-menacing .result-item:hover::after {
-            opacity: 1;
-            animation-name: menacing-rumble, menacing-fade-in;
-            animation-duration: 0.2s, 0.3s;
-            animation-timing-function: linear, ease-out;
-            animation-iteration-count: infinite, 1;
-        }
-        @keyframes rumbling-shake { 0%, 100% { transform: translate(0, 0); } 10% { transform: translate(-2px, -1px); } 20% { transform: translate(2px, 1px); } 30% { transform: translate(-1px, 2px); } 40% { transform: translate(1px, -2px); } 50% { transform: translate(0, 0); } }
-        @keyframes crack-glow { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
-        body.theme-aot-rumbling {
-            --titan-flesh: #ff4d4d; --survey-corps-green: #285430; --wall-stone: #A9A9A9; --rumbling-bg: #5d4954;
-            --primary-gradient: linear-gradient(135deg, var(--titan-flesh) 0%, #b32d2d 100%); --secondary-gradient: linear-gradient(135deg, var(--survey-corps-green) 0%, #1a3821 100%); --dark-bg: var(--rumbling-bg); --card-bg: rgba(40, 30, 35, 0.8); --border-color: rgba(169, 169, 169, 0.4); --text-primary: #EAE0D5; --text-secondary: #C6C5B9; --accent-blue: var(--survey-corps-green); --accent-purple: var(--titan-flesh); font-family: 'Oswald', sans-serif;
-            background-color: var(--dark-bg);
-            /* Đột phá: Nền bụi đất cuồn cuộn */
-            background: radial-gradient(ellipse at bottom, #8a6651 0%, transparent 80%), radial-gradient(ellipse at top, #3c4144 0%, transparent 60%), #5d4954;
-            animation: rumbling-shake 10s infinite;
-        }
-        body.theme-aot-rumbling .stage-card, body.theme-aot-rumbling .modal-content {
-            border: none; border-radius: 4px; position: relative;
-            /* Đột phá: Viền nứt phát sáng như Titan Đại Hình */
-            border-image-source: url('data:image/svg+xml;utf8,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="100%"><stop offset="0%" stop-color="%23ff4d4d"/><stop offset="100%" stop-color="%23b32d2d"/></linearGradient></defs><rect width="100" height="100" fill="none" stroke-width="6" stroke="url(%23g)"/></svg>');
-            border-image-slice: 6; border-image-width: 6px;
-            animation: crack-glow 3s infinite ease-in-out;
-        }
-
-        /* --- THEME #2: Chainsaw Man: Blood & Guts --- */
-        @keyframes pull-cord-stretch { 0% { transform: scaleY(1); } 50% { transform: scaleY(1.2) rotate(2deg); } 100% { transform: scaleY(1); } }
-        @keyframes blood-splatter { 0% { transform: scale(0); opacity: 1; } 100% { transform: scale(3); opacity: 0; } }
-        /* Đột phá #1: Animation cho viền neon "thở" */
-        @keyframes neon-orange-pulse {
-            50% { box-shadow: 0 0 15px var(--pochita-orange), 0 0 5px var(--pochita-orange) inset; }
-        }
-
-        body.theme-chainsaw-man {
-            --blood-red: #B31312; --saw-metal: #71797E; --denim-blue: #2B2A4C; --pochita-orange: #F97B22;
-            --primary-gradient: linear-gradient(135deg, var(--pochita-orange) 0%, #F2BE22 100%); --secondary-gradient: linear-gradient(135deg, var(--saw-metal) 0%, #52595d 100%); --dark-bg: var(--denim-blue); --card-bg: rgba(30, 35, 40, 0.9); /* Nền tối hơn để tăng tương phản */ --border-color: rgba(113, 121, 126, 0.5); --text-primary: #ECECEC; --text-secondary: #A9A9A9; --accent-blue: var(--pochita-orange); --accent-purple: var(--blood-red); font-family: 'Poppins', sans-serif;
-            background-color: var(--dark-bg);
-            position: relative; overflow: hidden;
-        }
-        body.theme-chainsaw-man::before {
-            content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2;
-            background: radial-gradient(circle, var(--blood-red) 0%, #2B2A4C 70%);
-        }
-        body.theme-chainsaw-man::after {
-            content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
-            background: var(--dark-bg);
-            clip-path: polygon(0 0, 100% 0, 100% 20%, 80% 25%, 100% 30%, 85% 40%, 100% 50%, 80% 55%, 100% 60%, 85% 70%, 100% 80%, 100% 100%, 0 100%, 15% 90%, 0 80%, 10% 70%, 0 60%, 15% 50%, 0 40%, 10% 30%, 0 20%);
-        }
-
-        /* Đột phá #2: Tách biệt nền tối và viền Neon */
-        body.theme-chainsaw-man .stage-card, 
-        body.theme-chainsaw-man .modal-content, 
-        body.theme-chainsaw-man .result-item {
-            background-color: var(--card-bg); /* Nền tối để chữ và icon nổi bật */
-            border: 2px solid var(--pochita-orange); /* Đường viền cam sắc nét */
-            border-radius: 6px;
-            box-shadow: 0 0 8px var(--pochita-orange); /* Hiệu ứng neon phát sáng */
-            animation: neon-orange-pulse 4s infinite ease-in-out;
-            backdrop-filter: blur(3px);
-        }
-        /* Bỏ các pseudo-element phức tạp không cần thiết */
-        body.theme-chainsaw-man .stage-card::before, body.theme-chainsaw-man .stage-card::after,
-        body.theme-chainsaw-man .modal-content::before, body.theme-chainsaw-man .modal-content::after,
-        body.theme-chainsaw-man .result-item::before, body.theme-chainsaw-man .result-item::after {
-            content: none;
-        }
-        /* Tăng độ sáng khi hover */
-        body.theme-chainsaw-man .result-item:hover {
-            box-shadow: 0 0 20px var(--pochita-orange);
-        }
-
-
-        /* Nút Search và các hiệu ứng khác giữ nguyên */
-        body.theme-chainsaw-man .search-btn {
-            position: relative; background: var(--pochita-orange); border: 3px solid #2B2A4C; box-shadow: 0 5px 10px rgba(0,0,0,0.3);
-            width: 150px !important; height: 56px !important; border-radius: 12px; padding: 0 !important;
-            display: flex !important; justify-content: center !important; align-items: center !important;
-            color: #2B2A4C; font-size: 1.2rem; font-weight: 700;
-        }
-        body.theme-chainsaw-man .search-btn::after {
-            content: ''; position: absolute; top: -20px; left: 50%; transform-origin: bottom; transform: translateX(-50%); width: 5px; height: 30px; background: #fff; border-radius: 5px; transition: transform 0.1s ease;
-        }
-        body.theme-chainsaw-man .search-btn:hover::after { animation: pull-cord-stretch 0.5s infinite; }
-        body.theme-chainsaw-man .search-btn .fa-search { display: none !important; }
-        body.theme-chainsaw-man .search-btn::before {
-            content: ''; position: absolute; top: 50%; left: 50%; width: 100%; height: 100%; background: radial-gradient(circle, var(--blood-red) 10%, transparent 70%); border-radius: 50%; transform-origin: center; transform: scale(0); opacity: 0;
-        }
-        body.theme-chainsaw-man .search-btn:active::before { animation: blood-splatter 0.3s ease-out; }
-        body.theme-chainsaw-man #dresModal .modal-body { display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        #dresModal .search-btn { display: flex; justify-content: center; align-items: center; }
-        body.theme-chainsaw-man .app-title span {
-            font-family: 'Creepster', cursive; color: var(--blood-red); font-size: 2.5rem; text-shadow: 2px 2px 3px rgba(0,0,0,0.5); background: none; -webkit-background-clip: unset; background-clip: unset;
-        }
 
         /* --- THEME #3: Cyberpunk 2077: Netrunner Glitch --- */
         @keyframes text-glitch { 2%,64%{transform:translate(2px,0) skew(0deg)} 4%,60%{transform:translate(-2px,0) skew(0deg)} 62%{transform:translate(0,0) skew(5deg)} }
@@ -352,38 +107,6 @@
             content: none;
         }
 
-        /* --- THEME #4: Demon Slayer: Water Breathing --- */
-        @keyframes water-flow { 0% { background-position: 0 0; } 100% { background-position: 1000px 0; } }
-        body.theme-demon-slayer {
-            --water-blue: #3E5F8A; --wave-crest: #FFFFFF; --night-sky: #03001C; --tanjiro-green: #355E3B;
-            --primary-gradient: linear-gradient(135deg, var(--water-blue) 0%, #2a4b73 100%); --secondary-gradient: linear-gradient(135deg, var(--wave-crest) 0%, #d4f1f4 100%); --dark-bg: var(--night-sky); --card-bg: rgba(3, 0, 28, 0.8); --border-color: rgba(62, 95, 138, 0.6); --text-primary: #F0F8FF; --text-secondary: #B0C4DE; --accent-blue: var(--water-blue); --accent-purple: var(--tanjiro-green); font-family: 'Noto Serif JP', serif;
-            background-color: var(--dark-bg);
-            /* Đột phá: Nền tranh thủy mặc Ukiyo-e động */
-            background-image: url('https://www.transparenttextures.com/patterns/wavecut.png');
-            animation: water-flow 30s linear infinite;
-        }
-        body.theme-demon-slayer .stage-card, body.theme-demon-slayer .modal-content {
-            border: 2px solid var(--border-color); border-radius: 8px;
-            box-shadow: 0 0 15px rgba(62, 95, 138, 0.3);
-        }
-        /* Đột phá: Hiệu ứng nước vỡ ra khi hover */
-        body.theme-demon-slayer .result-item {
-            position: relative;
-            border: 2px solid transparent; transition: border-color 0.3s;
-        }
-        body.theme-demon-slayer .result-item:hover {
-            border-color: var(--wave-crest);
-        }
-        body.theme-demon-slayer .result-item::after {
-            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M 0 50 Q 25 20, 50 50 T 100 50" stroke="%23FFFFFF" stroke-width="2" fill="none" opacity="0.7"/></svg>') 0 0 / 100% 100% no-repeat;
-            transform: scale(0); opacity: 0;
-            transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
-        }
-        body.theme-demon-slayer .result-item:hover::after {
-            transform: scale(1.2);
-            opacity: 1;
-        }
         /* --- THEME ĐỘT PHÁ #2: Ghost in the Shell: Digital Rain --- */
         body.theme-gits-rain {
             --gits-green: #00FF41;
@@ -451,135 +174,6 @@
         body.theme-jujutsu-domain .result-item:hover {
             transform: scale(1.05); /* Phóng to nhẹ khi hover */
             box-shadow: 0 0 20px 5px rgba(139, 0, 0, 0.8); /* Hào quang chuyển sang màu đỏ mạnh hơn */
-        }
-        @keyframes rain-animation { 0% { background-position: 0% 0%; } 100% { background-position: 20% 100%; } }
-        @keyframes neon-glow-red { 0%, 100% { box-shadow: 0 0 5px #ff0000, 0 0 10px #ff0000, 0 0 15px #d10000; } 50% { box-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000, 0 0 30px #d10000; } }
-        @keyframes scan-line-animation { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
-        body.theme-akira-red { --akira-red: #d10000; --neo-tokyo-night: #0a0e1a; --cyber-cyan: #00e5ff; --hud-text: #f0f0f5; --hud-secondary-text: #8b9bb5; --primary-gradient: linear-gradient(135deg, var(--akira-red) 0%, #ff0000 100%); --secondary-gradient: linear-gradient(135deg, var(--cyber-cyan) 0%, #00a2ff 100%); --dark-bg: var(--neo-tokyo-night); --card-bg: rgba(10, 20, 40, 0.75); --border-color: rgba(209, 0, 0, 0.4); --text-primary: var(--hud-text); --text-secondary: var(--hud-secondary-text); --accent-blue: var(--cyber-cyan); --accent-purple: var(--akira-red); font-family: 'Orbitron', sans-serif; background-color: var(--dark-bg); background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAUCAYAAADGNvMAAAABvklEQVRIS+2VwY7EIAxEzT6P0PsZfgsvI3eAIN7jj7eA25rJpDQxUbrwY+0KIe10Ol1FkTQGgMXo/QGATgDgtpP4I9l223ZLnYdYBGADQADFQRB8PwDguY5nCILgGyH2APYA6AAsA+gC7JbL5RLPR9u2C0KIALStNwB2z7P98xsA7nkeIeQYgDNpmgYdxyGEzAAAAAD+59vtnxcA/D/P8w1A+jQARGtNSSnLspVlWfI8L4Q4AGfVarV83z8yAABmq1bZtm0I4R2ANU3TGNNaKaUymUwY4znnzk1grbUymYxarcY5Z5rG8zzfN0IIYWw2mwLAnHPG2GSzWeecYWzGGI7jvB4AgJRSKaW12g0AABKpbVtKqcVi0bZtpdQ0jQDAUmvNZrPZ7Xa1Wk3T6PV60zRmZgDA8zxSSrZt27ZtIYS11nmeGGMymcyyLOM4lmWl1Gq1LMsAAHa7XSwWAwD+bpo26+DxeBDGmMVi0W638zx/IIRSSpIkSZIky/OMMeccAGqtNdNa6/F4ZDabQggZZq11dXV1dHT09PS0Wq0yxhhjkiRarTYxBtba2u12pZTSNO04joQQYwzG2Gy28fHxs9lsjPFx//4/gplcjJGCi/gAAAAASUVORK5CYII="), radial-gradient(ellipse at center, rgba(10, 20, 40, 0.8) 0%, var(--dark-bg) 70%); animation: rain-animation 3s linear infinite; }
-        body.theme-akira-red .stage-card, body.theme-akira-red .modal-content { border: 2px solid var(--border-color); border-radius: 4px; position: relative; overflow: hidden; animation: neon-glow-red 4s ease-in-out infinite; background-image: linear-gradient(var(--card-bg), var(--card-bg)), url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAAJUlEQVR42u3NQQEAAAQEsJN/o3fYCaZXTAcSoECBAgQIECBAgAABfQIuAABgjp+2VgAAAABJRU5ErkJggg=="); backdrop-filter: blur(5px); }
-        body.theme-akira-red .result-item::before, body.theme-akira-red .stage-card:hover::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, transparent, rgba(0, 229, 255, 0.5), transparent); animation: scan-line-animation 2s linear infinite; pointer-events: none; z-index: 2; }
-        body.theme-akira-red .app-title span { color: var(--akira-red); text-shadow: 0 0 10px #ff0000, 0 0 20px #d10000; background: none; -webkit-background-clip: unset; background-clip: unset; }
-        body.theme-akira-red .fas { color: var(--cyber-cyan); text-shadow: 0 0 10px var(--cyber-cyan); }
-        @keyframes rasengan-spin {
-            from { transform: translate(-50%, -50%) rotate(0deg); }
-            to { transform: translate(-50%, -50%) rotate(360deg); }
-        }
-        body.theme-naruto-leaf {
-            --primary-gradient: linear-gradient(135deg, #FF8C00 0%, #FFA500 100%); --secondary-gradient: linear-gradient(135deg, #2E8B57 0%, #3CB371 100%); --dark-bg: #1a2a1a; --card-bg: rgba(10, 40, 30, 0.7); --border-color: rgba(46, 139, 87, 0.4); --text-primary: #F0F0E0; --text-secondary: #A0B0A0; --accent-blue: #FF8C00; --accent-purple: #4A90E2; font-family: 'Kalam', cursive;
-        }
-        /* == ĐẶC TRƯNG NARUTO: Hiệu ứng Rasengan khi hover == */
-        body.theme-naruto-leaf .result-item {
-            position: relative; overflow: hidden;
-        }
-        body.theme-naruto-leaf .result-item::before { /* Lõi Chakra */
-            content: ''; position: absolute; top: 50%; left: 50%;
-            width: 200px; height: 200px;
-            background: radial-gradient(circle, rgba(74, 144, 226, 0.8) 10%, rgba(74, 144, 226, 0) 70%);
-            border-radius: 50%;
-            transform: translate(-50%, -50%) scale(0);
-            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
-            opacity: 0;
-        }
-        body.theme-naruto-leaf .result-item:hover::before {
-            transform: translate(-50%, -50%) scale(1.5);
-            opacity: 1;
-        }
-        body.theme-naruto-leaf .result-item::after { /* Vòng xoáy Chakra */
-            content: ''; position: absolute; top: 50%; left: 50%;
-            width: 250px; height: 250px;
-            background: url('data:image/svg+xml;utf8,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><path d="M50,0 A50,50 0 0,1 100,50" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"/><path d="M0,50 A50,50 0 0,1 50,100" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"/></svg>');
-            background-size: 50%;
-            transform: translate(-50%, -50%) scale(0);
-            border-radius: 50%;
-            animation: rasengan-spin 2s linear infinite;
-            transition: transform 0.3s ease-out;
-            opacity: 0;
-        }
-        body.theme-naruto-leaf .result-item:hover::after {
-            transform: translate(-50%, -50%) scale(1.2);
-            opacity: 1;
-            transition-delay: 0.1s;
-        }
-
-        /* --- THEME #2: BLEACH: GETSUGA TENSHOU --- */
-        @keyframes getsuga-flash { 0% { opacity: 0; transform: scaleX(0.5); } 50% { opacity: 1; } 100% { opacity: 0; transform: scaleX(1.5); } }
-        body.theme-bleach-soul {
-            --primary-gradient: linear-gradient(135deg, #FFFFFF 0%, #D3D3D3 100%); --secondary-gradient: linear-gradient(135deg, #C50000 0%, #9D0000 100%); --dark-bg: #000000; --card-bg: rgba(15, 15, 15, 0.85); --border-color: rgba(255, 255, 255, 0.2); --text-primary: #FFFFFF; --text-secondary: #A0A0A0; --accent-blue: #00EEFF; --accent-purple: #C50000; font-family: 'Oswald', sans-serif;
-            background-color: var(--dark-bg);
-        }
-        /* == ĐẶC TRƯNG BLEACH: Hiệu ứng nhát chém Getsuga Tenshou == */
-        body.theme-bleach-soul .search-btn { position: relative; overflow: hidden; }
-        body.theme-bleach-soul .search-btn:hover::before {
-            content: ''; position: absolute; top: 50%; left: 50%;
-            width: 300%; height: 10px;
-            background: radial-gradient(ellipse, white, var(--accent-blue), transparent);
-            transform: translate(-50%, -50%) rotate(-20deg);
-            animation: getsuga-flash 0.5s ease-out forwards;
-        }
-        body.theme-bleach-soul .result-item {
-            border: 1px solid var(--border-color);
-            box-shadow: 0 0 8px 1px rgba(0, 238, 255, 0.1);
-            transition: box-shadow 0.3s ease, transform 0.3s ease;
-        }
-        body.theme-bleach-soul .result-item:hover {
-            transform: scale(1.03);
-            box-shadow: 0 0 20px 5px rgba(0, 238, 255, 0.4);
-        }
-
-        /* --- THEME #3: ZERO TWO: KLAXOSAUR CORE & RETICLE --- */
-        @keyframes core-pulse { 0%, 100% { transform: scale(0.95); box-shadow: 0 0 10px #00a2ff, 0 0 20px #00a2ff; } 50% { transform: scale(1.05); box-shadow: 0 0 30px #00a2ff, 0 0 50px #00a2ff; } }
-        @keyframes reticle-fade-in { from { opacity: 0; } to { opacity: 1; } }
-        body.theme-zero-two-franxx {
-            --primary-gradient: linear-gradient(135deg, #F472B6 0%, #EC4899 100%); --secondary-gradient: linear-gradient(135deg, #FFFFFF 0%, #E5E7EB 100%); --dark-bg: #1A1B26; --card-bg: rgba(35, 37, 54, 0.7); --border-color: rgba(244, 114, 182, 0.3); --text-primary: #F5F3FF; --text-secondary: #A7A2C3; --accent-blue: #EC4899; --accent-purple: #EF4444; font-family: 'Orbitron', sans-serif;
-            background-color: var(--dark-bg);
-            background-image: repeating-linear-gradient(rgba(244, 114, 182, 0.05) 1px, transparent 1px, transparent 20px), repeating-linear-gradient(90deg, rgba(244, 114, 182, 0.05) 1px, transparent 1px, transparent 20px);
-        }
-        body.theme-zero-two-franxx .stage-card, body.theme-zero-two-franxx .modal-content { border: 1px solid var(--border-color); clip-path: polygon(0 10px, 10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%); border-radius: 0; }
-        /* == ĐẶC TRƯNG ZERO TWO: Lõi Klaxosaur và Khung Ngắm Mục Tiêu == */
-        body.theme-zero-two-franxx .app-logo {
-            border-radius: 50%;
-            animation: core-pulse 3s infinite ease-in-out;
-        }
-        body.theme-zero-two-franxx .result-item { position: relative; overflow: hidden; }
-        body.theme-zero-two-franxx .result-item::after { /* Khung ngắm mục tiêu (reticle) */
-            content: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><path d="M50,10 V30 M50,70 V90 M10,50 H30 M70,50 H90" stroke="%23EC4899" stroke-width="2"/><circle cx="50" cy="50" r="15" stroke="%23EC4899" stroke-width="2" fill="none"/></svg>');
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            opacity: 0; transition: opacity 0.3s ease;
-            animation: reticle-fade-in 0.5s;
-            transform: scale(0.8);
-        }
-        body.theme-zero-two-franxx .result-item:hover::after {
-            opacity: 1;
-        }
-
-        /* --- THEME #4: EVANGELION: LCL & NERV UI (Cải tiến) --- */
-        @keyframes lcl-bubbles {
-            0% { transform: translateY(0); }
-            100% { transform: translateY(-100vh); }
-        }
-        body.theme-eva-nerv {
-            --eva-purple: #8A2BE2; --eva-green: #00FF00; --eva-red-alert: #FF3131; --nerv-bg: #1a1a2d; --hud-text: #E0E0E0;
-            --primary-gradient: linear-gradient(135deg, var(--eva-purple) 0%, #6a0dad 100%); --secondary-gradient: linear-gradient(135deg, var(--eva-green) 0%, #00c700 100%); --dark-bg: var(--nerv-bg); --card-bg: rgba(26, 26, 45, 0.8); --border-color: rgba(0, 255, 0, 0.3); --text-primary: var(--hud-text); --text-secondary: #a0a0c8; --accent-blue: var(--eva-green); --accent-purple: var(--eva-red-alert); font-family: 'Oswald', sans-serif;
-            background-color: #ff8c00; /* LCL Orange */
-            overflow: hidden; /* Quan trọng để bong bóng không tràn ra ngoài */
-            position: relative;
-        }
-        /* == ĐẶC TRƯNG EVA: Nền Bong Bóng LCL động == */
-        body.theme-eva-nerv::before {
-            content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2;
-            background-color: var(--nerv-bg);
-        }
-        body.theme-eva-nerv::after {
-            content: ''; position: fixed; top: 100%; left: 0; width: 300%; height: 100vh;
-            background-image: radial-gradient(circle, rgba(255, 165, 0, 0.3) 10%, transparent 11%),
-                            radial-gradient(circle, rgba(255, 165, 0, 0.2) 20%, transparent 21%);
-            background-size: 50px 50px, 80px 80px;
-            animation: lcl-bubbles 25s linear infinite;
-            z-index: -1;
-        }
-        body.theme-eva-nerv .stage-card, body.theme-eva-nerv .modal-content, body.theme-eva-nerv .result-item {
-            border-radius: 0; clip-path: polygon(0 8px, 8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px)); border: 1px solid var(--border-color); box-shadow: inset 0 0 10px rgba(0, 255, 0, 0.2);
-            backdrop-filter: blur(2px);
         }
 
         * {
@@ -823,6 +417,22 @@
             align-items: center;
             justify-content: center;
             z-index: 10; /* Đảm bảo nó nằm trên các phần tử khác */
+        }
+        .qa-answer-label {
+            position: absolute;
+            bottom: 6px;
+            right: 6px;
+            background: rgba(79, 172, 254, 0.85); /* Accent blue */
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            max-width: calc(100% - 20px);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            border-left: 3px solid var(--accent-blue);
         }
         .delete-stage:hover { background: rgba(244, 63, 94, 0.2); transform: scale(1.1) rotate(5deg); box-shadow: 0 4px 15px rgba(244, 63, 94, 0.3); }
         .stage-options { display: flex; gap: 12px; margin-top: 20px; }
@@ -1223,7 +833,7 @@
 
         .video-frame-info-display {
             position: absolute;
-            bottom: -5px; /* Position it on top of the video player */
+            bottom: 90px; /* Position it on top of the video player */
             left: 50%;
             transform: translateX(-50%);
             background-color: rgba(10, 14, 26, 0.8);
@@ -1476,16 +1086,15 @@
         }
         /* ## END: THEME SWITCHER STYLES ## */
 
-        /* ## START: TRAKE PANEL STYLES ## */
-        #trakePanelContainer {
+        #submissionPanelContainer {
             border-bottom: 1px solid var(--border-color);
             position: sticky;
             top: 0;
             background: rgba(10, 14, 26, 0.85);
             backdrop-filter: blur(15px);
             z-index: 49; /* Below teamwork panel */
-        }
-        #trakePanelContainer h3 {
+            }
+        #submissionPanelContainer h3 {
             font-size: 1.3rem;
             color: var(--accent-pink);
             display: flex;
@@ -1493,21 +1102,21 @@
             gap: 12px;
             margin-bottom: 16px;
             padding: 24px 24px 0 24px;
-        }
-        #trakeGrid {
+            }
+        #submissionGrid {
             display: flex;
             flex-wrap: nowrap;
             overflow-x: auto;
             gap: 16px;
             padding: 16px 24px 24px 24px;
             min-height: 150px; /* Ensure panel has height even when empty */
-        }
-        #trakeGrid .result-item {
-            flex: 0 0 220px; /* Fixed width for trake items */
+            }
+        #submissionGrid .result-item {
+            flex: 0 0 220px; /* Fixed width for submission items */
             border: 2px solid var(--accent-pink);
             cursor: grab;
-        }
-        #trakeGrid .result-item:active { cursor: grabbing; }
+            }
+        #submissionGrid .result-item:active { cursor: grabbing; }
         .trake-item-actions {
             position: absolute;
             top: 0;
@@ -1712,9 +1321,9 @@
                 <span><i class="fas fa-plus-circle"></i> New Task</span>
             </button>
             <!-- END: NEW TASK MANAGEMENT UI -->
-            <!-- START: TRAKE BUTTON -->
-            <button class="toolbar-btn" id="trakeBtn" title="Toggle Trake Panel"><div class="btn-hover-bg"></div><span><i class="fas fa-stream"></i> Trake</span></button>
-            <!-- END: TRAKE BUTTON -->
+            <!-- START: SUBMISSION PANEL BUTTON -->
+            <button class="toolbar-btn" id="submissionBtn" title="Toggle Submission Panel"><div class="btn-hover-bg"></div><span><i class="fas fa-file-export"></i> Submit Panel</span></button>
+            <!-- END: SUBMISSION PANEL BUTTON -->
             <div class="model-btn-wrapper">
                 <button id="modelSelectBtn" class="toolbar-btn" title="Toggle Models (Ctrl+M)"><div class="btn-hover-bg"></div><span><i class="fas fa-layer-group"></i> Models</span></button>
                 <div id="modelDropdown" class="model-dropdown">
@@ -1764,17 +1373,15 @@
                 <h3><i class="fas fa-users"></i> Teamwork Submission Panel</h3>
                 <div id="teamworkGrid"></div>
             </div>
-             <div id="trakePanelContainer" style="display: none;">
+             <div id="submissionPanelContainer" style="display: none;">
                 <h3 style="display: flex; justify-content: space-between; align-items: center;">
-                    <span><i class="fas fa-stream"></i> Trake Panel</span>
-                    <!-- START: NEW TRAKE SUBMIT BUTTON -->
-                    <button id="submitTrakeBtn" class="toolbar-btn" title="Submit all frames in Trake Panel to active task's CSV">
+                    <span><i class="fas fa-file-export"></i> Submission Panel</span>
+                    <button id="submitPanelBtn" class="toolbar-btn" title="Submit all frames in this panel to the active task's CSV file (Ctrl+Shift+Space on panel)">
                         <div class="btn-hover-bg"></div>
-                        <span><i class="fas fa-file-csv"></i> Submit Trake</span>
+                        <span><i class="fas fa-save"></i> Submit to CSV</span>
                     </button>
-                    <!-- END: NEW TRAKE SUBMIT BUTTON -->
                 </h3>
-                <div id="trakeGrid"></div>
+                <div id="submissionGrid"></div>
             </div>
             <div id="timingInfoDisplay" class="timing-info-container"></div>
             <div id="loadingIndicator" style="display: none; text-align: center;"><i class="fas fa-spinner fa-spin"></i> Performing Search...</div>
@@ -1858,12 +1465,8 @@
                     <div class="btn-hover-bg"></div>
                     <span><i class="fas fa-users"></i> Team</span>
                 </button>
-                <button id="pushToTrakeBtn" class="toolbar-btn" title="Push to Trake Panel">
-                    <div class="btn-hover-bg"></div>
-                    <span><i class="fas fa-stream"></i> Trake</span>
-                </button>
-                <button id="submitCurrentFrameBtn" class="search-btn" title="Submit to DRES (Ctrl+Shift+Space in player)">
-                    <i class="fas fa-paper-plane"></i> Submit
+                <button id="submitCurrentFrameBtn" class="search-btn" title="Push to Submission Panel (Ctrl+Shift+Space in player)">
+                    <i class="fas fa-file-export"></i> Push to Panel
                 </button>
             </div>
         </div>
@@ -1898,33 +1501,23 @@
         let currentVideoPreviewData = null; // <<< ADD THIS LINE
         let activeTaskName = null;
         let submittedFrames = new Map(); // Key: filepath, Value: 'CORRECT', 'WRONG', 'DUPLICATE', 'PENDING'
-        let isMouseOverTrakePanel = false; // For bulk submission shortcut
+        let isMouseOverSubmissionPanel = false; // For bulk submission shortcut
         const THEMES = {
             'default': 'Default Dark',
             'theme-cyberpunk-neon': 'Cyberpunk Neon',
-            'theme-doraemon-pocket': 'Doraemon',
-            'theme-persona-5': 'Persona 5',
-            'theme-jojo-menacing': 'JoJo',
-            'theme-aot-rumbling': 'AOT',
-            'theme-chainsaw-man': 'Chainsaw Man',
             'theme-cyberpunk-glitch': 'CP2077',
-            'theme-demon-slayer': 'Demon Slayer',
             'theme-gits-rain': 'GITS',
-            'theme-eva-nerv': 'Evangelion',
             'theme-jujutsu-domain': 'JJK',
-            'theme-akira-red': 'AKIRA: Neo-Tokyo',
-            'theme-naruto-leaf': 'Naruto',
-            'theme-bleach-soul': 'Bleach',
-            'theme-zero-two-franxx': 'Zero Two'
         };
-        let targetFrameTime = 0;
-        let isScrubbing = false;
-        let scrubbingTimeout = null;
-        let scrubAnimationId = null;
         const rainCanvas = document.getElementById('digitalRainCanvas');
         const cursedDomainVideo = document.getElementById('cursedDomainVideo');
         const rainCtx = rainCanvas.getContext('2d');
         let animationFrameId;
+        let targetFrameTime = 0;
+        let isScrubbing = false;
+        let scrubbingTimeout = null;
+        let scrubAnimationId = null;
+        
 
         function startDigitalRain() {
             rainCanvas.style.display = 'block';
@@ -2074,58 +1667,15 @@
             const currentTimeSpan = document.getElementById('currentTimeDisplay');
             const themeSwitcherBtn = document.getElementById('themeSwitcherBtn');
             const themeDropdown = document.getElementById('themeDropdown');
-            const trakeBtn = document.getElementById('trakeBtn');
-            const trakePanelContainer = document.getElementById('trakePanelContainer');
-            const trakeGrid = document.getElementById('trakeGrid');
-            const pushToTrakeBtn = document.getElementById('pushToTrakeBtn');
+            const submissionBtn = document.getElementById('submissionBtn');
+            const submissionPanelContainer = document.getElementById('submissionPanelContainer');
+            const submissionGrid = document.getElementById('submissionGrid');
             const nearbyFramesSidebar = document.getElementById('nearbyFramesSidebar');
             const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
             const sidebarGrid = document.getElementById('sidebarGrid');
             const sidebarOverlay = document.querySelector('.sidebar-overlay');
             const sidebarTitle = document.getElementById('sidebarTitle');
             let activeTrakeItemForSidebar = null; // To track which trake item is being edited
-
-            /**
-             * Updates the on-screen display with the current frame and time.
-             */
-            function scrubUpdateLoop() {
-                if (!isScrubbing) {
-                    cancelAnimationFrame(scrubAnimationId);
-                    scrubAnimationId = null;
-                    return;
-                }
-                // Chỉ gửi lệnh seek nếu có sự chênh lệch đáng kể
-                if (Math.abs(videoPlayer.currentTime - targetFrameTime) > 0.01) {
-                    videoPlayer.currentTime = targetFrameTime;
-                }
-                scrubAnimationId = requestAnimationFrame(scrubUpdateLoop);
-            }
-
-            // Hàm điều khiển việc tua phim
-            function handleScrub(direction) {
-                if (!currentVideoPreviewData || !currentVideoPreviewData.fps) return;
-
-                videoPlayer.pause();
-                const frameTime = 1 / currentVideoPreviewData.fps;
-                
-                // Cập nhật thời gian mục tiêu
-                targetFrameTime += direction * frameTime;
-                targetFrameTime = Math.max(0, Math.min(videoPlayer.duration, targetFrameTime));
-
-                // Bắt đầu vòng lặp nếu chưa chạy
-                if (!isScrubbing) {
-                    isScrubbing = true;
-                    if (!scrubAnimationId) {
-                        scrubAnimationId = requestAnimationFrame(scrubUpdateLoop);
-                    }
-                }
-
-                // Dọn dẹp và đặt hẹn giờ để dừng vòng lặp khi người dùng không tua nữa
-                clearTimeout(scrubbingTimeout);
-                scrubbingTimeout = setTimeout(() => {
-                    isScrubbing = false;
-                }, 250); // Dừng sau 250ms không hoạt động
-            }
 
             function updateFrameDisplay() {
                 if (!videoPlayer.paused && document.activeElement !== videoPlayer) {
@@ -2144,18 +1694,75 @@
                     currentTimeSpan.textContent = '-';
                 }
             }
+            function scrubUpdateLoop() {
+                if (!isScrubbing) {
+                    cancelAnimationFrame(scrubAnimationId);
+                    scrubAnimationId = null;
+                    return;
+                }
+                // Chỉ gửi lệnh seek nếu có sự chênh lệch đáng kể
+                if (Math.abs(videoPlayer.currentTime - targetFrameTime) > 0.01) {
+                    videoPlayer.currentTime = targetFrameTime;
+                }
+                // CẬP NHẬT MỚI: Cập nhật hiển thị số frame/giây MỌI LÚC trong vòng lặp
+                // Điều này tạo ra cảm giác phản hồi tức thì khi scroll.
+                updateFrameDisplay();
+                
+                scrubAnimationId = requestAnimationFrame(scrubUpdateLoop);
+            }
+            function handleScrub(direction) {
+                if (!currentVideoPreviewData || !currentVideoPreviewData.fps) return;
+
+                videoPlayer.pause();
+                const frameTime = 1 / currentVideoPreviewData.fps;
+                
+                // Update the target time based on input direction
+                targetFrameTime += direction * frameTime;
+                // Clamp the target time within the video's duration
+                targetFrameTime = Math.max(0, Math.min(videoPlayer.duration, targetFrameTime));
+
+                // Start the animation loop if it's not already running
+                if (!isScrubbing) {
+                    isScrubbing = true;
+                    if (!scrubAnimationId) {
+                        scrubAnimationId = requestAnimationFrame(scrubUpdateLoop);
+                    }
+                }
+
+                // Reset the timeout. This ensures the loop keeps running as long
+                // as the user is actively scrubbing.
+                clearTimeout(scrubbingTimeout);
+                scrubbingTimeout = setTimeout(() => {
+                    isScrubbing = false; // Stop the loop when user is idle for 250ms
+                }, 250); 
+            }
 
             // Listen for the 'wheel' event (mouse scroll) on the video player
             videoPlayer.addEventListener('wheel', (event) => {
                 event.preventDefault();
+                // Determine direction: negative deltaY is scroll up (forward), positive is scroll down (backward)
                 const direction = event.deltaY < 0 ? 1 : -1;
                 handleScrub(direction);
+            });
+            videoPlayer.addEventListener('seeked', () => {
+                // Chỉ cập nhật nếu chúng ta không đang ở giữa một thao tác scroll tùy chỉnh.
+                // Điều này ngăn xung đột giữa hai cơ chế.
+                if (!isScrubbing) {
+                    targetFrameTime = videoPlayer.currentTime;
+                    console.log(`Seeked manually. Synced targetFrameTime to: ${targetFrameTime.toFixed(3)}s`);
+                }
+                // Cập nhật hiển thị số frame/giây ngay lập tức
+                updateFrameDisplay(); 
             });
 
             // Update the display whenever the video time changes
             // This covers playback, seeking, and our custom scrolling
-            videoPlayer.addEventListener('timeupdate', updateFrameDisplay);
-            videoPlayer.addEventListener('seeked', updateFrameDisplay);
+            videoPlayer.addEventListener('timeupdate', () => {
+                if (!isScrubbing && !videoPlayer.paused) {
+                    targetFrameTime = videoPlayer.currentTime;
+                }
+                updateFrameDisplay();
+            });
 
             
             const usernameModal = document.getElementById('usernameModal'); const usernameInput = document.getElementById('usernameInput'); const usernameSubmitBtn = document.getElementById('usernameSubmitBtn'); const userInfoDisplay = document.getElementById('userInfo'); const teamworkPanelContainer = document.getElementById('teamworkPanelContainer'); const teamworkGrid = document.getElementById('teamworkGrid');
@@ -2244,22 +1851,24 @@
                 if (videoPreviewModal.style.display === 'flex' && currentVideoPreviewData) {
                     const currentTime = videoPlayer.currentTime;
                     const frameId = Math.round(currentTime * currentVideoPreviewData.fps);
-
-                    // This object only contains the RAW data. No logic, no prompts here.
+                    const canvas = document.createElement('canvas');
+                    canvas.width = videoPlayer.videoWidth;
+                    canvas.height = videoPlayer.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
+                    const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
+                    
                     const shotData = {
                         video_id: currentVideoPreviewData.videoId,
-                        frame_id: frameId
+                        frame_id: frameId,
+                        fps: currentVideoPreviewData.fps,
+                        filepath: `dynamic-frame-${currentVideoPreviewData.videoId}-${frameId}`,
+                        url: thumbnailUrl,
+                        is_dynamic: true
                     };
-
-                    console.log("--- [Video Player CSV Submission] ---");
-                    
-                    // The ONLY job of this button is to gather the raw data
-                    // and pass it to the single, authoritative submission function.
-                    handleSubmitToCSV(shotData);
-
+                    pushToSubmissionPanel(shotData);
                 } else {
-                    alert("No active video context to submit from. Please open a video preview first.");
-                    console.error("Submit button clicked, but 'currentVideoPreviewData' is missing.");
+                    alert("No active video context to push from.");
                 }
             });
 
@@ -2431,7 +2040,7 @@
             function generateColor(str) { const hash = djb2(str); const h = hash % 360; const s = ((hash >> 8) % 31) + 70; const l = ((hash >> 16) % 21) + 50; return `hsl(${h}, ${s}%, ${l}%)`; }
             function createResultItem(data, source = 'main') {
                 const isTeamworkItem = source === 'teamwork';
-                const isTrakeItem = source === 'trake';
+                const isSubmissionItem = source === 'trake' || source === 'submission';
                 
                 const shot = data.shot ? data.shot : data;
                 const user = data.user ? data.user : null;
@@ -2452,6 +2061,12 @@
                 let title = '';
                 let itemHTML = `<img class="${imgClass}" ${srcAttribute} alt="Frame" loading="lazy" decoding="async" />`;
                 let actionsHTML = '';
+                let answerHTML = '';
+                if (isSubmissionItem && shot.answer != null && shot.answer !== '') {
+                    // Using encodeURIComponent to prevent issues with quotes in the title attribute
+                    const encodedAnswer = shot.answer.replace(/"/g, '&quot;');
+                    answerHTML = `<div class="qa-answer-label" title="Answer: ${encodedAnswer}">${shot.answer}</div>`;
+                }
 
                 if (isTeamworkItem) {
                     item.classList.add('teamwork-item');
@@ -2461,7 +2076,7 @@
                         <button class="submit-btn" title="Click: Submit | Ctrl+Click: Submit Direct"><i class="fas fa-paper-plane"></i></button>
                         <div class="teamwork-item-user-label">${user.name}</div>
                     `;
-                } else if (isTrakeItem) {
+                } else if (isSubmissionItem) {
                     item.draggable = true;
                     item.shotData = shot; 
                     title = `Video: ${shot.video_id}\nFrame: ${shot.frame_id}\nDrag to reorder.`;
@@ -2475,15 +2090,9 @@
                     const score = shot.rrf_score || shot.cluster_score || shot.score || shot.average_rff_score || shot.combined_score;
                     if (score) title += `\nScore: ${score.toFixed(4)}`;
                     
-                    if (source === 'main') {
-                         actionsHTML = `
-                         <div class="trake-item-actions">
-                            <button class="trake-action-btn trake-push-btn" title="Push to Trake Panel"><i class="fas fa-thumbtack"></i></button>
-                         </div>`;
-                    }
                 }
 
-                item.innerHTML = itemHTML + actionsHTML;
+                item.innerHTML = itemHTML + actionsHTML + answerHTML;
                 item.querySelector('img').title = title;
 
                 item.addEventListener("click", e => handleBaseItemClick(e, shot, source));
@@ -2491,20 +2100,20 @@
 
                 const submitBtn = item.querySelector(".submit-btn");
                 if (submitBtn) submitBtn.addEventListener("click", e => handleFrameInteraction(e, shot, source));
-                
-                const pushToTrakeBtn = item.querySelector(".trake-push-btn");
-                if(pushToTrakeBtn) pushToTrakeBtn.addEventListener("click", e => { e.stopPropagation(); pushToTrakePanel(shot); });
 
-                const removeTrakeBtn = item.querySelector(".remove-trake-btn");
-                if(removeTrakeBtn) removeTrakeBtn.addEventListener("click", e => {
-                    e.stopPropagation();
-                    if (ws && ws.readyState === WebSocket.OPEN) {
-                        ws.send(JSON.stringify({
-                            type: 'trake_remove',
-                            data: { filepath: item.dataset.filepath }
-                        }));
-                    }
-                });
+                const removesubmissionBtn = item.querySelector(".remove-trake-btn");
+                    if(removesubmissionBtn) removesubmissionBtn.addEventListener("click", e => {
+                        e.stopPropagation();
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({
+                                type: 'submission_panel_remove', // <-- CORRECTED
+                                data: {
+                                    filepath: item.dataset.filepath,
+                                    task_name: activeTaskName
+                                }
+                            }));
+                        }
+                    });
                 
                 const nearbyFramesBtn = item.querySelector(".nearby-frames-btn");
                 if(nearbyFramesBtn) nearbyFramesBtn.addEventListener("click", handleNearbyFramesClick);
@@ -2556,7 +2165,7 @@
                 ws.onopen = () => {
                     console.log('WebSocket connection established.');
                     teamworkPanelContainer.style.display = 'block';
-                    reconnectDelay = 1000; // Reset delay on success
+                    reconnectDelay = 1000;
                 };
 
                 ws.onmessage = (event) => {
@@ -2579,37 +2188,64 @@
                             lastSuccessfulSubmission = null;
                         }
                     }
-                    // --- Trake Panel ---
-                    else if (type === 'trake_sync') {
-                        trakeGrid.innerHTML = '';
-                        data.forEach(shot => {
-                            const trakeItem = createResultItem(shot, 'trake');
-                            if (trakeItem) trakeGrid.appendChild(trakeItem);
-                        });
-                    } else if (type === 'trake_add') {
-                        // Avoid adding duplicates if message arrives
-                        if (!trakeGrid.querySelector(`.result-item[data-filepath="${data.shot.filepath}"]`)) {
-                            const trakeItem = createResultItem(data.shot, 'trake');
-                            if (trakeItem) trakeGrid.appendChild(trakeItem);
+                    // --- START: NEW SUBMISSION PANEL LOGIC ---
+                    else if (type === 'submission_panel_clear') {
+                        const submissionGrid = document.getElementById('submissionGrid');
+                        // When the server tells us to clear, we do, and we show a spinner.
+                        submissionGrid.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size: 1.5rem; margin: auto;"></i>';
+                    
+                    } else if (type === 'submission_panel_chunk_load') {
+                        const submissionGrid = document.getElementById('submissionGrid');
+                        
+                        // If the grid contains the spinner, remove it before adding the first chunk.
+                        if (submissionGrid.querySelector('.fa-spinner')) {
+                            submissionGrid.innerHTML = '';
                         }
-                    } else if (type === 'trake_remove') {
-                        const itemToRemove = trakeGrid.querySelector(`.result-item[data-filepath="${data.filepath}"]`);
-                        if (itemToRemove) itemToRemove.remove();
-                    } else if (type === 'trake_reorder') {
-                        const orderedElements = data.order.map(filepath => trakeGrid.querySelector(`.result-item[data-filepath="${filepath}"]`)).filter(Boolean);
-                        trakeGrid.innerHTML = ''; // Clear and re-append in the new order
-                        orderedElements.forEach(el => trakeGrid.appendChild(el));
-                    } else if (type === 'trake_replace') {
-                        const itemToReplace = trakeGrid.querySelector(`.result-item[data-filepath="${data.filepath}"]`);
-                        if (itemToReplace) {
-                           // Update the DOM element directly
-                           itemToReplace.shotData = data.newShot;
-                           itemToReplace.dataset.frameId = data.newShot.frame_id;
-                           itemToReplace.querySelector('img').src = data.newShot.url;
-                        }
-                    }
-                };
 
+                        const fragment = document.createDocumentFragment();
+                        data.forEach(shot => {
+                            const submissionItem = createResultItem(shot, 'submission');
+                            if (submissionItem) fragment.appendChild(submissionItem);
+                        });
+                        submissionGrid.appendChild(fragment); // Append the new chunk of items
+
+                    } else if (type === 'submission_panel_add') {
+                        // This handles adding a SINGLE item pushed by any user in real-time.
+                        const submissionGrid = document.getElementById('submissionGrid');
+                        const shot_data = message.data.shot; // Correct JavaScript syntax
+                        
+                        // Double-check for duplicates on the client side
+                        if (shot_data && !submissionGrid.querySelector(`.result-item[data-filepath="${shot_data.filepath}"]`)) {
+                            const submissionItem = createResultItem(shot_data, 'submission');
+                            if (submissionItem) submissionGrid.appendChild(submissionItem);
+                        }
+
+                    } else if (type === 'submission_panel_remove') {
+                        const submissionGrid = document.getElementById('submissionGrid');
+                        const itemToRemove = submissionGrid.querySelector(`.result-item[data-filepath="${data.filepath}"]`);
+                        if (itemToRemove) itemToRemove.remove();
+
+                    } else if (type === 'submission_panel_sync') {
+                        const updatedTaskName = message.task_name;
+                        if (updatedTaskName === activeTaskName) {
+                            const submissionGrid = document.getElementById('submissionGrid');
+                            submissionGrid.innerHTML = '';
+                            if (message.data && message.data.length > 0) {
+                                message.data.forEach(shot => {
+                                    const submissionItem = createResultItem(shot, 'submission');
+                                    if (submissionItem) submissionGrid.appendChild(submissionItem);
+                                });
+                            } else {
+                                // --- NEW: Show a helpful message for empty panels ---
+                                submissionGrid.innerHTML = `<p style="color: var(--text-secondary); margin: auto; font-style: italic;">Panel is empty. Push frames using Ctrl+Shift+Space.</p>`;
+                            }
+                        }
+
+                    } else if (type === 'submission_panel_submission_status') {
+                        showToast(data.message, 3000, data.status);
+                    }
+                }
+                    // --- END: NEW SUBMISSION PANEL LOGIC ---
                 ws.onclose = () => {
                     console.log('WebSocket connection closed. Retrying in', reconnectDelay, 'ms');
                     setTimeout(() => {
@@ -3011,8 +2647,10 @@
                     videoPlayer.addEventListener('loadedmetadata', () => {
                         if (isFinite(startTime) && startTime < videoPlayer.duration) {
                             videoPlayer.currentTime = startTime;
+                            // QUAN TRỌNG: Đồng bộ target time khi mở video lần đầu
+                            targetFrameTime = startTime; 
                         }
-                        updateFrameDisplay(); 
+                        updateFrameDisplay();
                     }, { once: true });
                     videoPlayer.load();
                 } catch (error) {
@@ -3617,7 +3255,8 @@
             }
             const addTaskBtn = document.getElementById('addTaskBtn');
             const taskSelector = document.getElementById('taskSelector');
-            const submitTrakeBtn = document.getElementById('submitTrakeBtn');
+            const submitPanelBtn = document.getElementById('submitPanelBtn');
+            submitPanelBtn.addEventListener('click', submitPanelToCSV);
 
             // START: NEW TASK MANAGEMENT FUNCTIONS
             async function loadTasks() {
@@ -3665,6 +3304,15 @@
                     activeTaskName = result.task_name;
                     sessionStorage.setItem('activeTaskName', activeTaskName);
 
+                    // --- NEW: Manually trigger panel reload for the new (empty) task ---
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({
+                            type: 'load_submission_panel',
+                            data: { task_name: activeTaskName }
+                        }));
+                    }
+                    // --- END NEW ---
+
                 } catch (error) {
                     console.error("Error creating task:", error);
                     showToast(error.message, 4000, 'error');
@@ -3711,48 +3359,7 @@
                     showToast(`Error: ${error.message}`, 4000, 'error');
                 }
             }
-
-            async function handleSubmitTrake() {
-                if (!activeTaskName) {
-                    showToast("Please select a task from the dropdown first!", 3000, 'warning');
-                    taskSelector.focus();
-                    return;
-                }
-
-                const trakeItems = Array.from(trakeGrid.querySelectorAll('.result-item'));
-                if (trakeItems.length === 0) {
-                    showToast("Trake panel is empty.", 2000, 'info');
-                    return;
-                }
-
-                if (!confirm(`Are you sure you want to submit all ${trakeItems.length} frames from the Trake panel to '${activeTaskName}.csv'?`)) {
-                    return;
-                }
-
-                const shots = trakeItems.map(item => ({
-                    video_id: item.dataset.videoId,
-                    frame_id: parseInt(item.dataset.frameId, 10)
-                }));
-
-                try {
-                    const response = await fetch('/submit/csv/trake', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ task_name: activeTaskName, shots: shots })
-                    });
-                    const result = await response.json();
-                    if (!response.ok) throw new Error(result.detail || 'Failed to submit Trake panel');
-
-                    showToast(result.message, 3000, 'success');
-
-                } catch (error) {
-                    console.error("Trake CSV Submission Error:", error);
-                    showToast(`Error: ${error.message}`, 4000, 'error');
-                }
-            }
-
             addTaskBtn.addEventListener('click', handleCreateTask);
-            submitTrakeBtn.addEventListener('click', handleSubmitTrake);
             taskSelector.addEventListener('change', () => {
                 activeTaskName = taskSelector.value || null;
                 if (activeTaskName) {
@@ -3760,11 +3367,32 @@
                 } else {
                     sessionStorage.removeItem('activeTaskName');
                 }
+                
+                // --- NEW: Tell the backend to load the panel for this task ---
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    const submissionGrid = document.getElementById('submissionGrid');
+                    submissionGrid.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size: 1.5rem; margin: auto;"></i>';
+                    ws.send(JSON.stringify({
+                        type: 'load_submission_panel',
+                        data: { task_name: activeTaskName }
+                    }));
+                }
+                // --- END NEW ---
             });
             
             setupImageObserver();
             setupUser();
-            loadTasks();
+            loadTasks().then(() => {
+                if (activeTaskName && ws && ws.readyState === WebSocket.OPEN) {
+                    console.log(`Active task '${activeTaskName}' found on reload. Triggering panel load.`);
+                    taskSelector.dispatchEvent(new Event('change'));
+
+                    if (sessionStorage.getItem('submissionPanelOpen') === 'true') {
+                        submissionBtn.classList.add('active');
+                        submissionPanelContainer.style.display = 'block';
+                    }
+                }
+            });
             initializeDresState();
             function applyTheme(themeName) {
                 document.body.className = themeName === 'default' ? '' : themeName;
@@ -3847,88 +3475,83 @@
 
 
             // ############ START: TRAKE PANEL LOGIC ############
-            trakeBtn.addEventListener('click', () => {
-                const isActive = trakeBtn.classList.toggle('active');
-                trakePanelContainer.style.display = isActive ? 'block' : 'none';
+            submissionBtn.addEventListener('click', () => {
+                const isActive = submissionBtn.classList.toggle('active');
+                submissionPanelContainer.style.display = isActive ? 'block' : 'none';
+                sessionStorage.setItem('submissionPanelOpen', isActive);
             });
 
-            function pushToTrakePanel(shotData) {
+            function pushToSubmissionPanel(shotData) {
                 if (!ws || ws.readyState !== WebSocket.OPEN) {
                     showToast("Real-time connection not active.", 3000, 'error');
                     return;
                 }
                 if (!shotData || !shotData.filepath) return;
 
-                // The server will handle duplicate prevention, but a local check is still good for UI responsiveness
-                if (trakeGrid.querySelector(`.result-item[data-filepath="${shotData.filepath}"]`)) {
-                    showToast("Frame is already in the Trake Panel.", 2000, 'warning');
+                // Check for duplicates locally first for better UX
+                const submissionGrid = document.getElementById('submissionGrid');
+                if (submissionGrid.querySelector(`.result-item[data-filepath="${shotData.filepath}"]`)) {
+                    showToast("Frame is already in the Submission Panel.", 2000, 'warning');
                     return;
                 }
 
+                // --- NEW LOGIC FOR QA TASKS ---
+                let answer = null;
+                if (activeTaskName && activeTaskName.toLowerCase().includes('qa')) {
+                    answer = prompt(`QA Task: Enter the answer for this frame (Video: ${shotData.video_id}, Frame: ${shotData.frame_id})`);
+                    if (answer === null) { // User clicked "Cancel"
+                        showToast("Push to panel cancelled.", 2000, 'info');
+                        return;
+                    }
+                }
+                // --- END NEW LOGIC ---
+
                 ws.send(JSON.stringify({
-                    type: 'trake_add',
-                    data: { shot: shotData }
+                    type: 'submission_panel_add',
+                    data: { 
+                        shot: shotData,
+                        answer: answer, // Send the answer along with the shot data
+                        task_name: activeTaskName
+                    }
                 }));
 
-                if (!trakeBtn.classList.contains('active')) {
-                    trakeBtn.click();
+                const submissionBtn = document.getElementById('submissionBtn');
+                if (!submissionBtn.classList.contains('active')) {
+                    submissionBtn.click();
                 }
             }
 
-            pushToTrakeBtn.addEventListener('click', () => {
-                if (videoPreviewModal.style.display === 'flex' && currentVideoPreviewData) {
-                    const currentTime = videoPlayer.currentTime;
-                    const frameId = Math.round(currentTime * currentVideoPreviewData.fps);
-                    const canvas = document.createElement('canvas');
-                    canvas.width = videoPlayer.videoWidth;
-                    canvas.height = videoPlayer.videoHeight;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
-                    const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
-                    const shotData = {
-                        video_id: currentVideoPreviewData.videoId,
-                        frame_id: frameId,
-                        fps: currentVideoPreviewData.fps,
-                        filepath: `dynamic-frame-${currentVideoPreviewData.videoId}-${frameId}`,
-                        url: thumbnailUrl,
-                        is_dynamic: true
-                    };
-                    pushToTrakePanel(shotData);
-                }
-            });
-
             // --- Drag & Drop for Trake Panel ---
             let draggedItem = null;
-            trakeGrid.addEventListener('dragstart', e => {
+            submissionGrid.addEventListener('dragstart', e => {
                 draggedItem = e.target.closest('.result-item');
                 setTimeout(() => {
                     if(draggedItem) draggedItem.classList.add('ghost');
                 }, 0);
             });
-            trakeGrid.addEventListener('dragend', e => {
+            submissionGrid.addEventListener('dragend', e => {
                 if(draggedItem) {
                     draggedItem.classList.remove('ghost');
                     draggedItem = null;
 
-                    // After dropping, get the new order and send it to the server
-                    const newOrder = [...trakeGrid.querySelectorAll('.result-item')].map(item => item.dataset.filepath);
+                    const newOrder = [...submissionGrid.querySelectorAll('.result-item')].map(item => item.dataset.filepath);
                     if (ws && ws.readyState === WebSocket.OPEN) {
                         ws.send(JSON.stringify({
-                            type: 'trake_reorder',
-                            data: { order: newOrder }
+                            type: 'submission_panel_reorder', // <-- CORRECTED
+                            data: { order: newOrder, task_name: activeTaskName }
                         }));
                     }
                 }
             });
-            trakeGrid.addEventListener('dragover', e => {
+            submissionGrid.addEventListener('dragover', e => {
                 e.preventDefault();
-                const afterElement = getDragAfterElement(trakeGrid, e.clientX);
+                const afterElement = getDragAfterElement(submissionGrid, e.clientX);
                 const dragging = document.querySelector('.ghost');
                 if (dragging) {
                     if (afterElement == null) {
-                        trakeGrid.appendChild(dragging);
+                        submissionGrid.appendChild(dragging);
                     } else {
-                        trakeGrid.insertBefore(dragging, afterElement);
+                        submissionGrid.insertBefore(dragging, afterElement);
                     }
                 }
             });
@@ -4003,10 +3626,10 @@
                                 
                                 if (activeTrakeItemForSidebar && ws && ws.readyState === WebSocket.OPEN) {
                                     ws.send(JSON.stringify({
-                                        type: 'trake_replace',
+                                        type: 'submission_panel_replace', // <-- CORRECTED
                                         data: {
-                                            filepath: activeTrakeItemForSidebar.dataset.filepath, // The original filepath to identify the item
-                                            newShot: newShotData // The complete new shot data
+                                            filepath: activeTrakeItemForSidebar.dataset.filepath,
+                                            newShot: newShotData
                                         }
                                     }));
                                 }
@@ -4038,38 +3661,27 @@
                     return { success: false, error: error.message };
                 }
             }
-
-            // --- Bulk Submission Logic ---
-            trakePanelContainer.addEventListener('mouseenter', () => { isMouseOverTrakePanel = true; });
-            trakePanelContainer.addEventListener('mouseleave', () => { isMouseOverTrakePanel = false; });
             
-            async function submitAllTrakeFrames() {
-                if (!isMouseOverTrakePanel) return;
-
-                const itemsToSubmit = Array.from(trakeGrid.querySelectorAll('.result-item'));
-                if (itemsToSubmit.length === 0) {
-                    showToast("Trake Panel is empty.", 2000, 'info');
-                    return;
-                }
-                
-                if (!confirm(`Submit all ${itemsToSubmit.length} frames in the Trake Panel to DRES?`)) {
+            function submitPanelToCSV() {
+                const submissionGrid = document.getElementById('submissionGrid');
+                const items = Array.from(submissionGrid.querySelectorAll('.result-item'));
+                if (!activeTaskName) {
+                    showToast("Please select a task first!", 3000, 'warning');
                     return;
                 }
 
-                showToast(`Submitting ${itemsToSubmit.length} frames...`, 5000, 'info');
+                if (items.length === 0) {
+                    showToast("Submission Panel is empty.", 2000, 'info');
+                    return;
+                }
 
-                const submissionPromises = itemsToSubmit.map(item => {
-                    const shotData = {
-                        video_id: item.dataset.videoId,
-                        frame_id: parseInt(item.dataset.frameId, 10),
-                        filepath: item.dataset.filepath,
-                        url: item.querySelector('img').src
-                    };
-                    return handleSubmitToDRES(shotData, true);
-                });
-
-                await Promise.all(submissionPromises);
-                showToast("All submissions from Trake Panel processed.", 3000, 'success');
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    // We just need to tell the server to submit its current state for the active task.
+                    ws.send(JSON.stringify({
+                        type: 'submit_panel_to_csv',
+                        data: { task_name: activeTaskName }
+                    }));
+                }
             }
             const initialStage = createStageCard(1);
             stagesContainer.appendChild(initialStage);
@@ -4326,27 +3938,37 @@
                 }
 
                 if (event.code === 'Space' && (event.ctrlKey || event.metaKey)) {
-                    if (!isModalVisible && currentlyHoveredItemData && currentlyHoveredItemElement) {
+                    
+                    // --- NEW LOGIC: Handles Ctrl + SHIFT + Space ---
+                    if (event.shiftKey) {
                         event.preventDefault();
-                        const itemData = currentlyHoveredItemData;
-                        const itemElement = currentlyHoveredItemElement;
-                        const source = itemElement.dataset.source;
 
-                        if (event.shiftKey) {
-                            console.log(`CSV Submit action on item from source: ${source}`);
-                            if (itemData.external_url) {
-                                // You might decide what to do with google images later, for now let's focus on main results
-                                showToast("CSV submission for external images not configured.", 3000, 'warning');
-                            } else {
-                                handleSubmitToCSV(itemData);
-                            }
-                        } else {
+                        // Action 1: Submit the panel if hovering over it
+                        const submissionPanel = document.getElementById('submissionPanelContainer');
+                        if (submissionPanel.style.display !== 'none' && submissionPanel.matches(':hover')) {
+                            document.getElementById('submitPanelBtn').click();
+                            return; // Action complete
+                        }
+
+                        // Action 2: Push the hovered item to the Submission Panel
+                        if (!isModalVisible && currentlyHoveredItemData && currentlyHoveredItemElement) {
+                            pushToSubmissionPanel(currentlyHoveredItemData);
+                            return; // Action complete
+                        }
+                    } 
+                    
+                    // --- PRESERVED LOGIC: Handles Ctrl + Space (NO Shift) for Teamwork Panel ---
+                    else { 
+                        if (!isModalVisible && currentlyHoveredItemData && currentlyHoveredItemElement) {
+                            event.preventDefault();
+                            const itemData = currentlyHoveredItemData;
+                            const itemElement = currentlyHoveredItemElement;
+                            const source = itemElement.dataset.source;
+
                             if (source === 'teamwork') {
                                 if (!ws || ws.readyState !== WebSocket.OPEN) { alert("Teamwork connection is not available."); return; }
-                                console.log(`Requesting to remove frame: ${itemData.filepath}`);
                                 ws.send(JSON.stringify({ type: 'remove_frame', data: { filepath: itemData.filepath, user: { name: username } } }));
                             } else {
-                                console.log(`Push action on item from source: ${source}`);
                                 if (itemData.external_url) {
                                     handleGoogleImageAction(itemData.external_url, 'push', itemElement);
                                 } else {
@@ -4354,11 +3976,6 @@
                                 }
                             }
                         }
-                        return;
-                    }
-                    else if (isMouseOverTrakePanel && event.shiftKey) {
-                        event.preventDefault();
-                        submitAllTrakeFrames();
                     }
                 }
 
@@ -4473,31 +4090,14 @@
                     return;
                 }
 
+                // ## START: REPLACEMENT LOGIC ##
+                // This now handles keyboard scrubbing by calling our optimized function
                 if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
                     event.preventDefault();
                     const direction = event.key === 'ArrowRight' ? 1 : -1;
                     handleScrub(direction);
-                }
-
-                // If one of our target keys was pressed...
-                if (direction !== 0) {
-                    // Prevent the default browser action for arrow keys (like horizontal scrolling).
-                    event.preventDefault();
-
-                    // Ensure we have the necessary FPS data before proceeding.
-                    if (!currentVideoPreviewData || !currentVideoPreviewData.fps) {
-                        return;
-                    }
-                    
-                    // Pause the video for precise control.
-                    videoPlayer.pause();
-                    
-                    // The calculation is the same as for the mouse wheel.
-                    const frameTime = 1 / currentVideoPreviewData.fps;
-                    const newTime = videoPlayer.currentTime + (direction * frameTime);
-                    
-                    // Set the new time, ensuring it stays within the video's bounds.
-                    videoPlayer.currentTime = Math.max(0, Math.min(videoPlayer.duration, newTime));
+                    // No more code is needed here for arrow keys.
+                    // The old complex block has been removed.
                 }
             });
         });

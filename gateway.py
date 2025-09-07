@@ -13,10 +13,13 @@ import csv
 from pathlib import Path
 from collections import defaultdict
 import httpx
+from tqdm import tqdm
 from typing import List, Dict, Any, Optional
+import av
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Body, WebSocket, WebSocketDisconnect, Header
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, ORJSONResponse, StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ValidationError
 from pymilvus import Collection, connections, utility
 import requests
@@ -75,16 +78,23 @@ class GoogleImageSearchRequest(BaseModel):
 class DownloadImageRequest(BaseModel):
     url: str
 # ## END: GOOGLE IMAGE SEARCH INTEGRATION (HELPERS & MODELS) ##
-
-
 # --- Thiết lập & Cấu hình ---
 app = FastAPI(default_response_class=ORJSONResponse)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Trong môi trường production, hãy giới hạn lại domain cụ thể
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 TEMP_UPLOAD_DIR = Path("/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/temp_uploads")
 TEMP_UPLOAD_DIR.mkdir(exist_ok=True)
 SUBMISSION_DIR = Path("/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/submission") # <--- ADD THIS LINE
 ALLOWED_BASE_DIR = "/workspace/mlcv2"
-
+KEYFRAME_CACHE_DIR = Path("/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/Dataset/Retrieval/Keyframes/AUTO_EXTRACTED_CACHE")
+KEYFRAME_CACHE_DIR.mkdir(exist_ok=True)
 # ## START: GOOGLE IMAGE SEARCH API ENDPOINTS ##
 @app.post("/google_image_search")
 async def google_image_search(request_data: GoogleImageSearchRequest):
@@ -151,7 +161,7 @@ except ImportError:
 
 # --- Cấu hình DRES và hệ thống ---
 DRES_BASE_URL = "http://192.168.28.151:5000"
-VIDEO_BASE_DIR = "/workspace/mlcv1/Datasets/HCMAI25/batch1/video"
+VIDEO_BASE_DIR = "/workspace/mlcv1/Datasets/HCMAI25/full"
 IMAGE_BASE_PATH = "/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/Dataset/Retrieval/Keyframes/webp_keyframes"
 
 BEIT3_WORKER_URL = "http://model-workers2:8001/embed"
@@ -161,14 +171,14 @@ IMAGE_GEN_WORKER_URL = "http://localhost:8004/generate"
 BGE_M3_WORKER_URL = "http://model-workers:8003/embed"
 
 ELASTICSEARCH_HOST = "http://elasticsearch2:9200"
-OCR_ASR_INDEX_NAME = "vongsotuyen_batch1"
+OCR_ASR_INDEX_NAME = "vongsotuyen_12_new"
 MILVUS_HOST = "milvus-standalone"
 MILVUS_PORT = "19530"
 
-BEIT3_COLLECTION_NAME = "beit3_batch1_filter_2"
-BGE_COLLECTION_NAME = "bge_batch1_filter_2"
+BEIT3_COLLECTION_NAME = "beit3_batch1_2_filter"
+BGE_COLLECTION_NAME = "bge_batch1_2_filter"
 BGE_M3_CAPTION_COLLECTION_NAME = "BGE_M3_HCMAIC_captions_batch_1"
-OPS_MM_COLLECTION_NAME = "Mm_embed_Batch1_with_filepath_filter"
+OPS_MM_COLLECTION_NAME = "MM_EMBED_FINAL"
 
 
 MODEL_WEIGHTS = {"beit3": 0.2, "bge": 0.1, "ops_mm": 0.2, "bge_caption": 0.5}
@@ -207,7 +217,7 @@ bge_collection: Optional[Collection] = None
 bge_m3_caption_collection: Optional[Collection] = None
 ops_mm_collection: Optional[Collection] = None
 
-FRAME_CONTEXT_CACHE_FILE = "/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/DataPreprocessing/KF/frame_context_cache.json"
+FRAME_CONTEXT_CACHE_FILE = "/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/DataPreprocessing/KF/frame_context_cache_4.json"
 FRAME_CONTEXT_CACHE: Optional[Dict[str, List[str]]] = None
 
 # ## TEAMWORK: Connection Manager for WebSockets ##
@@ -228,7 +238,7 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 # ## END TEAMWORK ##
-trake_panel_state: List[Dict[str, Any]] = [] 
+submission_panel_state: Dict[str, List[Dict[str, Any]]] = {}
 
 # --- Pydantic Models ---
 class ObjectCountFilter(BaseModel): conditions: Dict[str, str] = {}
@@ -303,7 +313,8 @@ class SubmitTrakeCSVRequest(BaseModel):
     shots: List[TrakeShotData]
 
 @app.on_event("startup")
-def startup_event():
+async def startup_event():
+    asyncio.create_task(sync_keyframe_cache())
     global es, OBJECT_COUNTS_DF, OBJECT_POSITIONS_DF, beit3_collection, bge_collection, bge_m3_caption_collection, ops_mm_collection
     try:
         # The only change is adding parents=True
@@ -362,8 +373,8 @@ def startup_event():
         
     try:
         print("--- Loading object detection data... ---")
-        counts_path = "/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/Dataset/Object/object_counts.parquet"
-        positions_path = "/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/Dataset/Object/object_positions.parquet"
+        counts_path = "/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/Dataset/Object/merged_count_batch1_2.parquet"
+        positions_path = "/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/Dataset/Object/merged_positions_batch1_2.parquet"
         counts_df = pl.read_parquet(counts_path)
         OBJECT_COUNTS_DF = counts_df.with_columns(pl.col("image_name").str.split(".").list.first().alias("name_stem"))
         positions_df = pl.read_parquet(positions_path)
@@ -402,6 +413,171 @@ def load_frame_context_cache_from_json():
         print(f"!!! LỖI NGHIÊM TRỌNG: Không thể đọc hoặc phân tích file cache '{FRAME_CONTEXT_CACHE_FILE}'. Lỗi: {e}")
         FRAME_CONTEXT_CACHE = {}
 
+# def write_panel_state_to_csv(task_name: str):
+#     """Writes the current in-memory panel state for a specific task to its CSV file."""
+#     if not task_name or task_name not in submission_panel_state:
+#         return # Nothing to write
+
+#     task_file = SUBMISSION_DIR / f"{sanitize_filename(task_name)}.csv"
+#     current_panel_for_task = submission_panel_state[task_name]
+    
+#     try:
+#         # For trake, we always append. For others, we overwrite.
+#         file_mode = 'a' if "trake" in task_name.lower() else 'w'
+        
+#         with open(task_file, file_mode, newline='', encoding='utf-8') as f:
+#             writer = csv.writer(f)
+            
+#             if "trake" in task_name.lower():
+#                 # For trake, we only write the most recent state as a single new line
+#                 shots_by_video = defaultdict(list)
+#                 for shot in current_panel_for_task:
+#                     shots_by_video[shot['video_id']].append(shot['frame_id'])
+#                 for video_id, frame_ids in shots_by_video.items():
+#                     writer.writerow([video_id] + sorted(frame_ids))
+            
+#             elif "qa" in task_name.lower():
+#                 for shot in current_panel_for_task:
+#                     writer.writerow([shot['video_id'], shot['frame_id'], shot.get('answer', '')])
+            
+#             else: # Default format
+#                 for shot in current_panel_for_task:
+#                     writer.writerow([shot['video_id'], shot['frame_id']])
+#     except Exception as e:
+#         print(f"Error writing panel state to CSV for task {task_name}: {e}")
+
+def _extract_specific_frames(video_id: str, frame_ids_to_extract: List[int]):
+    """
+    Robust helper function to extract a list of specific frames using PyAV.
+    This version corrects the UnboundLocalError and handles VFR.
+    """
+    if not frame_ids_to_extract:
+        return
+
+    video_filename = video_id if video_id.endswith('.mp4') else f"{video_id}.mp4"
+    video_path = os.path.join(VIDEO_BASE_DIR, video_filename)
+    if not os.path.isfile(video_path):
+        print(f"  -> [PyAV Extractor] Skipping {video_id}: Video file not found at {video_path}")
+        return
+
+    container = None
+    try:
+        container = av.open(video_path, 'r')
+        stream = container.streams.video[0]
+        stream.thread_type = "AUTO"
+
+        if stream.duration and stream.frames > 0:
+            effective_rate = stream.frames / (stream.duration * stream.time_base)
+        else:
+            effective_rate = stream.average_rate
+        
+        effective_rate = float(effective_rate)
+
+        if not effective_rate or effective_rate == 0:
+            print(f"  -> [PyAV Extractor] FATAL: Cannot determine a valid frame rate (>0) for {video_id}. Skipping.")
+            return
+
+        # --- THIS IS THE FIX ---
+        # The 'sorted_frames' variable is now defined BEFORE it is used in the print statement.
+        sorted_frames = sorted(list(set(frame_ids_to_extract)))
+        # ----------------------
+
+        print(f"  -> [PyAV Extractor] Processing {video_id} (Rate: {effective_rate:.2f}fps) for {len(sorted_frames)} frames...")
+        
+        frames_saved = 0
+        for frame_id in sorted_frames:
+            try:
+                time_in_seconds = frame_id / effective_rate
+                target_pts = int(time_in_seconds / stream.time_base)
+                
+                container.seek(target_pts, backward=True, any_frame=False, stream=stream)
+
+                for frame in container.decode(stream):
+                    current_frame_num = int((frame.pts * stream.time_base) * effective_rate)
+                    
+                    if current_frame_num >= frame_id:
+                        img = frame.to_image()
+                        output_filename = f"{video_id}_{frame_id}.webp"
+                        output_path = KEYFRAME_CACHE_DIR / output_filename
+                        
+                        img.save(str(output_path), 'webp', quality=85)
+                        frames_saved += 1
+                        break
+            
+            except Exception as e:
+                print(f"  -> [PyAV Extractor] Could not extract frame {frame_id} from {video_id}. Reason: {e}")
+                continue
+
+        print(f"  -> [PyAV Extractor] Successfully extracted and cached {frames_saved}/{len(sorted_frames)} frames for {video_id}.")
+
+    except Exception as e:
+        print(f"  -> [PyAV Extractor] FATAL ERROR opening or processing video {video_id}: {e}")
+        traceback.print_exc()
+    finally:
+        if container:
+            container.close()
+
+async def sync_keyframe_cache():
+    """On server startup, scans all task CSVs, and extracts any missing keyframes."""
+    print("\n--- [Cache Sync] Starting keyframe cache synchronization ---")
+    required_frames = set()
+    csv_files = list(SUBMISSION_DIR.glob('*.csv'))
+    if not csv_files:
+        print("--- [Cache Sync] No task CSVs found. Synchronization complete. ---")
+        return
+    
+    for task_file in csv_files:
+        try:
+            with open(task_file, 'r', newline='', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                for row in reader:
+                    if not row: continue
+                    video_id = row[0]
+                    # This logic correctly handles all 3 task types (trake, qa, default)
+                    frame_ids_str = row[1:] if "trake" in task_file.name.lower() else row[1:2]
+                    for fid_str in frame_ids_str:
+                        if fid_str.strip().isdigit():
+                            required_frames.add((video_id, int(fid_str)))
+        except Exception:
+            pass
+    
+    missing_frames_by_video = defaultdict(list)
+    for video_id, frame_id in required_frames:
+        if not (KEYFRAME_CACHE_DIR / f"{video_id}_{frame_id}.webp").exists():
+            missing_frames_by_video[video_id].append(frame_id)
+    
+    if not missing_frames_by_video:
+        print("--- [Cache Sync] All required frames are already cached. Synchronization complete. ---")
+        return
+
+    total_missing = sum(len(fids) for fids in missing_frames_by_video.values())
+    print(f"--- [Cache Sync] Found {total_missing} missing frames. Starting background extraction... ---")
+    
+    # Run extraction in the background so the server can start
+    loop = asyncio.get_event_loop()
+    for video_id, frame_ids in tqdm(missing_frames_by_video.items(), desc="Extracting Videos"):
+        await loop.run_in_executor(None, _extract_specific_frames, video_id, frame_ids)
+    
+    print("--- [Cache Sync] Background extraction process finished. Cache is up to date. ---")
+
+
+async def get_frame_data_from_cache(
+    video_id: str, 
+    frame_ids_to_get: List[int], 
+    qa_answers: Dict[int, str]
+) -> List[Dict[str, Any]]:
+    """Instantly gets frame data by constructing file paths from the pre-extracted cache."""
+    processed_shots = []
+    for frame_id in frame_ids_to_get:
+        expected_filename = f"{video_id}_{frame_id}.webp"
+        filepath = str((KEYFRAME_CACHE_DIR / expected_filename).resolve())
+        shot_data = {
+            "video_id": video_id, "frame_id": frame_id, "filepath": filepath,
+            "url": f"/images/{base64.urlsafe_b64encode(filepath.encode('utf-8')).decode('utf-8')}",
+            "is_dynamic": False, "answer": qa_answers.get(frame_id)
+        }
+        processed_shots.append(shot_data)
+    return processed_shots
 # ## END: TỐI ƯU HÓA CONTEXT VIEW ##
 
 def get_video_fps(video_path: str) -> float:
@@ -634,25 +810,6 @@ def search_milvus_sync(collection: Collection, collection_name: str, query_vecto
         # print(collection)
         if not collection or not query_vectors:
             return []
-        
-        # --- Phần kiểm tra collection có được load hay chưa ---
-        need_load = False
-        try:
-            state = utility.load_state(collection.name)
-            if _MilvusLoadState and isinstance(state, _MilvusLoadState):
-                need_load = (state != _MilvusLoadState.Loaded)
-            else:
-                state_name = getattr(state, "name", str(state))
-                if str(state_name).lower() != "loaded" and str(state) != "2":
-                    need_load = True
-        except Exception as e:
-            print(f"Could not determine load state for '{collection.name}' ({e}); will attempt load.")
-            need_load = True
-        
-        if need_load:
-            print(f"--- Collection '{collection.name}' not loaded. Loading... ---")
-            collection.load()
-            print(f"--- Collection '{collection.name}' loaded. ---")
 
         # --- Cấu hình và thực hiện search ---
         index_type = COLLECTION_TO_INDEX_TYPE.get(collection_name, "HNSW")
@@ -903,80 +1060,154 @@ async def read_root():
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
-    global trake_panel_state # Declare we are using the global variable
+    global submission_panel_state
+    
+    current_task_name = None 
 
-    # When a new user connects, send them the current state of the Trake Panel
     try:
-        await websocket.send_text(json.dumps({
-            "type": "trake_sync",
-            "data": trake_panel_state
-        }))
+        pass # Initial connect is clean
     except Exception as e:
-        print(f"Initial sync failed for a client: {e}")
+        print(f"Initial connect failed: {e}")
 
     try:
         while True:
             raw_data = await websocket.receive_text()
             message = json.loads(raw_data)
             msg_type = message.get("type")
+            data = message.get("data", {})
 
-            if msg_type == "new_frame": # Teamwork Panel Push
-                await manager.broadcast(raw_data)
-
-            elif msg_type == "remove_frame": # Teamwork Panel Remove
-                await manager.broadcast(raw_data)
-
-            elif msg_type == "clear_panel": # Teamwork Panel Clear
+            if msg_type in ["new_frame", "remove_frame", "clear_panel"]:
                 await manager.broadcast(raw_data)
             
-            # --- START: NEW TRAKE PANEL LOGIC ---
-            elif msg_type == "trake_add":
-                shot_data = message.get("data", {}).get("shot")
+            elif msg_type == "load_submission_panel":
+                task_name = data.get("task_name")
+                current_task_name = task_name
+                await websocket.send_text(json.dumps({"type": "submission_panel_clear"}))
+                if not task_name: continue
+
+                # THIS IS THE BLOCK TO VERIFY
+                task_file = SUBMISSION_DIR / f"{sanitize_filename(task_name)}.csv"
+                if not task_file.exists():
+                    submission_panel_state[task_name] = []
+                    await websocket.send_text(json.dumps({"type": "submission_panel_sync", "data": [], "task_name": task_name}))
+                    continue
+                
+                frames_by_video = defaultdict(list); qa_answers_by_video = defaultdict(dict)
+                try:
+                    with open(task_file, 'r', newline='', encoding='utf-8') as f:
+                        reader = csv.reader(f)
+                        rows = list(reader)
+                        rows_to_process = rows[-1:] if "trake" in task_name.lower() and rows else rows
+                        for row in rows_to_process:
+                            if not row: continue
+                            video_id = row[0]
+                            if "trake" in task_name.lower():
+                                frames_by_video[video_id].extend([int(fid) for fid in row[1:] if fid.strip().isdigit()])
+                            elif "qa" in task_name.lower() and len(row) > 1 and row[1].strip().isdigit():
+                                frame_id = int(row[1])
+                                frames_by_video[video_id].append(frame_id); qa_answers_by_video[video_id][frame_id] = row[2] if len(row) > 2 else ""
+                            elif len(row) > 1 and row[1].strip().isdigit():
+                                frames_by_video[video_id].append(int(row[1]))
+                except Exception as e:
+                    print(f"Error reading CSV for {task_name}: {e}"); submission_panel_state[task_name] = []
+                    continue
+                
+                all_loaded_shots = []
+                # This helper function now checks for missing frames and extracts them on-the-fly
+                async def extract_and_push(vid, fids, answers):
+                    # 1. Identify which frames from the CSV are NOT in the cache.
+                    unique_fids = sorted(list(set(fids)))
+                    missing_fids = [f for f in unique_fids if not (KEYFRAME_CACHE_DIR / f"{vid}_{f}.webp").exists()]
+                    
+                    # 2. If there are missing frames, call our robust extractor.
+                    if missing_fids:
+                        print(f"--- [Panel Load] Task '{task_name}': Found {len(missing_fids)} missing frames for video {vid}. Extracting now...")
+                        # THIS NOW CALLS THE PYAV VERSION!
+                        await asyncio.to_thread(_extract_specific_frames, vid, missing_fids)
+                    
+                    # 3. Now that all frames are guaranteed to be in the cache, load and send them.
+                    cached_shots = await get_frame_data_from_cache(vid, unique_fids, answers)
+                    if cached_shots:
+                        all_loaded_shots.extend(cached_shots)
+                        # Send this video's frames to the frontend immediately for a faster UI response.
+                        await websocket.send_text(json.dumps({"type": "submission_panel_chunk_load", "data": cached_shots}))
+                
+                # Create and run extraction tasks for each video concurrently.
+                tasks = [extract_and_push(vid, fids, qa_answers_by_video[vid]) for vid, fids in frames_by_video.items()]
+                await asyncio.gather(*tasks)
+
+                # Finally, send the complete, ordered list to sync the final state.
+                submission_panel_state[task_name] = all_loaded_shots
+                await websocket.send_text(json.dumps({"type": "submission_panel_sync", "data": all_loaded_shots, "task_name": task_name}))
+
+            elif msg_type == "submission_panel_add":
+                task_name = data.get("task_name")
+                if not task_name: continue
+                shot_data = data.get("shot"); answer = data.get("answer")
                 if shot_data:
-                    # Prevent duplicates by filepath
-                    if not any(item['filepath'] == shot_data.get('filepath') for item in trake_panel_state):
-                        trake_panel_state.append(shot_data)
-                        await manager.broadcast(json.dumps({
-                            "type": "trake_add",
-                            "data": {"shot": shot_data}
-                        }))
+                    if task_name not in submission_panel_state: submission_panel_state[task_name] = []
+                    if not any(item.get('filepath') == shot_data.get('filepath') for item in submission_panel_state[task_name]):
+                        if answer is not None: shot_data['answer'] = answer
+                        submission_panel_state[task_name].append(shot_data)
+                        await manager.broadcast(json.dumps({"type": "submission_panel_sync", "data": submission_panel_state[task_name], "task_name": task_name}))
 
-            elif msg_type == "trake_remove":
-                filepath = message.get("data", {}).get("filepath")
+            elif msg_type == "submission_panel_remove":
+                task_name = data.get("task_name")
+                if not task_name or task_name not in submission_panel_state: continue
+                filepath = data.get("filepath")
                 if filepath:
-                    trake_panel_state = [item for item in trake_panel_state if item.get('filepath') != filepath]
-                    await manager.broadcast(raw_data) # Forward the original remove message
-
-            elif msg_type == "trake_reorder":
-                # The client sends the new order of filepaths
-                new_order_filepaths = message.get("data", {}).get("order")
+                    initial_length = len(submission_panel_state[task_name])
+                    submission_panel_state[task_name] = [item for item in submission_panel_state[task_name] if item.get('filepath') != filepath]
+                    if len(submission_panel_state[task_name]) < initial_length:
+                        await manager.broadcast(json.dumps({"type": "submission_panel_sync", "data": submission_panel_state[task_name], "task_name": task_name}))
+            
+            elif msg_type == "submission_panel_reorder":
+                task_name = data.get("task_name")
+                if not task_name or task_name not in submission_panel_state: continue
+                new_order_filepaths = data.get("order")
                 if isinstance(new_order_filepaths, list):
-                    # Create a map for quick lookups
-                    current_items_map = {item['filepath']: item for item in trake_panel_state}
-                    # Rebuild the list based on the new order
-                    new_state = [current_items_map[fp] for fp in new_order_filepaths if fp in current_items_map]
-                    trake_panel_state = new_state
-                    await manager.broadcast(raw_data) # Forward the reorder message
-            
-            elif msg_type == "trake_replace":
-                # Client sends the filepath of the item to replace and the new shot data
-                data = message.get("data", {})
-                filepath_to_replace = data.get("filepath")
-                new_shot_data = data.get("newShot")
-                if filepath_to_replace and new_shot_data:
-                    for i, item in enumerate(trake_panel_state):
-                        if item.get("filepath") == filepath_to_replace:
-                            trake_panel_state[i] = new_shot_data
-                            break
-                    await manager.broadcast(raw_data) # Forward the replace message
-            # --- END: NEW TRAKE PANEL LOGIC ---
-            
+                    current_items_map = {item['filepath']: item for item in submission_panel_state[task_name]}
+                    submission_panel_state[task_name] = [current_items_map[fp] for fp in new_order_filepaths if fp in current_items_map]
+                    await manager.broadcast(json.dumps({"type": "submission_panel_sync", "data": submission_panel_state[task_name], "task_name": task_name}))
+
+            elif msg_type == "submit_panel_to_csv":
+                task_name = data.get("task_name")
+                if not task_name or task_name not in submission_panel_state:
+                    await websocket.send_text(json.dumps({"type": "submission_panel_submission_status", "data": {"status": "error", "message": "No active task or panel is empty."}}))
+                    continue
+                
+                # This is now the ONLY place where we write to the CSV.
+                current_panel_for_task = submission_panel_state[task_name]
+                task_file = SUBMISSION_DIR / f"{sanitize_filename(task_name)}.csv"
+                try:
+                    # 'a' for append (trake), 'w' for overwrite (qa, default)
+                    file_mode = 'a' if "trake" in task_name.lower() else 'w'
+                    
+                    with open(task_file, file_mode, newline='', encoding='utf-8') as f:
+                        writer = csv.writer(f)
+                        if "trake" in task_name.lower():
+                            shots_by_video = defaultdict(list)
+                            for shot in current_panel_for_task:
+                                shots_by_video[shot['video_id']].append(shot['frame_id'])
+                            for video_id, frame_ids in shots_by_video.items():
+                                writer.writerow([video_id] + sorted(frame_ids))
+                        
+                        elif "qa" in task_name.lower():
+                            for shot in current_panel_for_task:
+                                writer.writerow([shot['video_id'], shot['frame_id'], shot.get('answer', '')])
+                        
+                        else: # Default format
+                            for shot in current_panel_for_task:
+                                writer.writerow([shot['video_id'], shot['frame_id']])
+                    
+                    await websocket.send_text(json.dumps({"type": "submission_panel_submission_status", "data": {"status": "success", "message": f"Successfully submitted to {task_name}.csv"}}))
+                except Exception as e:
+                    await websocket.send_text(json.dumps({"type": "submission_panel_submission_status", "data": {"status": "error", "message": f"Error writing to file: {e}"}}))
+
     except WebSocketDisconnect:
         manager.disconnect(websocket)
     except Exception as e:
-        print(f"WebSocket Error: {e}")
-        traceback.print_exc()
-        manager.disconnect(websocket)
+        print(f"WebSocket Error: {e}"); traceback.print_exc(); manager.disconnect(websocket)
 
 # ## PERFORMANCE OPTIMIZATION: Asynchronous Query Processing with Cache ##
 @app.post("/process_query")
@@ -1126,54 +1357,28 @@ async def create_task(request_data: CreateTaskRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create task file: {e}")
 
-@app.post("/submit/csv/frame")
-async def submit_frame_to_csv(request_data: SubmitFrameCSVRequest):
-    """Submits a single frame (standard or QA) to a task's CSV file."""
-    task_name = sanitize_filename(request_data.task_name)
-    task_file = SUBMISSION_DIR / f"{task_name}.csv"
-    if not task_file.exists():
-        raise HTTPException(status_code=404, detail="Task not found.")
+# @app.post("/submit/csv/frame")
+# async def submit_frame_to_csv(request_data: SubmitFrameCSVRequest):
+#     """Submits a single frame (standard or QA) to a task's CSV file."""
+#     task_name = sanitize_filename(request_data.task_name)
+#     task_file = SUBMISSION_DIR / f"{task_name}.csv"
+#     if not task_file.exists():
+#         raise HTTPException(status_code=404, detail="Task not found.")
 
-    is_qa = "qa" in task_name.lower()
+#     is_qa = "qa" in task_name.lower()
     
-    try:
-        with open(task_file, 'a', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            if is_qa:
-                if request_data.answer is None:
-                    raise HTTPException(status_code=400, detail="Answer is required for a QA task.")
-                writer.writerow([request_data.video_id, request_data.frame_id, request_data.answer])
-            else:
-                writer.writerow([request_data.video_id, request_data.frame_id])
-        return {"message": "Frame submitted successfully."}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to write to task file: {e}")
-
-@app.post("/submit/csv/trake")
-async def submit_trake_to_csv(request_data: SubmitTrakeCSVRequest):
-    """Submits all frames from the Trake panel to a task's CSV, grouped by video."""
-    task_name = sanitize_filename(request_data.task_name)
-    task_file = SUBMISSION_DIR / f"{task_name}.csv"
-    if not task_file.exists():
-        raise HTTPException(status_code=404, detail="Task not found.")
-
-    if not request_data.shots:
-        return {"message": "No frames to submit."}
-
-    # Group shots by video_id
-    shots_by_video = defaultdict(list)
-    for shot in request_data.shots:
-        shots_by_video[shot.video_id].append(shot.frame_id)
-
-    try:
-        with open(task_file, 'a', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            for video_id, frame_ids in shots_by_video.items():
-                # Format: {video_id}, {frame1_id}, {frame2_id}, ...
-                writer.writerow([video_id] + sorted(frame_ids))
-        return {"message": f"Submitted {len(request_data.shots)} frames from Trake panel."}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to write Trake submission to file: {e}")
+#     try:
+#         with open(task_file, 'a', newline='', encoding='utf-8') as f:
+#             writer = csv.writer(f)
+#             if is_qa:
+#                 if request_data.answer is None:
+#                     raise HTTPException(status_code=400, detail="Answer is required for a QA task.")
+#                 writer.writerow([request_data.video_id, request_data.frame_id, request_data.answer])
+#             else:
+#                 writer.writerow([request_data.video_id, request_data.frame_id])
+#         return {"message": "Frame submitted successfully."}
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Failed to write to task file: {e}")
 
 class ImageGenTextRequest(BaseModel):
     query: str
@@ -1449,24 +1654,32 @@ async def temporal_search(request_data: TemporalSearchRequest, request: Request)
             if "ops_mm" in models and results_by_model.get("ops_mm"):
                 milvus_tasks.append(search_milvus_async(ops_mm_collection, OPS_MM_COLLECTION_NAME, results_by_model["ops_mm"], SEARCH_DEPTH_PER_STAGE, expr=milvus_expr))
             
-            milvus_results = await asyncio.gather(*milvus_tasks)
-            # Logic gán kết quả cho RRF ở đây đơn giản hơn và đã đúng, không cần sửa
-            results_dict = {}
-            model_idx = 0
-            if "beit3" in models:
-                results_dict["beit3"] = milvus_results[model_idx]
-                model_idx += 1
-            if "bge" in models:
-                results_dict["bge"] = milvus_results[model_idx]
-                model_idx += 1
-            if stage.use_bge_caption: # Gán kết quả cho bge_caption
-                 results_dict["bge_caption"] = milvus_results[model_idx]
-                 model_idx += 1
-            if "ops_mm" in models:
-                results_dict["ops_mm"] = milvus_results[model_idx]
-                model_idx += 1
+            models_in_task_order = []
+            if "beit3" in models and results_by_model.get("beit3"): 
+                milvus_tasks.append(search_milvus_async(beit3_collection, BEIT3_COLLECTION_NAME, results_by_model["beit3"], SEARCH_DEPTH_PER_STAGE, expr=milvus_expr))
+                models_in_task_order.append("beit3")
+            if "bge" in models and results_by_model.get("bge"): 
+                milvus_tasks.append(search_milvus_async(bge_collection, BGE_COLLECTION_NAME, results_by_model["bge"], SEARCH_DEPTH_PER_STAGE, expr=milvus_expr))
+                models_in_task_order.append("bge")
             
-            return reciprocal_rank_fusion(results_dict, MODEL_WEIGHTS)
+            if stage.use_bge_caption and results_by_model.get("bge-m3"):
+                print(f"--- TEMPORAL STAGE: Performing BGE Caption Search ---")
+                milvus_tasks.append(search_milvus_async(bge_m3_caption_collection, BGE_M3_CAPTION_COLLECTION_NAME, results_by_model["bge-m3"], SEARCH_DEPTH_PER_STAGE, expr=milvus_expr))
+                models_in_task_order.append("bge_caption")
+
+            if "ops_mm" in models and results_by_model.get("ops_mm"):
+                milvus_tasks.append(search_milvus_async(ops_mm_collection, OPS_MM_COLLECTION_NAME, results_by_model["ops_mm"], SEARCH_DEPTH_PER_STAGE, expr=milvus_expr))
+                models_in_task_order.append("ops_mm")
+            
+            milvus_results_list = await asyncio.gather(*milvus_tasks)
+
+            # This is the robust way to map results back to their models
+            results_for_rrf = {model_name: result for model_name, result in zip(models_in_task_order, milvus_results_list)}
+            
+            # Use only the weights for the models that were actually used
+            temporal_weights = {m: w for m, w in MODEL_WEIGHTS.items() if m in models_in_task_order}
+            
+            return reciprocal_rank_fusion(results_for_rrf, temporal_weights)
         elif has_ocr_asr_filter:
             processed_queries_for_ui.append(f"OCR/ASR: {stage.ocr_query or ''} / {stage.asr_query or ''}")
             for res in all_es_results:
@@ -1584,6 +1797,7 @@ async def temporal_search(request_data: TemporalSearchRequest, request: Request)
         ]
     else:
         final_sequences_all = sequences_to_filter
+    print(final_sequences_all[:5])
     # --- END OF CHANGE ---
     
     total_sequences = len(final_sequences_all)
@@ -1617,37 +1831,59 @@ async def get_frame_at_timestamp(video_id: str = Form(...), timestamp: float = F
     if not os.path.isfile(video_path_str):
         raise HTTPException(status_code=404, detail=f"Video not found: {video_id}")
 
+    container = None
     try:
-        cap = cv2.VideoCapture(video_path_str)
-        if not cap.isOpened():
-            raise HTTPException(status_code=500, detail="Could not open video file.")
+        container = av.open(video_path_str, 'r')
+        stream = container.streams.video[0]
+
+        # --- THIS IS THE KEY IMPROVEMENT ---
+        # 1. Check if the requested timestamp is valid before trying to seek.
+        video_duration = stream.duration * stream.time_base
+        if timestamp < 0 or timestamp > video_duration:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Timestamp {timestamp:.2f}s is outside the video's duration (0s - {video_duration:.2f}s)."
+            )
+        # ------------------------------------
+
+        # Convert the timestamp in seconds to the stream's time base for seeking
+        target_pts = int(timestamp / stream.time_base)
         
-        # Convert timestamp (seconds) to milliseconds for OpenCV
-        time_ms = timestamp * 1000
-        cap.set(cv2.CAP_PROP_POS_MSEC, time_ms)
+        # Seek to the keyframe before the target timestamp
+        container.seek(target_pts, backward=True, any_frame=False, stream=stream)
         
-        ret, frame = cap.read()
-        cap.release()
+        found_frame = None
+        # Decode frames until we find the one at or just after our timestamp
+        for frame in container.decode(stream):
+            found_frame = frame
+            if frame.pts * stream.time_base >= timestamp:
+                break
         
-        if not ret:
+        if not found_frame:
             raise HTTPException(status_code=404, detail=f"Could not read frame at timestamp {timestamp}s.")
             
-        # Convert the frame to a JPEG image in memory
-        is_success, buffer = cv2.imencode(".jpg", frame)
-        if not is_success:
-            raise HTTPException(status_code=500, detail="Failed to encode frame.")
+        # Convert the PyAV frame to a Pillow Image
+        img = found_frame.to_image()
         
-        # Encode the image bytes to a base64 string
-        img_base64 = base64.b64encode(buffer).decode("utf-8")
+        # Save the image to an in-memory buffer as a JPEG
+        buffer = io.BytesIO()
+        img.save(buffer, format="JPEG", quality=90) # Use a slightly higher quality for previews
+        image_bytes = buffer.getvalue()
+        
+        # Encode the image bytes to a base64 string for the frontend
+        img_base64 = base64.b64encode(image_bytes).decode("utf-8")
         
         return {"image_data": f"data:image/jpeg;base64,{img_base64}"}
 
+    except av.error.AVError as e:
+        print(f"PyAV Error getting frame at timestamp for {video_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"An error occurred while processing the video (PyAV Error).")
     except Exception as e:
-        # It's good practice to release the capture object in case of an error
-        if 'cap' in locals() and cap.isOpened():
-            cap.release()
-        print(f"Error getting frame at timestamp: {e}")
-        raise HTTPException(status_code=500, detail=f"An error occurred while processing the video frame: {e}")
+        print(f"General Error getting frame at timestamp for {video_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
+    finally:
+        if container:
+            container.close()
 
 @app.post("/check_temporal_frames")
 async def check_temporal_frames(request_data: CheckFramesRequest) -> List[str]:
