@@ -13,6 +13,7 @@ from pathlib import Path
 from collections import defaultdict
 import httpx
 from typing import List, Dict, Any, Optional
+import numpy as np
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Body, WebSocket, WebSocketDisconnect, Header
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, ORJSONResponse, StreamingResponse
@@ -177,7 +178,7 @@ MILVUS_PORT = "19530"
 BEIT3_COLLECTION_NAME = "beit3_batch1_2_filter"
 BGE_COLLECTION_NAME = "bge_batch1_2_filter"
 BGE_M3_CAPTION_COLLECTION_NAME = "BGE_M3_HCMAIC_captions_batch_1"
-OPS_MM_COLLECTION_NAME = "MM_EMBED_FINAL"
+OPS_MM_COLLECTION_NAME = "MM_EMBED_MAX_RESOLUTION"
 METACLIP2_COLLECTION_NAME = "metaclip2_from_npz"
 
 MODEL_WEIGHTS = {"beit3": 0.15, "bge": 0.1, "ops_mm": 0.2, "bge_caption": 0.4, "metaclip2": 0.15}
@@ -199,7 +200,9 @@ COLLECTION_TO_INDEX_TYPE = {
     BEIT3_COLLECTION_NAME: "HNSW",
     BGE_COLLECTION_NAME: "HNSW",
     BGE_M3_CAPTION_COLLECTION_NAME: "HNSW",
-    OPS_MM_COLLECTION_NAME: "HNSW"
+    OPS_MM_COLLECTION_NAME: "HNSW",
+    METACLIP2_COLLECTION_NAME: "HNSW" 
+
 }
 
 es = None
@@ -297,7 +300,7 @@ class TaskContentRequest(BaseModel):
 
 @app.on_event("startup")
 def startup_event():
-    global es, OBJECT_COUNTS_DF, OBJECT_POSITIONS_DF, beit3_collection, bge_collection, bge_m3_caption_collection, ops_mm_collection
+    global es, OBJECT_COUNTS_DF, OBJECT_POSITIONS_DF, beit3_collection, bge_collection, bge_m3_caption_collection, ops_mm_collection, metaclip2_collection
     try:
         print("--- Loading cache json ---")
         load_frame_context_cache_from_json()
@@ -571,7 +574,19 @@ def get_valid_filepaths_for_strict_search(all_filepaths: set, filters: ObjectFil
 def search_milvus_sync(collection: Collection, collection_name: str, query_vectors: list, limit: int, expr: str = None):
     try:
         if not collection or not query_vectors: return []
+        # # --- ENHANCED DEBUGGING [START] ---
+        # print("\n" + "="*50)
+        # print(f"[DEBUG] PRE-SEARCH CHECK FOR COLLECTION: '{collection_name}'")
         
+        # query_vec_np = np.array(query_vectors[0])
+        # print(f"[DEBUG] Query Vector Dimension: {query_vec_np.shape}") # MOST IMPORTANT CHECK
+        
+        # query_vector_norm = np.linalg.norm(query_vec_np)
+        # print(f"[DEBUG] Query Vector Norm (should be ~1.0): {query_vector_norm}")
+        # print(f"[DEBUG] Milvus search expression (filter): {expr}")
+        # print(f"--- Calling collection.search()... ---")
+        # # --- ENHANCED DEBUGGING [END] ---
+
         need_load = False
         try:
             state = utility.load_state(collection.name)
@@ -593,6 +608,16 @@ def search_milvus_sync(collection: Collection, collection_name: str, query_vecto
             output_fields=["frame_name", "video_id", "shot_id", "frame_id"],
             expr=expr
         )
+        # # --- ENHANCED DEBUGGING [START] ---
+        # print(f"--- collection.search() finished. ---")
+        # # This will show the raw result from Milvus
+        # if results and results[0]:
+        #     print(f"[DEBUG] Milvus search returned {len(results[0])} hits.")
+        #     print(f"[DEBUG] Top hit ID: {results[0][0].id}, Distance: {results[0][0].distance}")
+        # else:
+        #     print(f"[DEBUG] Milvus search returned 0 hits.")
+        # print("="*50 + "\n")
+        # # --- ENHANCED DEBUGGING [END] ---
         
         final_results = []
         for one_query_hits in results:
