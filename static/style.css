@@ -1245,9 +1245,10 @@ body.video-modal-active.theme-akira-red {
 .history-item-query {
     font-weight: 600;
     color: var(--text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    /* CHANGE: Allow text to wrap for multi-line display */
+    white-space: normal; 
+    line-height: 1.4;
+    word-break: break-word;
     font-size: 1rem;
 }
 

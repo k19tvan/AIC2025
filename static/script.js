@@ -171,6 +171,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebarTitle = document.getElementById('sidebarTitle');
     let activeTrakeItemForSidebar = null;
 
+    const onlyMetaBtn = document.getElementById('onlyMetaBtn');
+
+
     // *** START: VIDEO TIMELINE ELEMENT REFERENCES ***
     const videoTimelineContainer = document.getElementById('videoTimelineContainer');
     const videoThumbnailsStrip = document.getElementById('videoThumbnailsStrip');
@@ -1501,9 +1504,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 searchEndpoint = '/search';
                 const firstStage = allStages[0];
                 const useBgeCaption = firstStage.querySelector('.option-btn[data-option="bge_caption"]').classList.contains('active');
-                const searchData = { filters: objectFilters, page: 1, page_size: PAGE_SIZE, use_bge_caption: useBgeCaption };
+                // START: ADD is_only_meta_mode HERE
+                const searchData = { filters: objectFilters, page: 1, page_size: PAGE_SIZE, use_bge_caption: useBgeCaption, is_only_meta_mode: onlyMetaBtn.classList.contains('active') };
+                // END: ADD is_only_meta_mode HERE                
+                
                 let hasPrimaryQuery = false;
-
                 if (firstStage.querySelector('.type-btn[data-type="gen_image"]')?.classList.contains('active')) {
                     const mainInput = firstStage.querySelector('.main-query-input');
                     searchData.query_text = mainInput.value.trim();
@@ -1551,8 +1556,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     };
                     return stageDatum;
                 });
-                
-                const payload = { stages: stagesData, models: Array.from(document.querySelectorAll('#modelDropdown input:checked')).map(cb => cb.value), filters: objectFilters, ambiguous: ambiguousBtn.classList.contains('active'), page: 1, page_size: PAGE_SIZE };
+                // START: ADD is_only_meta_mode HERE
+                const payload = { stages: stagesData, models: Array.from(document.querySelectorAll('#modelDropdown input:checked')).map(cb => cb.value), filters: objectFilters, ambiguous: ambiguousBtn.classList.contains('active'), page: 1, page_size: PAGE_SIZE, is_only_meta_mode: onlyMetaBtn.classList.contains('active') };
+                // END: ADD is_only_meta_mode HERE
                 lastSearchPayload = payload;
                 requestBody = JSON.stringify(payload);
             }
@@ -1691,7 +1697,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return [];
         }
     }
-
     /**
      * Lưu một payload tìm kiếm vào lịch sử.
      * @param {object} searchPayload - Đối tượng chứa thông tin tìm kiếm.
@@ -1699,15 +1704,27 @@ document.addEventListener('DOMContentLoaded', () => {
     function saveSearchToHistory(searchPayload) {
         if (!searchPayload) return;
 
-        // Tạo một tên đại diện dễ đọc cho mục lịch sử
+        // Create a user-friendly name for the history item
         let name = "Untitled Search";
-        if (searchPayload.stages) { // Temporal search
-            name = searchPayload.stages.map(s => s.query || "Image Query").join(' ➡️ ');
-        } else { // Single search
+
+        if (searchPayload.stages) { // This is a temporal (multi-stage) search
+            // THIS IS THE CORRECTED LOGIC
+            name = searchPayload.stages.map((s, index) => {
+                let stageDesc = "Filter-Only Stage"; // Default description
+                if (s.query) {
+                    stageDesc = s.query;
+                } else if (s.query_image_name) {
+                    stageDesc = "Image Query";
+                } else if (s.ocr_query || s.asr_query) {
+                    stageDesc = `Filters: [${[s.ocr_query, s.asr_query].filter(Boolean).join(', ')}]`;
+                }
+                return `${index + 1}. ${stageDesc}`;
+            }).join('\n'); // Join with a newline character for multi-line storage
+        } else { // This is a single-stage search
             name = searchPayload.query_text || searchPayload.image_search_text || "Filter-Only Search";
         }
+
         if (name.trim() === "") name = "Filter-Only Search";
-        if (name.length > 100) name = name.substring(0, 97) + '...';
 
         const history = getSearchHistory();
         const newEntry = {
@@ -1717,7 +1734,7 @@ document.addEventListener('DOMContentLoaded', () => {
             payload: searchPayload
         };
 
-        // Thêm mục mới vào đầu, loại bỏ các mục cũ nếu vượt quá giới hạn
+        // Add the new entry to the top and trim the list if it's too long
         const updatedHistory = [newEntry, ...history].slice(0, MAX_HISTORY_ITEMS);
 
         try {
@@ -1732,7 +1749,7 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function renderHistoryList() {
         const history = getSearchHistory();
-        historyListContainer.innerHTML = ''; // Xóa danh sách cũ
+        historyListContainer.innerHTML = ''; // Clear the old list
 
         if (history.length === 0) {
             historyListContainer.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">Your search history is empty.</p>';
@@ -1743,9 +1760,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const itemEl = document.createElement('div');
             itemEl.className = 'history-item';
             itemEl.dataset.historyId = item.id;
+            
+            // Replace stored newlines (\n) with HTML line breaks (<br>) for correct display
+            const formattedName = item.name.replace(/\n/g, '<br>');
+
             itemEl.innerHTML = `
                 <div class="history-item-content">
-                    <div class="history-item-query">${item.name}</div>
+                    <div class="history-item-query">${formattedName}</div>
                     <div class="history-item-details">${item.timestamp}</div>
                 </div>
                 <div class="history-item-actions">
@@ -1753,15 +1774,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
 
-            // Sự kiện khi click vào mục lịch sử để tải lại
+            // Event listener to reload the search when clicked
             itemEl.querySelector('.history-item-content').addEventListener('click', () => {
                 loadSearchFromHistory(item.id);
                 historyModal.style.display = 'none';
             });
 
-            // Sự kiện khi click nút xóa
+            // Event listener for the delete button
             itemEl.querySelector('.delete-history-item').addEventListener('click', (e) => {
-                e.stopPropagation(); // Ngăn không cho sự kiện click tải lại bị kích hoạt
+                e.stopPropagation(); // Prevent the reload event from firing
                 deleteHistoryItem(item.id);
             });
 
@@ -1794,10 +1815,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const payload = itemToLoad.payload;
         
-        // Reset giao diện trước khi tải
+        // Reset UI before loading
         stagesContainer.innerHTML = '';
         
-        const stagesData = payload.stages || [payload]; // Hỗ trợ cả single và temporal search
+        // This handles both single-stage (becomes an array of 1) and multi-stage payloads
+        const stagesData = payload.stages || [payload]; 
         
         stagesData.forEach((stageData, index) => {
             const stageCard = createStageCard(index + 1);
@@ -1807,15 +1829,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 stageCard.querySelector('.type-btn[data-type="image"]').click();
                 const imageSearchText = stageCard.querySelector('.image-search-text-input');
                 imageSearchText.value = stageData.image_search_text || '';
-                // Lưu ý: Chúng ta không thể tải lại file ảnh đã upload.
-                // Vì vậy, chỉ cần thông báo cho người dùng.
                 const uploadInstructions = stageCard.querySelector('.upload-instructions p');
                 uploadInstructions.innerHTML = `<strong>Please re-upload image for this search.</strong>`;
             } else {
-                stageCard.querySelector('.main-query-input').value = stageData.query_text || '';
+                // Correctly handle 'query' (from multi-stage) and 'query_text' (from single-stage)
+                stageCard.querySelector('.main-query-input').value = stageData.query || stageData.query_text || '';
             }
             
-            // Set filters OCR/ASR
+            // Set OCR/ASR filters
             if (stageData.ocr_query) {
                 stageCard.querySelector('.type-btn[data-type="ocr"]').click();
                 stageCard.querySelector('.ocr-filter-input').value = stageData.ocr_query;
@@ -1833,7 +1854,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         renumberStages();
         
-        // Set lại các tùy chọn global (models, cluster, ambiguous, filters)
+        // Restore global options
         document.querySelectorAll('#modelDropdown input[type="checkbox"]').forEach(cb => {
             cb.checked = (payload.models || ['beit3', 'bge', 'ops_mm']).includes(cb.value);
         });
@@ -1841,12 +1862,8 @@ document.addEventListener('DOMContentLoaded', () => {
         clusterBtn.classList.toggle('active', payload.cluster === true);
         ambiguousBtn.classList.toggle('active', payload.ambiguous === true);
         
-        // TODO: Tải lại object filters (phần này phức tạp hơn, có thể làm sau)
-        // Ví dụ: set lại trạng thái của các checkbox và vẽ lại các box
-        
         showToast("Search loaded from history. Press Search to run.", 3000, 'info');
     }
-
     // ===============================================
     // END: SEARCH HISTORY FUNCTIONS
     // ===============================================
@@ -1924,6 +1941,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const isActive = trakeBtn.classList.toggle('active');
         trakePanelContainer.style.display = isActive ? 'block' : 'none';
     });
+    // START: ADD THIS ENTIRE BLOCK
+    onlyMetaBtn.addEventListener('click', () => {
+        const isActive = onlyMetaBtn.classList.toggle('active');
+        const modelCheckboxes = document.querySelectorAll('#modelDropdown input[type="checkbox"]');
+        const metaClipCheckbox = document.getElementById('model-metaclip2');
+
+        if (isActive) {
+            // "OnlyMeta" mode is ON
+            modelCheckboxes.forEach(cb => {
+                cb.checked = false;
+            });
+            if (metaClipCheckbox) {
+                metaClipCheckbox.checked = true;
+            }
+        } else {
+            // "OnlyMeta" mode is OFF, restore all models
+            modelCheckboxes.forEach(cb => {
+                cb.checked = true;
+            });
+        }
+    });
+    // END: ADD THIS ENTIRE BLOCK
 
     function pushToTrakePanel(shotData) {
         if (!ws || ws.readyState !== WebSocket.OPEN) { showToast("Real-time connection not active.", 3000, 'error'); return; }
@@ -2380,9 +2419,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     case 'p': stageToModify.querySelector('.type-btn[data-type="asr"]')?.click(); break;
                     case 'g': stageToModify.querySelector('.type-btn[data-type="gen_image"]')?.click(); break;
                     case 'm': stageToModify.querySelector('.mic-btn')?.click(); break;
+                    case 'k': onlyMetaBtn.click(); break;
+
                     default: handled = false;
                 }
-            } else { handled = false; }
+            } else { 
+                // START: ADD THIS BLOCK FOR WHEN NOT TYPING
+                if (event.key.toLowerCase() === 'k') {
+                    onlyMetaBtn.click();
+                } else {
+                    handled = false;
+                }
+                // END: ADD THIS BLOCK
+            }
             if(handled) { event.preventDefault(); return; }
         }
         else if ((event.ctrlKey || event.metaKey) && event.shiftKey) {

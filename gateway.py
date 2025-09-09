@@ -263,12 +263,13 @@ class TemporalSearchRequest(BaseModel):
     ambiguous: bool = False
     page: int = 1
     page_size: int = 30
+    is_only_meta_mode: bool = False # ADD THIS LINE
 
 class ProcessQueryRequest(BaseModel):
     query: str
     enhance: bool = False
     expand: bool = False
-
+    is_only_meta_mode: bool = False
 class UnifiedSearchRequest(BaseModel):
     query_text: Optional[str] = None
     query_image_name: Optional[str] = None
@@ -283,6 +284,8 @@ class UnifiedSearchRequest(BaseModel):
     generated_image_name: Optional[str] = None
     page: int = 1
     page_size: int = 30
+    is_only_meta_mode: bool = False # ADD THIS LINE
+
 class CheckFramesRequest(BaseModel): base_filepath: str
 class DRESLoginRequest(BaseModel): username: str; password: str
 class DRESSubmitRequest(BaseModel):
@@ -856,7 +859,7 @@ async def process_query(request_data: ProcessQueryRequest):
     query = request_data.query
     if not query: return {"processed_query": ""}
 
-    cache_key = f"{query}|{request_data.enhance}|{request_data.expand}"
+    cache_key = f"{query}|{request_data.enhance}|{request_data.expand}|{request_data.is_only_meta_mode}"
     if cache_key in processed_query_cache: return {"processed_query": processed_query_cache[cache_key]}
 
     processed_query = ""
@@ -866,7 +869,7 @@ async def process_query(request_data: ProcessQueryRequest):
         translated_query = await translate_query(query)
         processed_query = await asyncio.to_thread(expand_query_parallel, translated_query)
     else:
-        processed_query = await translate_query(query)
+        processed_query = await translate_query(query, is_only_meta_mode=request_data.is_only_meta_mode)
     if isinstance(processed_query, list): processed_query = "\n".join(processed_query)
     processed_query_cache[cache_key] = processed_query
     return {"processed_query": processed_query}
@@ -1005,7 +1008,13 @@ async def search_unified(request: Request, search_data: str = Form(...), query_i
             if temp_filepath.is_file():
                 image_content, query_image_info = temp_filepath.read_bytes(), {"filename": search_data_model.query_image_name, "content_type": "image/jpeg"}
     elif search_data_model.query_text:
-        processed_query_for_ui = (await process_query(ProcessQueryRequest(query=search_data_model.query_text, enhance=search_data_model.enhance, expand=search_data_model.expand)))["processed_query"]
+        processed_query_for_ui = (await process_query(ProcessQueryRequest(
+            query=search_data_model.query_text, 
+            enhance=search_data_model.enhance, 
+            expand=search_data_model.expand,
+            is_only_meta_mode=search_data_model.is_only_meta_mode # Pass the flag
+        )))["processed_query"]
+        
         final_queries_to_embed = [processed_query_for_ui]
 
     timings["query_processing_s"] = time.time() - start_query_proc
@@ -1116,7 +1125,12 @@ async def temporal_search(request_data: TemporalSearchRequest, request: Request)
                 query_image_info = {"filename": stage.query_image_name, "content_type": "image/jpeg"}
                 results_by_model = await get_embeddings_for_query(client, [], image_content, ["bge"], query_image_info, is_fusion=False)
             else:
-                processed_query = (await process_query(ProcessQueryRequest(query=stage.query, enhance=stage.enhance, expand=stage.expand)))["processed_query"]
+                processed_query = (await process_query(ProcessQueryRequest(
+                    query=stage.query,
+                    enhance=stage.enhance,
+                    expand=stage.expand,
+                    is_only_meta_mode=request_data.is_only_meta_mode # Pass the flag from the main request
+                )))["processed_query"]
                 processed_queries_for_ui.append(processed_query)
                 results_by_model = await get_embeddings_for_query(client, [processed_query], None, models, use_bge_caption=stage.use_bge_caption)
             

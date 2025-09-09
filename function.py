@@ -97,12 +97,18 @@ def enhance_query(original_query: str) -> str:
 # @alru_cache(maxsize=1024) tự động cache kết quả của hàm.
 # Nếu gọi lại `translate_query` với cùng `query`, kết quả sẽ được trả về ngay lập tức từ cache.
 @alru_cache(maxsize=1024)
-async def translate_query(query: str, dest: str = 'en') -> str:
+async def translate_query(query: str, dest: str = 'en', is_only_meta_mode: bool = False) -> str:
     """
     Dịch truy vấn sang 'dest' nếu không phải tiếng Anh.
-    Nếu đã là tiếng Anh thì trả nguyên văn.
+    Nếu đã là tiếng Anh hoặc is_only_meta_mode=True, trả nguyên văn.
     Hàm này được tối ưu bằng caching.
     """
+    # START: ADD THIS BLOCK
+    if is_only_meta_mode:
+        print(f"Only Meta mode is active for query '{query}'. Bypassing translation.")
+        return query
+    # END: ADD THIS BLOCK
+
     if not query or not query.strip():
         return ""
 
@@ -113,8 +119,8 @@ async def translate_query(query: str, dest: str = 'en') -> str:
             return query
         
         print(f"Translating '{query}' to English...")
+        # The translator object needs to be awaited now
         result = await TRANSLATOR.translate(query, dest=dest)
-        print(result)
         return result.text
     
     except Exception as e:
