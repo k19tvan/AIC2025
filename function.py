@@ -15,6 +15,7 @@ import time # Thêm để test tốc độ
 from fast_langdetect import LangDetector
 from googletrans import Translator
 from async_lru import alru_cache # Import thư viện cache cho hàm async
+from openai import OpenAI
 
 import sys
 path_to_api = '/workspace/mlcv2/WorkingSpace/Personal/nguyenmv/HCMAIC2025/AICHALLENGE_OPENCUBEE_2/VongSoTuyen/DataPreprocessing/Api'
@@ -57,39 +58,34 @@ def get_client_for_thread(thread_id: int):
 # Query Enhancement (Hàm đồng bộ)
 # =========================
 def enhance_query(original_query: str) -> str:
-    """
-    Improve a search query for better retrieval accuracy.
-    This function takes a query in any language, translates it to English if necessary,
-    and then enhances it for optimal search performance.
-    """
-    # ... (giữ nguyên code của bạn)
-    for attempt in range(MAX_ATTEMPT):
-        try:
-            client = genai.Client(api_key=api_key[attempt % len(api_key)])
-            prompt = (
-                f"You are an expert in search query optimization for accurate and relevant retrieval.\n"
-                f"Here is the original search query:\n"
-                f"\"{original_query}\"\n\n"
-                "Your task involves a two-step process:\n"
-                "1. **Language Check & Translation:** First, analyze the provided query. If it is not in English, your primary step is to translate it into clear and accurate English. If it is already in English, proceed directly to the next step.\n"
-                "2. **Enhancement:** Take the resulting English query and rewrite it to maximize the chances of retrieving highly relevant results. Make the wording clear, precise, and rich in meaningful keywords. Preserve the original intent and all essential details, but remove any ambiguity or unnecessary words.\n\n"
-                "Return ONLY the final, enhanced English query. Do not include the original query, translations, or any explanations in your response."
-            )
+    client = OpenAI(
+        base_url="http://nguyenmv_aicity2025-nguyen_dfine_s:6262/v1",
+        api_key="not-needed"  # API key is not required for local servers
+    )
 
-            resp = client.models.generate_content(
-                model=MODEL_ENHANCE,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    thinking_config=types.ThinkingConfig(thinking_budget=0),
-                    temperature=0
-                ),
-            )
-            enhanced_text = resp.text.strip().strip('"')
-            return enhanced_text
-        except Exception:
-            print("Fail, trying next key")
-            continue
-    return original_query
+    prompt = (
+        f"You are an expert in search query optimization for accurate and relevant retrieval.\n"
+        f"Here is the original search query:\n"
+        f"\"{original_query}\"\n\n"
+        "Your task involves a two-step process:\n"
+        "1. **Language Check & Translation:** First, analyze the provided query. If it is not in English, your primary step is to translate it into clear and accurate English. If it is already in English, proceed directly to the next step.\n"
+        "2. **Enhancement:** Take the resulting English query and rewrite it to maximize the chances of retrieving highly relevant results. Make the wording clear, precise, and rich in meaningful keywords. Preserve the original intent and all essential details, but remove any ambiguity or unnecessary words.\n\n"
+        "Return ONLY the final, enhanced English query. Do not include the original query, translations, or any explanations in your response."
+    )
+
+    completion = client.chat.completions.create(
+        model="./Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+        messages=[
+            {"role": "system", "content": ""},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.1,  # Lower temperature for more consistent results
+        max_tokens=50,    # Reduced to prevent over-elaboration
+    )
+    
+    enhanced_query = completion.choices[0].message.content.strip()
+
+    return enhanced_query
     
 # =========================
 # Query Translate Logic (Hàm bất đồng bộ - ĐÃ TỐI ƯU)
@@ -181,8 +177,3 @@ def expand_query_parallel(short_query: str, num_requests: int = NUM_EXPAND_WORKE
 async def main():
     result = await translate_query("Đấm nhau không Cubi")
     print(result)
-
-if __name__ == "__main__":
-    st = time.time()
-    asyncio.run(main())
-    print(time.time() - st)
